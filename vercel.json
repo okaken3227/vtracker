@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/poll/live",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/poll/videos",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/poll/channels",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

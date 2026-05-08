@@ -1,0 +1,307 @@
+import { supabase } from "@/lib/supabase/client";
+import type { Channel, Video, Group, GroupCategory, LiveGraphPoint } from "@/lib/types";
+import { getJstMidnightMs } from "@/lib/jst";
+import ChannelAvatar from "@/app/components/ChannelAvatar";
+import CombinedLiveGraph from "@/app/components/CombinedLiveGraph";
+import type { LineConfig } from "@/app/components/CombinedLiveGraph";
+import LiveBanner from "@/app/components/LiveBanner";
+import Link from "next/link";
+
+export const dynamic = "force-dynamic";
+
+const BUCKET_MS = 5 * 60 * 1000;
+const LINE_COLORS = ["#7c3aed", "#e11d48", "#0891b2", "#d97706", "#16a34a", "#9333ea", "#64748b"];
+
+function buildLiveGraph(
+  liveVideos: Video[],
+  channelMap: Map<string, Channel>,
+  points: { video_id: string; concurrent_viewers: number; recorded_at: string }[],
+): { merged: Record<string, number | string | null>[]; lines: LineConfig[] } {
+  const lines: LineConfig[] = liveVideos.map((v, i) => ({
+    key: v.video_id,
+    channelName: channelMap.get(v.channel_id)?.name ?? v.channel_id,
+    color: LINE_COLORS[i % LINE_COLORS.length],
+    videoId: v.video_id,
+    iconUrl: channelMap.get(v.channel_id)?.icon_url ?? undefined,
+  }));
+
+  const liveIds = new Set(liveVideos.map((v) => v.video_id));
+  const allBuckets = new Set<number>();
+  const byVideoAndBucket = new Map<string, Map<number, number[]>>();
+
+  for (const p of points) {
+    if (!liveIds.has(p.video_id)) continue;
+    const bucket = Math.floor(new Date(p.recorded_at).getTime() / BUCKET_MS) * BUCKET_MS;
+    allBuckets.add(bucket);
+    if (!byVideoAndBucket.has(p.video_id)) byVideoAndBucket.set(p.video_id, new Map());
+    const vm = byVideoAndBucket.get(p.video_id)!;
+    if (!vm.has(bucket)) vm.set(bucket, []);
+    vm.get(bucket)!.push(p.concurrent_viewers);
+  }
+
+  if (allBuckets.size < 2) return { merged: [], lines };
+
+  const sorted = Array.from(allBuckets).sort((a, b) => a - b);
+  const merged = sorted.map((bucket) => {
+    const t = new Date(bucket).toLocaleTimeString("ja-JP", {
+      hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo",
+    });
+    const row: Record<string, number | string | null> = { t };
+    for (const { key } of lines) {
+      const vals = byVideoAndBucket.get(key)?.get(bucket);
+      row[key] = vals ? Math.round(vals.reduce((s, x) => s + x, 0) / vals.length) : null;
+    }
+    return row;
+  });
+
+  return { merged, lines };
+}
+
+const CATEGORY_LABEL: Record<GroupCategory, string> = {
+  vtuber: "VTuber事務所",
+  esports: "Eスポーツ",
+  indie: "個人勢",
+  other: "その他",
+};
+
+const CATEGORY_STYLE: Record<GroupCategory, string> = {
+  vtuber: "bg-violet-100 text-violet-700",
+  esports: "bg-cyan-100 text-cyan-700",
+  indie: "bg-amber-100 text-amber-700",
+  other: "bg-gray-100 text-gray-600",
+};
+
+function formatCount(n: number): string {
+  if (n >= 10000) return `${(n / 10000).toFixed(0)}万`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return n.toLocaleString();
+}
+
+export default async function GroupPage({
+  params,
+}: {
+  params: Promise<{ groupId: string }>;
+}) {
+  const { groupId } = await params;
+  const jstMidnightMs = getJstMidnightMs();
+
+  const [groupRes, allGroupsRes, channelsRes] = await Promise.all([
+    supabase.from("groups").select("*").eq("id", groupId).single(),
+    supabase.from("groups").select("*"),
+    supabase
+      .from("channels")
+      .select("*")
+      .eq("group_id", groupId)
+      .order("subscriber_count", { ascending: false }),
+  ]);
+
+  const group = groupRes.data as Group | null;
+  if (!group) {
+    return <div className="py-20 text-center text-gray-400">グループが見つかりません</div>;
+  }
+
+  const allGroups = (allGroupsRes.data ?? []) as Group[];
+  const channels = (channelsRes.data ?? []) as Channel[];
+  const channelIds = channels.map((c) => c.channel_id);
+  const channelMap = new Map(channels.map((c) => [c.channel_id, c]));
+
+  const parentGroup = group.parent_group_id ? allGroups.find((g) => g.id === group.parent_group_id) : null;
+  const childGroups = allGroups.filter((g) => g.parent_group_id === groupId);
+
+  // Today's videos and graph points for channels in this group
+  const [videosRes, gpRes] = channelIds.length > 0
+    ? await Promise.all([
+        supabase.from("videos").select("*").in("channel_id", channelIds).order("start_time", { ascending: false }),
+        supabase
+          .from("live_graph_points")
+          .select("video_id, concurrent_viewers, recorded_at")
+          .gte("recorded_at", new Date(jstMidnightMs).toISOString()),
+      ])
+    : [{ data: [] }, { data: [] }];
+
+  const videos = (videosRes.data ?? []) as Video[];
+  const graphPoints = (gpRes.data ?? []) as Pick<LiveGraphPoint, "video_id" | "concurrent_viewers" | "recorded_at">[];
+
+  const videoMap = new Map(videos.map((v) => [v.video_id, v]));
+  const liveVideos = videos.filter((v) => v.status === "live");
+  const { merged: liveGraphData, lines: liveGraphLines } = buildLiveGraph(liveVideos, channelMap, graphPoints);
+
+  // Today's video IDs for this group
+  const todayVideoIds = [...new Set(graphPoints.map((p) => p.video_id))].filter(
+    (id) => {
+      const v = videoMap.get(id);
+      return v && channelIds.includes(v.channel_id);
+    }
+  );
+
+  // Peak viewer ranking
+  const peakByVideo = new Map<string, number>();
+  for (const p of graphPoints) {
+    peakByVideo.set(p.video_id, Math.max(peakByVideo.get(p.video_id) ?? 0, p.concurrent_viewers));
+  }
+
+  const peakRanking = todayVideoIds
+    .map((vid) => ({
+      video: videoMap.get(vid)!,
+      channel: channelMap.get(videoMap.get(vid)?.channel_id ?? ""),
+      peak: peakByVideo.get(vid) ?? 0,
+    }))
+    .filter((x) => x.video)
+    .sort((a, b) => b.peak - a.peak)
+    .slice(0, 10);
+
+  return (
+    <div>
+      {/* Group header */}
+      <div className="mb-2 flex items-center gap-2 text-sm text-gray-400">
+        <Link href="/" className="hover:text-violet-600">ホーム</Link>
+        <span>›</span>
+        {parentGroup && (
+          <>
+            <Link href={`/group/${parentGroup.id}`} className="hover:text-violet-600">{parentGroup.name}</Link>
+            <span>›</span>
+          </>
+        )}
+        <span className="text-gray-600">{group.name}</span>
+      </div>
+
+      <div className="mb-8 flex items-center gap-4">
+        {group.icon_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={group.icon_url} alt={group.name} className="h-14 w-14 flex-shrink-0 rounded-full object-cover" />
+        ) : (
+          <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full text-white text-xl font-bold" style={{ backgroundColor: group.color }}>
+            {group.name[0]}
+          </div>
+        )}
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
+            {group.category && (
+              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${CATEGORY_STYLE[group.category]}`}>
+                {CATEGORY_LABEL[group.category]}
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-gray-400">{channels.length}チャンネル</p>
+        </div>
+      </div>
+
+      {/* Child groups */}
+      {childGroups.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-base font-semibold text-gray-900">サブグループ</h2>
+          <div className="flex flex-wrap gap-2">
+            {childGroups.map((g) => (
+              <Link
+                key={g.id}
+                href={`/group/${g.id}`}
+                className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm text-gray-700 shadow-sm transition-colors hover:border-violet-300 hover:text-violet-600"
+              >
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: g.color }} />
+                {g.name}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Live now */}
+      {liveVideos.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-gray-900">
+            <span className="animate-pulse text-red-500">●</span>
+            ライブ中
+            <span className="font-normal text-gray-400">({liveVideos.length})</span>
+          </h2>
+          <div className="flex flex-col gap-2 mb-4">
+            {liveVideos.map((v) => {
+              const ch = channelMap.get(v.channel_id);
+              return (
+                <LiveBanner
+                  key={v.video_id}
+                  videoId={v.video_id}
+                  title={v.title}
+                  channelName={ch?.name ?? v.channel_id}
+                  channelId={v.channel_id}
+                  iconUrl={ch?.icon_url ?? ""}
+                  startTime={v.start_time}
+                />
+              );
+            })}
+          </div>
+          {liveGraphData.length >= 2 && (
+            <CombinedLiveGraph data={liveGraphData} lines={liveGraphLines} />
+          )}
+        </section>
+      )}
+
+      {/* Today's peak ranking */}
+      {peakRanking.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-base font-semibold text-gray-900">今日のピーク同接</h2>
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="divide-y divide-gray-100">
+              {peakRanking.map(({ video, channel, peak }, i) => (
+                <Link
+                  key={video.video_id}
+                  href={`/live/${video.video_id}`}
+                  className="flex items-center gap-3 py-2.5 transition-opacity hover:opacity-70"
+                >
+                  <span className="w-5 flex-shrink-0 text-center text-xs font-bold text-gray-300">{i + 1}</span>
+                  <ChannelAvatar
+                    channelId={video.channel_id}
+                    name={channel?.name ?? ""}
+                    iconUrl={channel?.icon_url ?? undefined}
+                    size={32}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-gray-800">{channel?.name ?? video.channel_id}</p>
+                    <p className="truncate text-xs text-gray-400">{video.title}</p>
+                  </div>
+                  <span className="flex-shrink-0 font-bold text-violet-600">{peak.toLocaleString()}人</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Channel list */}
+      <section>
+        <h2 className="mb-4 text-base font-semibold text-gray-900">
+          所属チャンネル
+          <span className="ml-2 text-sm font-normal text-gray-400">({channels.length}件)</span>
+        </h2>
+        {channels.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-300 p-12 text-center text-sm text-gray-400">
+            チャンネルがありません
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {channels.map((ch) => (
+              <Link
+                key={ch.channel_id}
+                href={`/channel/${ch.channel_id}`}
+                className="group row-lift flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+              >
+                <div className="overflow-hidden rounded-full ring-2 ring-white ring-offset-1">
+                  <ChannelAvatar
+                    channelId={ch.channel_id}
+                    name={ch.name}
+                    iconUrl={ch.icon_url}
+                    size={40}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-gray-900 transition-colors duration-300 group-hover:text-violet-600">{ch.name}</p>
+                  <p className="text-xs text-gray-400">{formatCount(ch.subscriber_count)}登録</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
