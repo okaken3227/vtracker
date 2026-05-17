@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import type { Channel, Video, Group } from "@/lib/types";
 import ChannelCard from "./ChannelCard";
@@ -108,6 +108,17 @@ type PreviewVideo = {
 export default function HomeContent({ channels, videos, scByVideo, scByChannel, groups, todayPoints, error }: HomeData) {
   const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
   const [preview, setPreview] = useState<PreviewVideo | null>(null);
+  const channelListRef = useRef<HTMLElement>(null);
+
+  function handleGroupSelect(groupId: string | undefined) {
+    setSelectedGroup(groupId);
+    setTimeout(() => {
+      const el = channelListRef.current;
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY - 72;
+      window.scrollTo({ top, behavior: "smooth" });
+    }, 0);
+  }
 
   const groupMap = new Map(groups.map((g) => [g.id, g]));
   const channelMap = new Map(channels.map((c) => [c.channel_id, c]));
@@ -386,10 +397,10 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
       )}
 
       {/* ── チャンネル一覧（全幅） ── */}
-      <section>
+      <section ref={channelListRef}>
         <h2 className="mb-4 text-lg font-semibold text-gray-900">チャンネル一覧</h2>
         {groups.length > 0 && (
-          <GroupTabs groups={groups} selected={selectedGroup} onSelect={setSelectedGroup} />
+          <GroupTabs groups={groups} selected={selectedGroup} onSelect={handleGroupSelect} />
         )}
         {sortedChannels.length === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center">
