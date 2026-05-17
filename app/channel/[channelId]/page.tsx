@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase/client";
 import type { Channel, Video, ChannelStatsHistory, Group, Superchat } from "@/lib/types";
 import { fetchRatesToJPY } from "@/lib/exchange";
@@ -5,6 +6,30 @@ import BackButton from "./BackButton";
 import ChannelPageContent, { type ChData } from "./ChannelPageContent";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ channelId: string }>;
+}): Promise<Metadata> {
+  const { channelId } = await params;
+  const { data } = await supabase
+    .from("channels")
+    .select("name, description, icon_url, subscriber_count")
+    .eq("channel_id", channelId)
+    .single();
+  if (!data) return {};
+  const ch = data as { name: string; description: string | null; icon_url: string | null; subscriber_count: number | null };
+  const sub = ch.subscriber_count ? `登録者${ch.subscriber_count >= 10000 ? `${(ch.subscriber_count / 10000).toFixed(0)}万` : ch.subscriber_count.toLocaleString()}人` : null;
+  const description = `${ch.name}の視聴者数・スパチャ・配信履歴を追跡します。${sub ? `${sub}。` : ""}`;
+  const images = ch.icon_url ? [{ url: ch.icon_url }] : [];
+  return {
+    title: ch.name,
+    description,
+    openGraph: { title: `${ch.name} | vtracker`, description, images },
+    twitter: { card: "summary", title: `${ch.name} | vtracker`, description, images },
+  };
+}
 
 async function fetchChannelData(channelId: string): Promise<ChData | null> {
   const [channelRes, videosRes, historyRes, allVideoIdsRes] = await Promise.all([

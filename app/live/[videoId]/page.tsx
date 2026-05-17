@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase/client";
 import type { Video, Channel, Superchat, LiveGraphPoint } from "@/lib/types";
 import type { GraphDataPoint } from "./LiveGraphSection";
@@ -10,6 +11,36 @@ import { fetchRatesToJPY } from "@/lib/exchange";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ videoId: string }>;
+}): Promise<Metadata> {
+  const { videoId } = await params;
+  const { data: video } = await supabase
+    .from("videos")
+    .select("title, thumbnail_url, channel_id")
+    .eq("video_id", videoId)
+    .single();
+  if (!video) return {};
+  const v = video as { title: string; thumbnail_url: string | null; channel_id: string };
+  const { data: ch } = await supabase
+    .from("channels")
+    .select("name")
+    .eq("channel_id", v.channel_id)
+    .single();
+  const channelName = (ch as { name: string } | null)?.name ?? "";
+  const title = v.title || channelName;
+  const description = `${channelName}の配信「${v.title}」の視聴者数・スパチャをリアルタイム追跡。`;
+  const images = v.thumbnail_url ? [{ url: v.thumbnail_url }] : [];
+  return {
+    title,
+    description,
+    openGraph: { title: `${title} | vtracker`, description, images },
+    twitter: { card: "summary_large_image", title: `${title} | vtracker`, description, images },
+  };
+}
 
 const TIER_COLORS: Record<number, string> = {
   1: "border-blue-200 bg-blue-50 text-blue-700",

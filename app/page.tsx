@@ -1,9 +1,17 @@
+import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase/client";
 import type { Channel, Video, Superchat, Group } from "@/lib/types";
 import { getJstMidnightMs } from "@/lib/jst";
 import HomeContent from "./components/HomeContent";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "vtracker | VTuberリアルタイム視聴者数・スパチャ追跡",
+  description:
+    "VTuberのリアルタイム視聴者数・スパチャ（スーパーチャット）・配信履歴を追跡するサービスです。にじさんじ・ホロライブなど人気事務所の全チャンネルを一覧でチェック。",
+  alternates: { canonical: "/" },
+};
 
 type SCRow = Pick<Superchat, "video_id" | "amount" | "amount_jpy" | "currency">;
 type GraphPoint = { video_id: string; concurrent_viewers: number; recorded_at: string };

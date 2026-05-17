@@ -19,9 +19,34 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
 export const metadata: Metadata = {
-  title: "vtracker",
-  description: "VTuber activity tracker",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "vtracker | VTuberリアルタイム視聴者数・スパチャ追跡",
+    template: "%s | vtracker",
+  },
+  description:
+    "VTuberのリアルタイム視聴者数・スパチャ（スーパーチャット）・配信履歴を追跡するサービスです。にじさんじ・ホロライブなど人気事務所の全チャンネルを一覧でチェック。",
+  keywords: ["VTuber", "視聴者数", "スパチャ", "スーパーチャット", "ライブ追跡", "配信", "にじさんじ", "ホロライブ", "YouTube", "Twitch"],
+  openGraph: {
+    type: "website",
+    locale: "ja_JP",
+    siteName: "vtracker",
+    title: "vtracker | VTuberリアルタイム視聴者数・スパチャ追跡",
+    description:
+      "VTuberのリアルタイム視聴者数・スパチャ・配信履歴を追跡するサービスです。",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "vtracker | VTuberリアルタイム視聴者数・スパチャ追跡",
+    description:
+      "VTuberのリアルタイム視聴者数・スパチャ・配信履歴を追跡するサービスです。",
+  },
+  robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {

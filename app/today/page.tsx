@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase/client";
 import type { Channel, Video, LiveGraphPoint, Group, Superchat } from "@/lib/types";
 import { buildChart } from "@/lib/buildChart";
@@ -7,6 +8,11 @@ import ViewerChart from "@/app/components/ViewerChart";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "本日の配信まとめ",
+  description: "本日のVTuber配信をまとめてチェック。視聴者数・スパチャのデイリーランキングも確認できます。",
+};
 
 export default async function TodayPage() {
   const jstMidnightMs = getJstMidnightMs();

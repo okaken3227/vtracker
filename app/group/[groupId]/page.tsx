@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase/client";
 import type { Channel, Video, Group, GroupCategory, LiveGraphPoint } from "@/lib/types";
 import { getJstMidnightMs } from "@/lib/jst";
@@ -9,6 +10,29 @@ import LiveBanner from "@/app/components/LiveBanner";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ groupId: string }>;
+}): Promise<Metadata> {
+  const { groupId } = await params;
+  const { data } = await supabase
+    .from("groups")
+    .select("name, icon_url")
+    .eq("id", groupId)
+    .single();
+  if (!data) return {};
+  const g = data as { name: string; icon_url: string | null };
+  const description = `${g.name}に所属するVTuberの視聴者数・スパチャ・配信状況をまとめて確認。`;
+  const images = g.icon_url ? [{ url: g.icon_url }] : [];
+  return {
+    title: g.name,
+    description,
+    openGraph: { title: `${g.name} | vtracker`, description, images },
+    twitter: { card: "summary", title: `${g.name} | vtracker`, description, images },
+  };
+}
 
 const BUCKET_MS = 5 * 60 * 1000;
 const LINE_COLORS = ["#7c3aed", "#e11d48", "#0891b2", "#d97706", "#16a34a", "#9333ea", "#64748b"];
