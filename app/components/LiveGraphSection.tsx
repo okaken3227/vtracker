@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -89,8 +90,69 @@ function CustomTooltip({
   );
 }
 
+type SelectedPoint = { t: number; viewers: number; url: string; label: string; thumbnailUrl?: string };
+
+function GraphDialog({ point, onClose }: { point: SelectedPoint; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="relative w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <button
+            onClick={onClose}
+            aria-label="閉じる"
+            className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/20 text-gray-700 transition-colors hover:bg-black/30"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M3 3l10 10M13 3L3 13" />
+            </svg>
+          </button>
+
+          {point.thumbnailUrl && (
+            <div className="aspect-video w-full overflow-hidden bg-gray-100">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={point.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+            </div>
+          )}
+          <div className="p-5">
+            <p className="text-xs text-gray-400 mb-1">{point.label}</p>
+            <p className="text-2xl font-bold text-violet-700">{point.viewers.toLocaleString()}人</p>
+          </div>
+
+          <div className="flex gap-2 px-4 pb-4">
+            <a
+              href={point.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onClose}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-600"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+              この時点の動画へ
+            </a>
+            <button
+              onClick={onClose}
+              className="flex flex-1 items-center justify-center rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:border-violet-300 hover:text-violet-600"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function LiveGraphSection({
-  data, videoId, iconUrl, channelName, startTime, height = 320, platform, twitchLogin,
+  data, videoId, iconUrl, channelName, startTime, height = 320, platform, twitchLogin, thumbnailUrl,
 }: {
   data: GraphDataPoint[];
   videoId: string;
@@ -100,18 +162,26 @@ export default function LiveGraphSection({
   height?: number;
   platform?: string;
   twitchLogin?: string;
+  thumbnailUrl?: string;
 }) {
-  const handleClick = (chartData: { activeLabel?: string | number | undefined }) => {
+  const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(null);
+
+  const handleClick = (chartData: { activeLabel?: string | number | undefined; activePayload?: { value: number }[] }) => {
     if (chartData?.activeLabel == null) return;
+    const t = Number(chartData.activeLabel);
+    const viewers = chartData.activePayload?.[0]?.value ?? data.find((d) => d.t === t)?.viewers ?? 0;
+    const label = startTime ? elapsedToTime(startTime, t) : `${t}分`;
+
     if (platform === "twitch") {
-      if (twitchLogin) window.open(`https://www.twitch.tv/${twitchLogin}`, "_blank");
+      if (!twitchLogin) return;
+      setSelectedPoint({ t, viewers, url: `https://www.twitch.tv/${twitchLogin}`, label, thumbnailUrl });
       return;
     }
-    const t = Number(chartData.activeLabel);
-    window.open(`https://www.youtube.com/watch?v=${videoId}&t=${t * 60}s`, "_blank");
+    setSelectedPoint({ t, viewers, url: `https://www.youtube.com/watch?v=${videoId}&t=${t * 60}s`, label, thumbnailUrl });
   };
 
   return (
+    <>
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <ResponsiveContainer width="100%" height={height}>
         <LineChart
@@ -182,5 +252,10 @@ export default function LiveGraphSection({
         <p className="mt-2 text-center text-[11px] text-gray-400">クリックでYouTube動画の該当時刻へジャンプ</p>
       )}
     </div>
+
+    {selectedPoint && (
+      <GraphDialog point={selectedPoint} onClose={() => setSelectedPoint(null)} />
+    )}
+    </>
   );
 }

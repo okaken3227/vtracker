@@ -202,7 +202,7 @@ export default async function LivePage({
             src={channel.icon_url}
             alt=""
             aria-hidden
-            className="pointer-events-none absolute right-0 top-1/2 h-32 w-32 -translate-y-1/2 translate-x-6 rounded-full object-cover opacity-100 select-none md:h-56 md:w-56 md:translate-x-10"
+            className="pointer-events-none absolute right-0 top-1/2 hidden h-56 w-56 -translate-y-1/2 translate-x-10 rounded-full object-cover opacity-100 select-none md:block"
           />
         )}
         <div className="relative p-4 sm:p-5">
@@ -252,6 +252,7 @@ export default async function LivePage({
             height={400}
             platform={video.platform ?? channel?.platform ?? undefined}
             twitchLogin={channel?.custom_url ?? undefined}
+            thumbnailUrl={video.thumbnail_url ?? undefined}
           />
         ) : (
           <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-400">
@@ -292,6 +293,7 @@ export default async function LivePage({
           <SuperchatList
             videoId={videoId}
             platform={video.platform}
+            thumbnailUrl={video.thumbnail_url ?? undefined}
             items={scWithBucket.map(({ sc, bucket, isFirstInBucket }) => ({
               id: sc.id,
               author_name: sc.author_name,

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
@@ -38,6 +39,12 @@ export default async function RootLayout({
       lang="ja"
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
+      <Script
+        async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6560735293239350"
+        crossOrigin="anonymous"
+        strategy="afterInteractive"
+      />
       <body className="text-gray-900">
         <GroupsProvider groups={groups ?? []}>
           <SidebarProvider>

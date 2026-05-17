@@ -108,10 +108,15 @@
   --foreground: #111827;
 }
 
+html {
+  height: 100%;
+}
+
 body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, sans-serif;
   min-height: 100dvh;
+  margin: 0;
 }
 
 /* モバイル含む全環境で背景を画面全体に固定 */
