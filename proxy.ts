@@ -4,7 +4,7 @@ import { ADMIN_COOKIE, verifyAdminToken } from "@/lib/admin-auth";
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (!pathname.startsWith("/api/admin")) {
+  if (!pathname.startsWith("/api/admin") || pathname === "/api/admin/login" || pathname === "/api/admin/logout") {
     return NextResponse.next();
   }
 
