@@ -147,26 +147,30 @@ export default function LiveSection({
             <button
               onClick={handleRefresh}
               disabled={refreshState === "loading"}
-              title={refreshState === "done" ? "更新完了" : "グラフを更新"}
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all disabled:opacity-50 ${
+              className={`ml-auto flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-60 ${
                 refreshState === "done"
-                  ? "text-green-500"
-                  : "text-gray-400 hover:bg-violet-50 hover:text-violet-600"
+                  ? "bg-green-50 text-green-600"
+                  : refreshState === "loading"
+                  ? "bg-violet-50 text-violet-500"
+                  : "bg-violet-50 text-violet-600 hover:bg-violet-100"
               }`}
             >
-              <svg
-                className={`h-3.5 w-3.5 ${refreshState === "loading" ? "animate-spin" : ""}`}
-                viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"
-              >
-                {refreshState === "done" ? (
-                  <path d="M3 8l3.5 3.5L13 5" />
-                ) : (
-                  <>
+              {refreshState === "done" ? (
+                <>
+                  <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 8l3.5 3.5L13 5" />
+                  </svg>
+                  更新完了
+                </>
+              ) : (
+                <>
+                  <svg className={`h-3 w-3 ${refreshState === "loading" ? "animate-spin" : ""}`} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M13.5 8a5.5 5.5 0 1 1-1.1-3.3" />
                     <path d="M13.5 2.5v3h-3" />
-                  </>
-                )}
-              </svg>
+                  </svg>
+                  {refreshState === "loading" ? "更新中…" : "リアルタイム更新"}
+                </>
+              )}
             </button>
           </div>
         )}
