@@ -119,11 +119,14 @@ body {
   margin: 0;
 }
 
-/* モバイル含む全環境で背景を画面全体に固定 */
+/* モバイル含む全環境で背景を画面全体に固定（iOS Safe Area 対応） */
 body::before {
   content: "";
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
   z-index: -1;
   background: linear-gradient(
     135deg,
