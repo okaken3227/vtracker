@@ -29,7 +29,7 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-violet-50 via-white to-pink-50 p-4">
       <div className="w-full max-w-sm rounded-2xl border border-gray-100 bg-white p-8 shadow-lg">
         <h1 className="mb-6 text-xl font-bold text-gray-900">管理画面</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
