@@ -109,19 +109,25 @@
 }
 
 body {
-  background:
-    linear-gradient(
-      135deg,
-      #faf8ff 0%,
-      #fff5fb 16%,
-      #fff8f8 32%,
-      #fffcf8 48%,
-      #fffef5 64%,
-      #f8fff9 80%,
-      #f5f8ff 100%
-    );
-  background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, sans-serif;
-  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* モバイル含む全環境で背景を画面全体に固定 */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    135deg,
+    #faf8ff 0%,
+    #fff5fb 16%,
+    #fff8f8 32%,
+    #fffcf8 48%,
+    #fffef5 64%,
+    #f8fff9 80%,
+    #f5f8ff 100%
+  );
 }
