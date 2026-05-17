@@ -1,10 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { YouTubeClient } from "@/lib/youtube/client";
 import { VTrackerCrawler } from "@/lib/crawler/index";
+import { TwitchClient } from "@/lib/twitch/client";
+import { TwitchCrawler } from "@/lib/twitch/crawler";
 import { VTrackerRepository } from "@/lib/supabase/repository";
 import { supabase } from "@/lib/supabase/client";
 import { parseChannelUrl } from "@/lib/crawler/urlParser";
 import { extractVideo } from "@/lib/youtube/extractors";
+
+function parseTwitchLogin(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    if (!parsed.hostname.endsWith("twitch.tv")) return null;
+    const match = parsed.pathname.match(/^\/([a-zA-Z0-9_]{1,25})\/?$/);
+    return match ? match[1].toLowerCase() : null;
+  } catch {
+    return null;
+  }
+}
 
 function extractVideoId(url: string): string | null {
   try {
@@ -63,6 +76,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "url is required" }, { status: 400 });
     }
 
+    // ── Twitch URL ──────────────────────────────────────────────
+    const twitchLogin = parseTwitchLogin(url.trim());
+    if (twitchLogin) {
+      const clientId = process.env.TWITCH_CLIENT_ID;
+      const clientSecret = process.env.TWITCH_CLIENT_SECRET;
+      if (!clientId || !clientSecret) {
+        return NextResponse.json({ error: "TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET が未設定です" }, { status: 500 });
+      }
+      const tw = new TwitchClient(clientId, clientSecret);
+      const repo = new VTrackerRepository(supabase);
+      const twitchCrawler = new TwitchCrawler(tw, repo);
+      const channelId = await twitchCrawler.addChannel(twitchLogin);
+
+      if (groupId && channelId) {
+        await supabase.from("channels").update({ group_id: groupId }).eq("channel_id", channelId);
+      }
+
+      return NextResponse.json({ ok: true, type: "channel", channelId, platform: "twitch" });
+    }
+
+    // ── YouTube ──────────────────────────────────────────────────
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ error: "YOUTUBE_API_KEY is not configured" }, { status: 500 });
@@ -127,7 +161,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, type: "channel", channelId, liveFound });
     }
 
-    return NextResponse.json({ error: `無効な YouTube URL: ${url}` }, { status: 400 });
+    return NextResponse.json({ error: `無効な URL: ${url}` }, { status: 400 });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[POST /api/crawl]", message);

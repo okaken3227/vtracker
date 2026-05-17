@@ -5,12 +5,21 @@ import type {
   YtLiveChatMessageItem,
 } from "./types";
 
+function maxQualityUrl(url: string | undefined, param: string): string | undefined {
+  if (!url) return undefined;
+  // =w{n} or =s{n} の数字だけ差し替え、fcrop64 などの後続パラメータは維持
+  if (/=[ws]\d+/.test(url)) {
+    return url.replace(/=[ws]\d+/, `=${param}`);
+  }
+  // パラメータなし → そのまま追記
+  const base = url.includes("=") ? url.slice(0, url.indexOf("=")) : url;
+  return `${base}=${param}`;
+}
+
 export function extractChannel(item: YtChannelItem): Channel {
   const { snippet, statistics } = item;
   const icon =
-    snippet.thumbnails.high?.url ??
-    snippet.thumbnails.medium?.url ??
-    snippet.thumbnails.default?.url ??
+    maxQualityUrl(snippet.thumbnails.high?.url ?? snippet.thumbnails.medium?.url ?? snippet.thumbnails.default?.url, "s240") ??
     "";
 
   return {
@@ -23,6 +32,7 @@ export function extractChannel(item: YtChannelItem): Channel {
     subscriber_count: parseInt(statistics.subscriberCount ?? "0", 10),
     view_count: parseInt(statistics.viewCount ?? "0", 10),
     video_count: parseInt(statistics.videoCount ?? "0", 10),
+    banner_url: maxQualityUrl(item.brandingSettings?.image?.bannerExternalUrl, "w2560"),
   };
 }
 

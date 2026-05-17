@@ -1,4 +1,5 @@
 import ChannelAvatar from "./ChannelAvatar";
+import PlatformIcon from "./PlatformIcon";
 
 type Props = {
   videoId: string;
@@ -10,6 +11,7 @@ type Props = {
   status: string;
   startTime: string | null;
   superchatTotal: number;
+  platform?: string | null;
 };
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -28,7 +30,7 @@ function formatDate(iso: string | null): string {
 
 export default function VideoCard({
   videoId, title, channelId, channelName, iconUrl,
-  thumbnailUrl, status, startTime, superchatTotal,
+  thumbnailUrl, status, startTime, superchatTotal, platform,
 }: Props) {
   const badge = STATUS_BADGE[status] ?? STATUS_BADGE.none;
 
@@ -52,6 +54,9 @@ export default function VideoCard({
         <span className={`absolute left-2 top-2 rounded px-1.5 py-0.5 text-xs font-medium ${badge.className}`}>
           {badge.label}
         </span>
+        <div className="absolute right-1.5 top-1.5 rounded-full bg-white/90 p-1 shadow-sm">
+          <PlatformIcon platform={platform} size={12} />
+        </div>
       </div>
 
       {/* テキスト情報 */}

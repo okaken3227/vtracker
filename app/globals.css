@@ -43,11 +43,11 @@
   animation-direction: reverse;
 }
 
-/* カードホバー: 浮き上がり + 回転 */
+/* カードホバー: 浮き上がり */
 .card-lift {
   transition:
-    transform 0.4s cubic-bezier(0.4, 0.4, 0, 1),
-    box-shadow 0.4s cubic-bezier(0.4, 0.4, 0, 1);
+    transform 0.35s cubic-bezier(0.4, 0.4, 0, 1),
+    box-shadow 0.35s cubic-bezier(0.4, 0.4, 0, 1);
   will-change: transform;
 }
 .card-lift:hover {
@@ -64,10 +64,9 @@
   transition:
     transform 0.35s cubic-bezier(0.4, 0.4, 0, 1),
     box-shadow 0.35s cubic-bezier(0.4, 0.4, 0, 1);
-  will-change: transform;
 }
 .row-lift:hover {
-  transform: translateX(4px) scale(1.01);
+  transform: translateY(-2px);
   box-shadow: 0 6px 20px -4px rgba(109, 40, 217, 0.14);
   position: relative;
   z-index: 10;
@@ -81,6 +80,27 @@
 .card-lift:hover .thumb-inner,
 .row-lift:hover .thumb-inner {
   transform: scale(1.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-lift,
+  .row-lift,
+  .thumb-inner {
+    transition: none !important;
+    will-change: auto !important;
+  }
+  .card-lift:hover,
+  .row-lift:hover {
+    transform: none !important;
+  }
+  .marquee-track {
+    animation: none !important;
+  }
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 :root {

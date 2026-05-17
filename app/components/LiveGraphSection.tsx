@@ -19,7 +19,7 @@ function elapsedToTime(startTime: string, elapsedMin: number): string {
 }
 
 function CustomTooltip({
-  active, payload, label, iconUrl, channelName, startTime, videoId, coordinate, viewBox,
+  active, payload, label, iconUrl, channelName, startTime, videoId, platform, twitchLogin, coordinate, viewBox,
 }: {
   active?: boolean;
   payload?: { value: number }[];
@@ -28,6 +28,8 @@ function CustomTooltip({
   channelName?: string;
   startTime?: string;
   videoId: string;
+  platform?: string;
+  twitchLogin?: string;
   coordinate?: { x: number; y: number };
   viewBox?: { x: number; y: number; width: number; height: number };
 }) {
@@ -58,22 +60,37 @@ function CustomTooltip({
       <p className="text-lg font-bold tracking-tight text-violet-700">
         {viewers != null ? `${viewers.toLocaleString()}人` : "—"}
       </p>
-      <a
-        href={`https://www.youtube.com/watch?v=${videoId}&t=${(label ?? 0) * 60}s`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-2 flex items-center gap-1 text-[11px] text-violet-400 hover:text-violet-600"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <span>この時点の動画へジャンプ</span>
-        <span>↗</span>
-      </a>
+      {platform === "twitch" ? (
+        twitchLogin && (
+          <a
+            href={`https://www.twitch.tv/${twitchLogin}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 flex items-center gap-1 text-[11px] text-purple-400 hover:text-purple-600"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span>Twitchで見る</span>
+            <span>↗</span>
+          </a>
+        )
+      ) : (
+        <a
+          href={`https://www.youtube.com/watch?v=${videoId}&t=${(label ?? 0) * 60}s`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 flex items-center gap-1 text-[11px] text-violet-400 hover:text-violet-600"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span>この時点の動画へジャンプ</span>
+          <span>↗</span>
+        </a>
+      )}
     </div>
   );
 }
 
 export default function LiveGraphSection({
-  data, videoId, iconUrl, channelName, startTime, height = 320,
+  data, videoId, iconUrl, channelName, startTime, height = 320, platform, twitchLogin,
 }: {
   data: GraphDataPoint[];
   videoId: string;
@@ -81,9 +98,15 @@ export default function LiveGraphSection({
   channelName?: string;
   startTime?: string;
   height?: number;
+  platform?: string;
+  twitchLogin?: string;
 }) {
   const handleClick = (chartData: { activeLabel?: string | number | undefined }) => {
     if (chartData?.activeLabel == null) return;
+    if (platform === "twitch") {
+      if (twitchLogin) window.open(`https://www.twitch.tv/${twitchLogin}`, "_blank");
+      return;
+    }
     const t = Number(chartData.activeLabel);
     window.open(`https://www.youtube.com/watch?v=${videoId}&t=${t * 60}s`, "_blank");
   };
@@ -132,6 +155,8 @@ export default function LiveGraphSection({
                   channelName={channelName}
                   startTime={startTime}
                   videoId={videoId}
+                  platform={platform}
+                  twitchLogin={twitchLogin}
                   coordinate={p.coordinate}
                   viewBox={p.viewBox}
                 />
@@ -149,9 +174,13 @@ export default function LiveGraphSection({
           />
         </LineChart>
       </ResponsiveContainer>
-      <p className="mt-2 text-center text-xs text-gray-400">
-        グラフをクリックするとその時刻のYouTube動画へジャンプします
-      </p>
+      {platform === "twitch" ? (
+        twitchLogin && (
+          <p className="mt-2 text-center text-[11px] text-gray-400">クリックでTwitchチャンネルへ</p>
+        )
+      ) : (
+        <p className="mt-2 text-center text-[11px] text-gray-400">クリックでYouTube動画の該当時刻へジャンプ</p>
+      )}
     </div>
   );
 }

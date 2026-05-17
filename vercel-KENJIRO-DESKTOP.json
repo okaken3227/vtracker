@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/poll/live",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/poll/videos",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/poll/channels",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/downsample",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}

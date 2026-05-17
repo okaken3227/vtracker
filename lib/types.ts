@@ -9,7 +9,10 @@ export type Group = {
   icon_url?: string | null;
   keywords?: string | null;
   category?: GroupCategory | null;
+  slug?: string | null;
 };
+
+export type Platform = "youtube" | "twitch";
 
 export type Channel = {
   channel_id: string;
@@ -22,6 +25,11 @@ export type Channel = {
   view_count: number;
   video_count: number;
   group_id?: string | null;
+  banner_url?: string | null;
+  color?: string | null;
+  platform?: Platform;
+  linked_channel_id?: string | null;
+  keywords?: string | null;
 };
 
 export type VideoStatus = "live" | "upcoming" | "none";
@@ -37,6 +45,7 @@ export type Video = {
   end_time: string | null;
   scheduled_start_time: string | null;
   status: VideoStatus;
+  platform?: Platform;
 };
 
 export type Superchat = {
@@ -50,7 +59,6 @@ export type Superchat = {
   tier: number;
   published_at: string;
   amount_jpy?: number | null;
-  // open.er-api の JPY ベースレート（1 JPY = X 外貨）
   exchange_rate?: number | null;
 };
 

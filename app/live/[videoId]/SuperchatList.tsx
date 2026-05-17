@@ -40,7 +40,17 @@ function formatJST(iso: string) {
   });
 }
 
-export default function SuperchatList({ items }: { items: SCItem[] }) {
+export default function SuperchatList({
+  items,
+  videoId,
+  startTime: _startTime,
+  platform,
+}: {
+  items: SCItem[];
+  videoId?: string;
+  startTime?: string | null;
+  platform?: string | null;
+}) {
   const [sort, setSort] = useState<SortKey>("time");
 
   const sorted =
@@ -66,23 +76,38 @@ export default function SuperchatList({ items }: { items: SCItem[] }) {
         ))}
       </div>
       <div className="flex flex-col gap-2">
-        {sorted.map(({ id, author_name, amount, currency, comment, tier, published_at, bucket, isFirstInBucket }) => (
-          <div key={id}>
-            {sort === "time" && isFirstInBucket && (
-              <div id={`sc-${bucket}`} className="scroll-mt-20" />
-            )}
-            <div className={`rounded-lg border px-4 py-3 ${tierColor(tier)}`}>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-semibold">{author_name}</span>
-                <span className="font-mono text-sm font-bold">
-                  {currency} {amount.toLocaleString()}
-                </span>
-              </div>
-              {comment && <p className="mt-1 text-xs opacity-80">{comment}</p>}
-              <p className="mt-1 text-xs opacity-50">{formatJST(published_at)}</p>
+        {sorted.map(({ id, author_name, amount, currency, comment, tier, published_at, amount_jpy, bucket, isFirstInBucket }) => {
+          const ytUrl = videoId && platform !== "twitch"
+            ? `https://www.youtube.com/watch?v=${videoId}&t=${bucket * 60}`
+            : null;
+          return (
+            <div key={id}>
+              {sort === "time" && isFirstInBucket && (
+                <div id={`sc-${bucket}`} className="scroll-mt-20" />
+              )}
+              <a
+                href={ytUrl ?? "#"}
+                target={ytUrl ? "_blank" : undefined}
+                rel={ytUrl ? "noopener noreferrer" : undefined}
+                className={`block rounded-lg border px-4 py-3 transition-opacity hover:opacity-80 ${tierColor(tier)}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold">{author_name}</span>
+                  <div className="flex flex-col items-end gap-0.5">
+                    <span className="font-mono text-sm font-bold">
+                      {currency === "JPY" ? `¥${amount.toLocaleString()}` : `${currency} ${amount.toLocaleString()}`}
+                    </span>
+                    {currency !== "JPY" && amount_jpy != null && (
+                      <span className="font-mono text-[11px] opacity-60">≈ ¥{amount_jpy.toLocaleString()}</span>
+                    )}
+                  </div>
+                </div>
+                {comment && <p className="mt-1 text-xs opacity-80">{comment}</p>}
+                <p className="mt-1 text-xs opacity-50">{formatJST(published_at)}</p>
+              </a>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

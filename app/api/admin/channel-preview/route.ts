@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { YouTubeClient, YouTubeApiError } from "@/lib/youtube/client";
+import { TwitchClient } from "@/lib/twitch/client";
 import { parseChannelUrl } from "@/lib/crawler/urlParser";
 import { extractChannel } from "@/lib/youtube/extractors";
 import { supabase } from "@/lib/supabase/client";
+
+function parseTwitchLogin(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    if (!parsed.hostname.endsWith("twitch.tv")) return null;
+    const match = parsed.pathname.match(/^\/([a-zA-Z0-9_]{1,25})\/?$/);
+    return match ? match[1].toLowerCase() : null;
+  } catch {
+    return null;
+  }
+}
 
 async function detectGroup(description: string): Promise<string | null> {
   const { data: groups } = await supabase
@@ -32,6 +44,43 @@ export async function POST(req: NextRequest) {
   if (!url) return NextResponse.json({ error: "url は必須です" }, { status: 400 });
 
   const trimmed = (url as string).trim();
+
+  // ── Twitch URL ──────────────────────────────────────────────
+  const twitchLogin = parseTwitchLogin(trimmed);
+  if (twitchLogin) {
+    const clientId = process.env.TWITCH_CLIENT_ID;
+    const clientSecret = process.env.TWITCH_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      return NextResponse.json({ error: "TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET が未設定です" }, { status: 500 });
+    }
+    try {
+      const tw = new TwitchClient(clientId, clientSecret);
+      const usersRes = await tw.users({ login: twitchLogin });
+      const user = usersRes.data[0];
+      if (!user) return NextResponse.json({ error: `Twitchユーザーが見つかりません: ${twitchLogin}` }, { status: 404 });
+
+      const { data: existing } = await supabase
+        .from("channels")
+        .select("channel_id, group_id")
+        .eq("channel_id", user.id)
+        .maybeSingle();
+
+      return NextResponse.json({
+        channelId: user.id,
+        name: user.display_name,
+        iconUrl: user.profile_image_url,
+        description: user.description,
+        detectedGroupId: null,
+        alreadyExists: !!existing,
+        existingGroupId: existing?.group_id ?? null,
+        platform: "twitch",
+      });
+    } catch (err) {
+      return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+    }
+  }
+
+  // ── YouTube ──────────────────────────────────────────────────
   const ref = parseChannelUrl(trimmed);
 
   const apiKey = process.env.YOUTUBE_API_KEY;

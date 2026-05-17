@@ -3,6 +3,10 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import DesktopSidebar from "./components/DesktopSidebar";
+import SidebarProvider from "./components/SidebarProvider";
+import { GroupsProvider } from "./components/GroupsProvider";
+import { supabase } from "@/lib/supabase/client";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,23 +23,35 @@ export const metadata: Metadata = {
   description: "VTuber activity tracker",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { data: groups } = await supabase
+    .from("groups")
+    .select("id, name, color, icon_url")
+    .order("name");
+
   return (
     <html
       lang="ja"
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
-      <body className="flex h-screen flex-col overflow-hidden text-gray-900">
-        <Header />
-        <main id="main-scroll" className="flex-1 overflow-y-auto px-4 py-8">
-          <div className="mx-auto max-w-6xl">
-            {children}
-          </div>
-        </main>
+      <body className="text-gray-900">
+        <GroupsProvider groups={groups ?? []}>
+          <SidebarProvider>
+            <div className="sticky top-0 z-30 shrink-0">
+              <Header />
+            </div>
+            <div className="flex">
+              <DesktopSidebar />
+              <main id="main-scroll" className="flex-1 min-w-0 px-4 py-8">
+                {children}
+              </main>
+            </div>
+          </SidebarProvider>
+        </GroupsProvider>
         <Footer />
       </body>
     </html>

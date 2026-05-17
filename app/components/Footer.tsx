@@ -6,17 +6,16 @@ export default function Footer() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const main = document.getElementById("main-scroll");
-    if (!main) return;
-
     const check = () => {
-      const { scrollTop, scrollHeight, clientHeight } = main;
+      const scrollTop = window.scrollY;
+      const scrollHeight = document.documentElement.scrollHeight;
+      const clientHeight = window.innerHeight;
       setVisible(scrollHeight - scrollTop - clientHeight < 80);
     };
 
-    main.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("scroll", check, { passive: true });
     check();
-    return () => main.removeEventListener("scroll", check);
+    return () => window.removeEventListener("scroll", check);
   }, []);
 
   return (
@@ -27,6 +26,12 @@ export default function Footer() {
     >
       <div className="mx-auto max-w-6xl px-4 text-center text-sm text-gray-400">
         © {new Date().getFullYear()} vtracker
+        <span className="mx-2">·</span>
+        <a href="/terms" className="hover:text-gray-600 transition-colors">利用規約</a>
+        <span className="mx-2">·</span>
+        <a href="/feedback" className="hover:text-gray-600 transition-colors">要望・質問</a>
+        <span className="mx-2">·</span>
+        <a href="/admin" className="hover:text-gray-600 transition-colors">管理</a>
       </div>
     </footer>
   );

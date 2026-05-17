@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
 import { YouTubeClient } from "@/lib/youtube/client";
+import { TwitchClient } from "@/lib/twitch/client";
+import { extractTwitchStream } from "@/lib/twitch/extractors";
 import type { Video } from "@/lib/types";
+
 
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
@@ -28,15 +31,8 @@ export async function POST(req: NextRequest) {
 
 async function pollLive(targetVideoId: string | null): Promise<NextResponse> {
   try {
-    const apiKey = process.env.YOUTUBE_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "YOUTUBE_API_KEY missing" }, { status: 500 });
-    }
-
     let query = supabase.from("videos").select("*").eq("status", "live");
-    if (targetVideoId) {
-      query = query.eq("video_id", targetVideoId);
-    }
+    if (targetVideoId) query = query.eq("video_id", targetVideoId);
     const { data: liveVideos, error: dbErr } = await query;
 
     if (dbErr) throw dbErr;
@@ -45,8 +41,8 @@ async function pollLive(targetVideoId: string | null): Promise<NextResponse> {
     }
 
     const videos = liveVideos as Video[];
-    const videoIds = videos.map((v) => v.video_id);
-    const yt = new YouTubeClient(apiKey);
+    const ytVideos = videos.filter((v) => !v.platform || v.platform === "youtube");
+    const twitchVideos = videos.filter((v) => v.platform === "twitch");
     const now = new Date().toISOString();
 
     const graphPoints: {
@@ -59,40 +55,106 @@ async function pollLive(targetVideoId: string | null): Promise<NextResponse> {
     const toEnd: { videoId: string; endTime: string }[] = [];
     const liveChatIds: { videoId: string; chatId: string }[] = [];
 
-    for (let i = 0; i < videoIds.length; i += 50) {
-      const batch = videoIds.slice(i, i + 50);
-      const res = await yt.videos({
-        part: "liveStreamingDetails,statistics",
-        id: batch.join(","),
-      });
+    // ── YouTube ──────────────────────────────────────────────────
+    if (ytVideos.length > 0) {
+      const apiKey = process.env.YOUTUBE_API_KEY;
+      if (!apiKey) {
+        console.error("[poll/live] YOUTUBE_API_KEY missing");
+      } else {
+        const yt = new YouTubeClient(apiKey);
+        const videoIds = ytVideos.map((v) => v.video_id);
 
-      for (const item of res.items ?? []) {
-        const details = item.liveStreamingDetails;
+        for (let i = 0; i < videoIds.length; i += 50) {
+          const batch = videoIds.slice(i, i + 50);
+          const res = await yt.videos({
+            part: "liveStreamingDetails,statistics",
+            id: batch.join(","),
+          });
 
-        if (details?.actualEndTime) {
-          toEnd.push({ videoId: item.id, endTime: details.actualEndTime });
-          continue;
-        }
+          for (const item of res.items ?? []) {
+            const details = item.liveStreamingDetails;
 
-        graphPoints.push({
-          video_id: item.id,
-          recorded_at: now,
-          concurrent_viewers: parseInt(details?.concurrentViewers ?? "0", 10),
-          view_count: parseInt(item.statistics?.viewCount ?? "0", 10),
-          like_count: parseInt(item.statistics?.likeCount ?? "0", 10),
-        });
+            if (details?.actualEndTime) {
+              toEnd.push({ videoId: item.id, endTime: details.actualEndTime });
+              continue;
+            }
 
-        if (details?.activeLiveChatId) {
-          liveChatIds.push({ videoId: item.id, chatId: details.activeLiveChatId });
+            graphPoints.push({
+              video_id: item.id,
+              recorded_at: now,
+              concurrent_viewers: parseInt(details?.concurrentViewers ?? "0", 10),
+              view_count: parseInt(item.statistics?.viewCount ?? "0", 10),
+              like_count: parseInt(item.statistics?.likeCount ?? "0", 10),
+            });
+
+            if (details?.activeLiveChatId) {
+              liveChatIds.push({ videoId: item.id, chatId: details.activeLiveChatId });
+            }
+          }
         }
       }
     }
 
+    // ── Twitch ───────────────────────────────────────────────────
+    if (twitchVideos.length > 0) {
+      const clientId = process.env.TWITCH_CLIENT_ID;
+      const clientSecret = process.env.TWITCH_CLIENT_SECRET;
+      if (!clientId || !clientSecret) {
+        console.error("[poll/live] TWITCH_CLIENT_ID/SECRET missing — skipping Twitch");
+      } else {
+        const tw = new TwitchClient(clientId, clientSecret);
+        // channel_id でTwitch APIを叩く（video_idはストリームIDで変わる可能性あり）
+        const channelIds = [...new Set(twitchVideos.map((v) => v.channel_id))];
+
+        for (let i = 0; i < channelIds.length; i += 100) {
+          const batch = channelIds.slice(i, i + 100);
+          const streamsRes = await tw.streams({ user_id: batch });
+          const liveByChannelId = new Map(streamsRes.data.map((s) => [s.user_id, s]));
+
+          for (const video of twitchVideos.filter((v) => batch.includes(v.channel_id))) {
+            const stream = liveByChannelId.get(video.channel_id);
+
+            if (!stream) {
+              // ストリーム終了
+              toEnd.push({ videoId: video.video_id, endTime: now });
+              continue;
+            }
+
+            if (stream.id !== video.video_id) {
+              // 同じチャンネルで新しいストリームが始まっている（再配信など）
+              // 古いレコードを終了させ、新しいストリームを登録
+              toEnd.push({ videoId: video.video_id, endTime: stream.started_at });
+              const newVideo = extractTwitchStream(stream);
+              await supabase.from("videos").upsert(newVideo, { onConflict: "video_id" });
+              graphPoints.push({
+                video_id: stream.id,
+                recorded_at: now,
+                concurrent_viewers: stream.viewer_count,
+                view_count: stream.viewer_count,
+                like_count: 0,
+              });
+            } else {
+              // 同じストリームが継続中
+              graphPoints.push({
+                video_id: video.video_id,
+                recorded_at: now,
+                concurrent_viewers: stream.viewer_count,
+                view_count: stream.viewer_count,
+                like_count: 0,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // グラフポイント保存
     if (graphPoints.length > 0) {
       const { error } = await supabase.from("live_graph_points").insert(graphPoints);
       if (error) throw error;
     }
 
+    // ライブ終了処理
     for (const { videoId, endTime } of toEnd) {
       await supabase
         .from("videos")
@@ -100,10 +162,12 @@ async function pollLive(targetVideoId: string | null): Promise<NextResponse> {
         .eq("video_id", videoId);
     }
 
-    // スパチャ収集（ライブ中のみ）
+    // ── スパチャ収集（YouTube のみ）──────────────────────────────
     let newSuperchats = 0;
     if (liveChatIds.length > 0) {
-      // 為替レートを一度だけ取得（1 JPY = rates[currency]）
+      const apiKey = process.env.YOUTUBE_API_KEY!;
+      const yt = new YouTubeClient(apiKey);
+
       let rates: Record<string, number> = {};
       try {
         const rateRes = await fetch("https://open.er-api.com/v6/latest/JPY");
@@ -126,7 +190,6 @@ async function pollLive(targetVideoId: string | null): Promise<NextResponse> {
           const scItems = (chatRes.items ?? []).filter(
             (item) => item.snippet.type === "superChatEvent" && item.snippet.superChatDetails,
           );
-
           if (scItems.length === 0) continue;
 
           const rows = scItems.map((item) => {
@@ -166,7 +229,13 @@ async function pollLive(targetVideoId: string | null): Promise<NextResponse> {
       }
     }
 
-    return NextResponse.json({ updated: graphPoints.length, ended: toEnd.length, superchats: newSuperchats });
+    return NextResponse.json({
+      updated: graphPoints.length,
+      ended: toEnd.length,
+      superchats: newSuperchats,
+      youtube: ytVideos.length,
+      twitch: twitchVideos.length,
+    });
   } catch (err) {
     const message =
       err instanceof Error

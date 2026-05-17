@@ -1,0 +1,15 @@
+[
+  {
+    "id": "SC001",
+    "video_id": "VID001",
+    "channel_id": "UC001",
+    "author_channel_id": "AUTHOR001",
+    "author_name": "テストユーザー",
+    "amount": 1000,
+    "currency": "JPY",
+    "comment": "テストスパチャコメント",
+    "tier": 4,
+    "published_at": "2026-05-01T12:30:00Z",
+    "amount_jpy": 1000
+  }
+]

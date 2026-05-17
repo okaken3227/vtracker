@@ -1,3 +1,5 @@
+"use client";
+
 import LiveTimer from "./LiveTimer";
 
 type Props = {
@@ -9,8 +11,12 @@ type Props = {
   totalSuperchat: number;
   latestVideoStatus: string;
   latestVideoStartTime?: string | null;
+  groupId?: string | null;
   groupName?: string;
   groupColor?: string;
+  groupIconUrl?: string | null;
+  linkedPlatform?: string | null;
+  onGroupFilter?: (groupId: string | undefined) => void;
 };
 
 function formatCount(n: number): string {
@@ -29,7 +35,9 @@ export default function ChannelCard({
   channelId, name, customUrl, iconUrl,
   subscriberCount, totalSuperchat,
   latestVideoStatus, latestVideoStartTime,
-  groupName, groupColor,
+  groupId, groupName, groupColor, groupIconUrl: _groupIconUrl,
+  linkedPlatform,
+  onGroupFilter,
 }: Props) {
   const badge = STATUS_BADGE[latestVideoStatus] ?? STATUS_BADGE.none;
 
@@ -62,19 +70,38 @@ export default function ChannelCard({
           )}
         </span>
         {groupName && (
-          <span
-            className="absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
-            style={{ backgroundColor: groupColor ?? "#7c3aed" }}
+          <button
+            onClick={(e) => { e.preventDefault(); onGroupFilter?.(groupId ?? undefined); }}
+            title={groupName}
+            className="absolute right-1.5 top-1.5 overflow-hidden rounded-full ring-2 ring-white"
           >
-            {groupName}
-          </span>
+            {_groupIconUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={_groupIconUrl} alt={groupName} className="h-5 w-5 object-cover" />
+            ) : (
+              <span
+                className="flex h-5 w-5 items-center justify-center text-[9px] font-bold text-white"
+                style={{ backgroundColor: groupColor ?? "#7c3aed" }}
+              >
+                {groupName[0]}
+              </span>
+            )}
+          </button>
         )}
       </div>
 
       {/* チャンネル情報 */}
       <div className="flex flex-col gap-1 p-2">
         <p className="truncate text-xs font-semibold text-gray-900 transition-colors duration-300 group-hover:text-violet-600">{name}</p>
-        <p className="truncate text-[10px] text-gray-400">{formatCount(subscriberCount)}登録</p>
+        <div className="flex items-center gap-1">
+          <p className="truncate text-[10px] text-gray-400">{formatCount(subscriberCount)}登録</p>
+          {linkedPlatform === "twitch" && (
+            <span className="ml-auto flex-shrink-0 rounded-full bg-purple-100 px-1 text-[8px] font-bold text-purple-700">Twitch</span>
+          )}
+          {linkedPlatform === "youtube" && (
+            <span className="ml-auto flex-shrink-0 rounded-full bg-red-100 px-1 text-[8px] font-bold text-red-600">YouTube</span>
+          )}
+        </div>
         {totalSuperchat > 0 && (
           <p className="font-mono text-[10px] font-semibold text-violet-600">¥{totalSuperchat.toLocaleString()}</p>
         )}

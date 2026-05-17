@@ -1,0 +1,18 @@
+[
+  {
+    "channel_id": "UC001",
+    "name": "テストチャンネル",
+    "description": "テスト用チャンネルの説明",
+    "icon_url": "https://example.com/icon.jpg",
+    "custom_url": "@testchannel",
+    "published_at": "2020-01-01T00:00:00Z",
+    "subscriber_count": 100000,
+    "view_count": 5000000,
+    "video_count": 200,
+    "group_id": null,
+    "banner_url": null,
+    "color": null,
+    "platform": "youtube",
+    "linked_channel_id": null
+  }
+]

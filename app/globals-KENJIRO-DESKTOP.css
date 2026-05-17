@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+@keyframes sort-in {
+  from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)     scale(1);    }
+}
+
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* マーキー外枠: 左右フェードマスク */
+.marquee-outer {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 6%,
+    black 94%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 6%,
+    black 94%,
+    transparent 100%
+  );
+}
+
+.marquee-track {
+  animation-name: marquee-scroll;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/* ホバーで一時停止 */
+.marquee-outer:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+.marquee-reverse {
+  animation-direction: reverse;
+}
+
+/* カードホバー: 浮き上がり + 回転（hover 対応デバイスのみ） */
+.card-lift {
+  transition:
+    transform 0.4s cubic-bezier(0.4, 0.4, 0, 1),
+    box-shadow 0.4s cubic-bezier(0.4, 0.4, 0, 1);
+  will-change: transform;
+}
+@media (hover: hover) {
+  .card-lift:hover {
+    transform: translateY(-6px) scale(1.03) rotate(-1.5deg);
+    box-shadow:
+      0 20px 48px -8px rgba(109, 40, 217, 0.18),
+      0 8px 20px -4px rgba(0, 0, 0, 0.10);
+    z-index: 10;
+    position: relative;
+  }
+}
+
+/* 行型カード（回転なし） */
+.row-lift {
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+@media (hover: hover) {
+  .row-lift:hover {
+    background-color: #f5f3ff;
+    box-shadow: inset 3px 0 0 #7c3aed;
+  }
+}
+
+/* サムネイルズーム（overflow-hidden 親の中で使う） */
+.thumb-inner {
+  transition: transform 0.5s cubic-bezier(0.4, 0.4, 0, 1);
+  will-change: transform;
+}
+@media (hover: hover) {
+  .card-lift:hover .thumb-inner,
+  .row-lift:hover .thumb-inner {
+    transform: scale(1.12);
+  }
+}
+
+/* スクロールバー非表示 */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* 細いスクロールバー */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #e5e7eb transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 2px;
+}
+.scrollbar-thin:hover::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #111827;
+}
+
+body {
+  background:
+    linear-gradient(
+      135deg,
+      #faf8ff 0%,
+      #fff5fb 16%,
+      #fff8f8 32%,
+      #fffcf8 48%,
+      #fffef5 64%,
+      #f8fff9 80%,
+      #f5f8ff 100%
+    );
+  background-attachment: fixed;
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, sans-serif;
+  min-height: 100vh;
+}

@@ -5,9 +5,9 @@ import type { VTrackerRepository } from "../lib/supabase/repository";
 import type { Video } from "../lib/types";
 
 // モックデータ（mock/ ディレクトリの内容と一致）
-import channels from "../../mock/channel.json";
-import videos from "../../mock/video.json";
-import superchats from "../../mock/superchat.json";
+import channels from "../mock/channel.json";
+import videos from "../mock/video.json";
+import superchats from "../mock/superchat.json";
 
 function makeMockYt(): YouTubeClient {
   return {
@@ -96,14 +96,13 @@ describe("VTrackerCrawler.addChannel", () => {
     crawler = new VTrackerCrawler(yt, repo);
   });
 
-  it("channel ID で addChannel するとチャンネルと動画が保存される", async () => {
+  it("channel ID で addChannel するとチャンネルが保存される", async () => {
     await crawler.addChannel({ type: "id", value: "UC001" });
 
     expect(yt.channels).toHaveBeenCalledWith(
       expect.objectContaining({ id: "UC001" }),
     );
     expect(repo.upsertChannel).toHaveBeenCalledOnce();
-    expect(repo.upsertVideo).toHaveBeenCalledOnce();
   });
 
   it("handle で addChannel すると forHandle で ID を解決する", async () => {

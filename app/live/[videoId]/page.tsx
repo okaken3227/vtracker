@@ -60,6 +60,11 @@ function formatJST(iso: string) {
   });
 }
 
+function formatDateShort(iso: string | null): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric", timeZone: "Asia/Tokyo" });
+}
+
 function toJPY(amount: number, currency: string, rates: Record<string, number>): number {
   if (currency === "JPY") return amount;
   const rate = rates[currency];
@@ -138,9 +143,9 @@ export default async function LivePage({
     return { sc, bucket, isFirstInBucket };
   });
 
-  // DB に amount_jpy が無い旧データのみ為替API呼び出し
-  const needsRates = superchats.some((sc) => sc.amount_jpy == null && sc.currency !== "JPY");
-  const rates = needsRates ? await fetchRatesToJPY() : {};
+  // 非JPY通貨があれば現在レートを取得して円換算
+  const hasNonJPY = superchats.some((sc) => sc.currency !== "JPY");
+  const rates = hasNonJPY ? await fetchRatesToJPY() : {};
 
   // 通貨別に「元の合計」と「円換算合計」を両方集計
   const byCurrencyOrig = new Map<string, number>(); // 元の金額
@@ -161,53 +166,71 @@ export default async function LivePage({
           {prevVideo ? (
             <Link
               href={`/live/${prevVideo.video_id}`}
-              className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500 shadow-sm transition-colors hover:border-violet-400 hover:text-violet-600"
+              className="group flex min-w-0 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500 shadow-sm transition-all hover:border-violet-300 hover:text-violet-600 hover:shadow-md"
             >
-              ← 前の配信のデータを見る
+              <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 4l-4 4 4 4" />
+              </svg>
+              <span className="flex flex-col">
+                <span className="text-[10px] text-gray-400">前の配信</span>
+                <span className="truncate max-w-[120px] font-medium sm:max-w-[200px]">{formatDateShort(prevVideo.start_time)}</span>
+              </span>
             </Link>
           ) : <div />}
           {nextVideo ? (
             <Link
               href={`/live/${nextVideo.video_id}`}
-              className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500 shadow-sm transition-colors hover:border-violet-400 hover:text-violet-600"
+              className="group ml-auto flex min-w-0 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500 shadow-sm transition-all hover:border-violet-300 hover:text-violet-600 hover:shadow-md"
             >
-              次の配信のデータを見る →
+              <span className="flex flex-col items-end">
+                <span className="text-[10px] text-gray-400">次の配信</span>
+                <span className="truncate max-w-[120px] font-medium sm:max-w-[200px]">{formatDateShort(nextVideo.start_time)}</span>
+              </span>
+              <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 4l4 4-4 4" />
+              </svg>
             </Link>
           ) : <div />}
         </div>
       )}
 
-      {/* ヘッダー（右上に薄いアイコン装飾） */}
-      <div className="relative mb-6 overflow-hidden rounded-xl">
+      {/* ヘッダー */}
+      <div className="relative mb-6 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         {channel?.icon_url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={channel.icon_url}
             alt=""
             aria-hidden
-            className="pointer-events-none absolute right-0 top-1/2 h-28 w-28 -translate-y-1/2 translate-x-4 rounded-full object-cover opacity-80 select-none md:h-52 md:w-52 md:translate-x-8"
+            className="pointer-events-none absolute right-0 top-1/2 h-32 w-32 -translate-y-1/2 translate-x-6 rounded-full object-cover opacity-[0.07] select-none md:h-56 md:w-56 md:translate-x-10"
           />
         )}
-        <div className="relative px-2 py-2">
-          <div className="mb-2 flex items-center gap-2">
-            {video.status === "live" && (
-              <span className="flex items-center gap-1.5 rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">
+        <div className="relative p-4 sm:p-5">
+          <div className="mb-2.5 flex flex-wrap items-center gap-2">
+            {video.status === "live" ? (
+              <span className="flex items-center gap-1.5 rounded-full bg-red-500 px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm">
                 ● LIVE
                 {video.start_time && <LiveTimer startTime={video.start_time} />}
               </span>
+            ) : (
+              <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500">配信終了</span>
             )}
             <Link
               href={`/channel/${video.channel_id}`}
-              className="text-sm text-violet-400 hover:underline"
+              className="flex items-center gap-1.5 text-sm font-medium text-violet-600 transition-opacity hover:opacity-70"
             >
+              {channel?.icon_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={channel.icon_url} alt="" className="h-5 w-5 rounded-full object-cover" />
+              )}
               {channel?.name ?? video.channel_id}
             </Link>
           </div>
-          <h1 className="text-xl font-bold text-gray-900">{video.title}</h1>
+          <h1 className="text-lg font-bold leading-snug text-gray-900 sm:text-xl">{video.title}</h1>
           {video.start_time && (
-            <p className="mt-1 text-xs text-gray-400">
-              開始: {formatJST(video.start_time)}
-              {video.end_time && ` → 終了: ${formatJST(video.end_time)}`}
+            <p className="mt-1.5 text-xs text-gray-400">
+              {formatJST(video.start_time)}
+              {video.end_time && <span className="ml-1 text-gray-300">→ {formatJST(video.end_time)}</span>}
             </p>
           )}
         </div>
@@ -226,9 +249,12 @@ export default async function LivePage({
             iconUrl={channel?.icon_url ?? undefined}
             channelName={channel?.name ?? undefined}
             startTime={video.start_time ?? undefined}
+            height={400}
+            platform={video.platform ?? channel?.platform ?? undefined}
+            twitchLogin={channel?.custom_url ?? undefined}
           />
         ) : (
-          <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-400">
+          <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-400">
             グラフデータがまだありません（ライブ中に自動収集されます）
           </div>
         )}
@@ -259,11 +285,13 @@ export default async function LivePage({
         </h2>
 
         {superchats.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-400">
+          <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-400">
             スパチャはありません
           </div>
         ) : (
           <SuperchatList
+            videoId={videoId}
+            platform={video.platform}
             items={scWithBucket.map(({ sc, bucket, isFirstInBucket }) => ({
               id: sc.id,
               author_name: sc.author_name,
@@ -272,7 +300,7 @@ export default async function LivePage({
               comment: sc.comment,
               tier: sc.tier,
               published_at: sc.published_at,
-              amount_jpy: sc.amount_jpy ?? null,
+              amount_jpy: sc.currency !== "JPY" ? toJPY(sc.amount, sc.currency, rates) : null,
               bucket,
               isFirstInBucket,
             } satisfies SCItem))}
@@ -281,12 +309,24 @@ export default async function LivePage({
       </section>
 
       {/* チャンネルへのリンク */}
-      <Link
-        href={`/channel/${video.channel_id}`}
-        className="inline-flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm text-violet-600 transition-colors hover:bg-violet-100"
-      >
-        チャンネル情報へ →
-      </Link>
+      <div className="flex items-center gap-3">
+        <Link
+          href={`/channel/${video.channel_id}`}
+          className="inline-flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-medium text-violet-600 transition-all hover:bg-violet-100 hover:shadow-sm"
+        >
+          {channel?.icon_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={channel.icon_url} alt="" className="h-5 w-5 rounded-full object-cover" />
+          )}
+          {channel?.name ?? "チャンネル"}へ →
+        </Link>
+        <Link
+          href="/"
+          className="text-sm text-gray-400 transition-colors hover:text-gray-600"
+        >
+          ホームへ
+        </Link>
+      </div>
     </div>
   );
 }

@@ -54,4 +54,23 @@ export class VTrackerRepository {
 
     if (error) throw new Error(`markVideoEnded failed: ${error.message}`);
   }
+
+  async getTwitchChannels(): Promise<{ channel_id: string }[]> {
+    const { data, error } = await this.db
+      .from("channels")
+      .select("channel_id")
+      .eq("platform", "twitch");
+    if (error) throw new Error(`getTwitchChannels failed: ${error.message}`);
+    return (data as { channel_id: string }[]) ?? [];
+  }
+
+  async markTwitchStreamEnded(channelId: string, endTime: string): Promise<void> {
+    const { error } = await this.db
+      .from("videos")
+      .update({ status: "none", end_time: endTime })
+      .eq("channel_id", channelId)
+      .eq("status", "live")
+      .eq("platform", "twitch");
+    if (error) throw new Error(`markTwitchStreamEnded failed: ${error.message}`);
+  }
 }

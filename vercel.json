@@ -11,6 +11,14 @@
     {
       "path": "/api/poll/channels",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/superchats",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/downsample",
+      "schedule": "0 3 * * *"
     }
   ]
 }

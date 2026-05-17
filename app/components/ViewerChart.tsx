@@ -61,10 +61,10 @@ function CustomTooltip({
                 <span style={{ backgroundColor: entry.color }} className="h-2 w-2 flex-shrink-0 rounded-full" />
               )}
               <span className="min-w-0 flex-1 truncate text-xs text-gray-600">{s?.channelName ?? entry.dataKey}</span>
+              {isPeak && <span className="text-xs">👑</span>}
               <span className="flex-shrink-0 font-mono text-xs font-bold" style={{ color: entry.color }}>
                 {entry.value.toLocaleString()}
               </span>
-              {isPeak && <span className="text-xs">👑</span>}
             </div>
           );
         })}
@@ -143,7 +143,7 @@ function PeakRanking({ streams, animRev: outerRev = 0 }: { streams: StreamInfo[]
               <div
                 className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${RANK_STYLES[i] ?? "bg-gray-100 text-gray-400"}`}
               >
-                {i + 1}
+                {i === 0 ? "★" : i + 1}
               </div>
               {s.iconUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -178,6 +178,7 @@ function PeakRanking({ streams, animRev: outerRev = 0 }: { streams: StreamInfo[]
 export default function ViewerChart({ data, streams }: Props) {
   const [filterGroup, setFilterGroup] = useState<string | null>(null);
   const [filterAnimRev, setFilterAnimRev] = useState(0);
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
 
   const groupEntries = Array.from(
     new Map(
@@ -192,9 +193,19 @@ export default function ViewerChart({ data, streams }: Props) {
     setFilterAnimRev((r) => r + 1);
   }
 
-  const visibleStreams = filterGroup
+  function toggleId(id: string) {
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  const groupFiltered = filterGroup
     ? streams.filter((s) => s.groupName === filterGroup)
     : streams;
+
+  const visibleStreams = groupFiltered.filter((s) => !hiddenIds.has(s.videoId));
 
   const lastHoveredVideoId = { current: "" };
 
@@ -234,6 +245,33 @@ export default function ViewerChart({ data, streams }: Props) {
               {g.name}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* チャンネルトグル凡例 */}
+      {groupFiltered.length > 1 && (
+        <div className="mb-3 flex flex-wrap gap-x-1 gap-y-1">
+          {groupFiltered.map((s) => {
+            const hidden = hiddenIds.has(s.videoId);
+            return (
+              <button
+                key={s.videoId}
+                onClick={() => toggleId(s.videoId)}
+                title={hidden ? "表示する" : "非表示にする"}
+                className={`flex items-center gap-1.5 rounded-md px-2 py-1 transition-all hover:bg-gray-50 ${hidden ? "opacity-30" : ""}`}
+              >
+                {s.iconUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.iconUrl} alt={s.channelName} className={`h-4 w-4 flex-shrink-0 rounded-full object-cover ${hidden ? "grayscale" : ""}`} />
+                ) : (
+                  <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: hidden ? "#d1d5db" : s.color }} />
+                )}
+                <span className={`whitespace-nowrap text-xs ${hidden ? "text-gray-400 line-through" : "text-gray-600"}`}>
+                  {s.channelName}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
 

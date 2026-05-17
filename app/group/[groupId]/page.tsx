@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase/client";
 import type { Channel, Video, Group, GroupCategory, LiveGraphPoint } from "@/lib/types";
 import { getJstMidnightMs } from "@/lib/jst";
 import ChannelAvatar from "@/app/components/ChannelAvatar";
+import ChannelCard from "@/app/components/ChannelCard";
 import CombinedLiveGraph from "@/app/components/CombinedLiveGraph";
 import type { LineConfig } from "@/app/components/CombinedLiveGraph";
 import LiveBanner from "@/app/components/LiveBanner";
@@ -108,7 +109,6 @@ export default async function GroupPage({
   const parentGroup = group.parent_group_id ? allGroups.find((g) => g.id === group.parent_group_id) : null;
   const childGroups = allGroups.filter((g) => g.parent_group_id === groupId);
 
-  // Today's videos and graph points for channels in this group
   const [videosRes, gpRes] = channelIds.length > 0
     ? await Promise.all([
         supabase.from("videos").select("*").in("channel_id", channelIds).order("start_time", { ascending: false }),
@@ -126,7 +126,39 @@ export default async function GroupPage({
   const liveVideos = videos.filter((v) => v.status === "live");
   const { merged: liveGraphData, lines: liveGraphLines } = buildLiveGraph(liveVideos, channelMap, graphPoints);
 
-  // Today's video IDs for this group
+  // Latest video status per channel for ChannelCard
+  const latestByChannel: Record<string, { status: string; startTime: string | null }> = {};
+  for (const ch of channels) {
+    const chVideos = videos.filter((v) => v.channel_id === ch.channel_id);
+    const live = chVideos.find((v) => v.status === "live");
+    const upcoming = chVideos.find((v) => v.status === "upcoming");
+    const latest = live ?? upcoming ?? chVideos[0];
+    if (latest) {
+      latestByChannel[ch.channel_id] = { status: latest.status, startTime: latest.start_time };
+    }
+  }
+
+  // YouTube/Twitch 同一人物の重複除去
+  const linkedToIds = new Set(
+    channels.filter((c) => c.linked_channel_id).map((c) => c.linked_channel_id as string)
+  );
+  const shownAsLinked = new Set<string>();
+  for (const ch of channels) {
+    if (!ch.linked_channel_id) continue;
+    const isYt = !ch.platform || ch.platform === "youtube";
+    const isChPointedTo = linkedToIds.has(ch.channel_id);
+    if (!isChPointedTo || isYt) shownAsLinked.add(ch.linked_channel_id);
+  }
+  const deduped = channels.filter((c) => !shownAsLinked.has(c.channel_id));
+
+  const STATUS_ORDER: Record<string, number> = { live: 0, upcoming: 1 };
+  const sortedChannels = [...deduped].sort((a, b) => {
+    const sa = STATUS_ORDER[latestByChannel[a.channel_id]?.status ?? ""] ?? 2;
+    const sb = STATUS_ORDER[latestByChannel[b.channel_id]?.status ?? ""] ?? 2;
+    if (sa !== sb) return sa - sb;
+    return b.subscriber_count - a.subscriber_count;
+  });
+
   const todayVideoIds = [...new Set(graphPoints.map((p) => p.video_id))].filter(
     (id) => {
       const v = videoMap.get(id);
@@ -134,7 +166,6 @@ export default async function GroupPage({
     }
   );
 
-  // Peak viewer ranking
   const peakByVideo = new Map<string, number>();
   for (const p of graphPoints) {
     peakByVideo.set(p.video_id, Math.max(peakByVideo.get(p.video_id) ?? 0, p.concurrent_viewers));
@@ -214,7 +245,7 @@ export default async function GroupPage({
             ライブ中
             <span className="font-normal text-gray-400">({liveVideos.length})</span>
           </h2>
-          <div className="flex flex-col gap-2 mb-4">
+          <div className="flex flex-col gap-3 mb-4">
             {liveVideos.map((v) => {
               const ch = channelMap.get(v.channel_id);
               return (
@@ -269,36 +300,38 @@ export default async function GroupPage({
 
       {/* Channel list */}
       <section>
-        <h2 className="mb-4 text-base font-semibold text-gray-900">
-          所属チャンネル
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">
+          チャンネル一覧
           <span className="ml-2 text-sm font-normal text-gray-400">({channels.length}件)</span>
         </h2>
         {channels.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-300 p-12 text-center text-sm text-gray-400">
+          <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-400">
             チャンネルがありません
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {channels.map((ch) => (
-              <Link
-                key={ch.channel_id}
-                href={`/channel/${ch.channel_id}`}
-                className="group row-lift flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
-              >
-                <div className="overflow-hidden rounded-full ring-2 ring-white ring-offset-1">
-                  <ChannelAvatar
-                    channelId={ch.channel_id}
-                    name={ch.name}
-                    iconUrl={ch.icon_url}
-                    size={40}
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-gray-900 transition-colors duration-300 group-hover:text-violet-600">{ch.name}</p>
-                  <p className="text-xs text-gray-400">{formatCount(ch.subscriber_count)}登録</p>
-                </div>
-              </Link>
-            ))}
+          <div
+            className="grid gap-3"
+            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}
+          >
+            {sortedChannels.map((ch) => {
+              const linked = ch.linked_channel_id ? channelMap.get(ch.linked_channel_id) : undefined;
+              return (
+                <ChannelCard
+                  key={ch.channel_id}
+                  channelId={ch.channel_id}
+                  name={ch.name}
+                  customUrl={ch.custom_url}
+                  iconUrl={ch.icon_url}
+                  subscriberCount={ch.subscriber_count}
+                  totalSuperchat={0}
+                  latestVideoStatus={latestByChannel[ch.channel_id]?.status ?? "none"}
+                  latestVideoStartTime={latestByChannel[ch.channel_id]?.startTime ?? null}
+                  groupId={group.id}
+                  groupColor={group.color}
+                  linkedPlatform={linked?.platform ?? null}
+                />
+              );
+            })}
           </div>
         )}
       </section>

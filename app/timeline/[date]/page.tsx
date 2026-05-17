@@ -72,45 +72,65 @@ export default async function TimelinePage({
 
   return (
     <div>
-      <div className="mb-6">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="text-sm text-gray-400 hover:text-violet-600">
-            ← ホーム
-          </Link>
-          <Link href="/today" className="text-sm text-gray-400 hover:text-violet-600">
-            今日
-          </Link>
+      {/* ヘッダー */}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="mb-1 flex items-center gap-2 text-xs text-gray-400">
+            <Link href="/" className="hover:text-violet-600 transition-colors">ホーム</Link>
+            <span>›</span>
+            <Link href="/today" className="hover:text-violet-600 transition-colors">タイムライン</Link>
+          </div>
+          <h1 className="text-xl font-bold text-gray-900">
+            {dateLabel}
+            {isToday && (
+              <span className="ml-2 rounded-full bg-violet-100 px-2.5 py-0.5 text-sm font-medium text-violet-600">今日</span>
+            )}
+          </h1>
+          <p className="mt-0.5 text-xs text-gray-400">
+            0:00〜24:00 の同接推移 · クリックで配信ページへ
+          </p>
         </div>
-        <h1 className="mt-2 text-xl font-bold text-gray-900">
-          {dateLabel} 配信タイムライン
-        </h1>
-        <div className="mt-3 flex items-center gap-2">
+
+        {/* 日付ナビ */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <Link
             href={`/timeline/${prevDate}`}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 shadow-sm transition-colors hover:border-violet-400 hover:text-violet-600"
+            className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:border-violet-300 hover:text-violet-600"
           >
-            ← 前日を見る
+            <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 3L5 8l5 5" />
+            </svg>
+            前日
           </Link>
+          {!isToday && (
+            <Link
+              href="/today"
+              className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-500 shadow-sm transition-colors hover:border-violet-300 hover:text-violet-600"
+            >
+              今日
+            </Link>
+          )}
           {canNext && (
             <Link
               href={isToday ? "/today" : `/timeline/${nextDate}`}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 shadow-sm transition-colors hover:border-violet-400 hover:text-violet-600"
+              className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:border-violet-300 hover:text-violet-600"
             >
-              翌日を見る →
+              翌日
+              <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 3l5 5-5 5" />
+              </svg>
             </Link>
           )}
         </div>
       </div>
 
+      {/* チャート */}
       {chartData.length > 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <p className="mb-3 text-sm font-medium text-gray-500">
-            0:00〜24:00 の同接推移（クリックで配信ページへ）
-          </p>
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-6">
           <ViewerChart data={chartData} streams={streams} />
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-gray-300 p-20 text-center text-sm text-gray-400">
+        <div className="rounded-2xl border border-dashed border-gray-200 py-24 text-center text-sm text-gray-400">
           この日の配信データがありません
         </div>
       )}

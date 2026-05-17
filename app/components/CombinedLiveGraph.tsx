@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from "recharts";
 
@@ -19,82 +20,82 @@ export type LineConfig = {
   iconUrl?: string;
 };
 
-function Graph({ data, lines }: { data: Record<string, number | string | null>[]; lines: LineConfig[] }) {
-  return (
-    <LineChart data={data} margin={{ top: 12, right: 16, bottom: 8, left: 8 }}>
-      <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-      <XAxis
-        dataKey="t"
-        tick={{ fill: "#9ca3af", fontSize: 11 }}
-        axisLine={{ stroke: "#e5e7eb" }}
-        tickLine={false}
-      />
-      <YAxis
-        tickFormatter={formatK}
-        tick={{ fill: "#9ca3af", fontSize: 11 }}
-        axisLine={false}
-        tickLine={false}
-        width={44}
-      />
-      <Tooltip
-        content={(props) => {
-          const { active, payload, label } = props as unknown as {
-            active?: boolean;
-            payload?: { dataKey: string; value: number; color: string }[];
-            label?: string;
-          };
-          if (!active || !payload?.length) return null;
-          const sorted = [...payload].filter((p) => p.value != null).sort((a, b) => b.value - a.value);
-          return (
-            <div className="min-w-[160px] rounded-xl border border-gray-200 bg-white p-3 shadow-lg" style={{ fontSize: 12 }}>
-              <p className="mb-2 text-xs text-gray-400">{label}</p>
-              {sorted.map((entry) => {
-                const line = lines.find((l) => l.key === entry.dataKey);
-                return (
-                  <div key={entry.dataKey} className="flex items-center gap-2 py-0.5">
-                    {line?.iconUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={line.iconUrl} alt={line.channelName} className="h-5 w-5 flex-shrink-0 rounded-full object-cover" />
-                    ) : (
-                      <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: entry.color }} />
-                    )}
-                    <span className="min-w-0 flex-1 truncate text-gray-600">{line?.channelName ?? entry.dataKey}</span>
-                    <span className="flex-shrink-0 font-mono font-bold" style={{ color: entry.color }}>
-                      {entry.value.toLocaleString()}人
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        }}
-        isAnimationActive={false}
-      />
-      {lines.map(({ key, color }) => (
-        <Line
-          key={key}
-          type="monotone"
-          dataKey={key}
-          stroke={color}
-          strokeWidth={2.5}
-          dot={false}
-          activeDot={{ r: 5, fill: color, strokeWidth: 0 }}
-          connectNulls
-        />
-      ))}
-    </LineChart>
-  );
+function computeStats(data: Record<string, number | string | null>[], lines: LineConfig[]) {
+  const keys = lines.map((l) => l.key);
+  const currentByKey: Record<string, number> = {};
+
+  for (let i = data.length - 1; i >= 0; i--) {
+    const row = data[i];
+    for (const key of keys) {
+      if (currentByKey[key] === undefined && row[key] != null) {
+        currentByKey[key] = row[key] as number;
+      }
+    }
+    if (Object.keys(currentByKey).length === keys.length) break;
+  }
+
+  const currentTotal = Object.values(currentByKey).reduce((s, v) => s + v, 0);
+
+  let peakTotal = 0;
+  for (const row of data) {
+    const rowTotal = keys.reduce((s, k) => s + ((row[k] as number | null) ?? 0), 0);
+    if (rowTotal > peakTotal) peakTotal = rowTotal;
+  }
+
+  return { currentTotal, peakTotal, currentByKey };
 }
 
-function Legend({ lines }: { lines: LineConfig[] }) {
+type TooltipPayload = { dataKey: string; value: number; color: string };
+
+function CustomTooltip({
+  active,
+  payload,
+  label,
+  lines,
+}: {
+  active?: boolean;
+  payload?: TooltipPayload[];
+  label?: string;
+  lines: LineConfig[];
+}) {
+  if (!active || !payload?.length) return null;
+
+  const seen = new Set<string>();
+  const deduped = (payload as TooltipPayload[])
+    .filter((p) => p.value != null && lines.some((l) => l.key === p.dataKey))
+    .filter((p) => { if (seen.has(p.dataKey)) return false; seen.add(p.dataKey); return true; })
+    .sort((a, b) => b.value - a.value);
+
+  if (!deduped.length) return null;
+  const total = deduped.reduce((s, p) => s + p.value, 0);
+
   return (
-    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-gray-100 pt-3">
-      {lines.map(({ key, channelName, color }) => (
-        <a key={key} href={`/live/${key}`} className="flex items-center gap-1.5 transition-opacity hover:opacity-70">
-          <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: color }} />
-          <span className="text-xs text-gray-600">{channelName}</span>
-        </a>
-      ))}
+    <div className="min-w-[160px] rounded-xl border border-gray-200 bg-white p-3 shadow-lg" style={{ fontSize: 12 }}>
+      <p className="mb-2 text-[11px] text-gray-400">{label}</p>
+      {deduped.map((entry) => {
+        const line = lines.find((l) => l.key === entry.dataKey);
+        const color = line?.color ?? entry.color;
+        return (
+          <div key={entry.dataKey} className="flex items-center gap-2 py-0.5">
+            {line?.iconUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={line.iconUrl} alt={line.channelName} className="h-5 w-5 flex-shrink-0 rounded-full object-cover" />
+            ) : (
+              <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: color }} />
+            )}
+            <span className="min-w-0 flex-1 truncate text-gray-600">{line?.channelName ?? entry.dataKey}</span>
+            <span className="flex-shrink-0 font-mono font-bold" style={{ color }}>
+              {entry.value.toLocaleString()}人
+            </span>
+          </div>
+        );
+      })}
+      {deduped.length > 1 && (
+        <div className="mt-1.5 flex items-center justify-between border-t border-gray-100 pt-1.5">
+          <span className="text-[11px] text-gray-400">合計</span>
+          <span className="font-mono text-[11px] font-bold text-gray-700">{total.toLocaleString()}人</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -102,35 +103,175 @@ function Legend({ lines }: { lines: LineConfig[] }) {
 export default function CombinedLiveGraph({
   data,
   lines,
-  fillParent = false,
+  graphHeight = 280,
 }: {
   data: Record<string, number | string | null>[];
   lines: LineConfig[];
-  fillParent?: boolean;
+  graphHeight?: number;
 }) {
-  if (data.length < 2 || lines.length === 0) return null;
+  const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
 
-  if (fillParent) {
-    /* PC サイドバー時: 親の高さいっぱいに広げる */
-    return (
-      <div className="flex h-full flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="min-h-0 flex-1">
-          <ResponsiveContainer width="100%" height="100%">
-            <Graph data={data} lines={lines} />
-          </ResponsiveContainer>
-        </div>
-        <Legend lines={lines} />
-      </div>
-    );
+  function toggleKey(key: string) {
+    setHiddenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
   }
 
-  /* デフォルト: 固定高さ */
+  if (data.length < 2 || lines.length === 0) return null;
+
+  const visibleLines = lines.filter((l) => !hiddenKeys.has(l.key));
+  const { currentTotal, peakTotal, currentByKey } = computeStats(data, visibleLines);
+
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <ResponsiveContainer width="100%" height={360}>
-        <Graph data={data} lines={lines} />
+
+      {/* ── 統計ヘッダー ── */}
+      <div className="mb-3 flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
+          <span className="text-xs font-semibold text-gray-700">同時視聴者数</span>
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          <div className="text-right">
+            <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Now</div>
+            <div className="font-mono text-lg font-bold leading-none text-gray-900">
+              {currentTotal > 0 ? currentTotal.toLocaleString() : "—"}
+            </div>
+          </div>
+          <div className="h-8 w-px bg-gray-100" />
+          <div className="text-right">
+            <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Peak</div>
+            <div className="font-mono text-lg font-bold leading-none text-gray-400">
+              {peakTotal > 0 ? peakTotal.toLocaleString() : "—"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── チャンネルトグル ── */}
+      {lines.length > 1 && (
+        <div className="mb-2 flex flex-wrap gap-x-1 gap-y-1">
+          {lines.map(({ key, channelName, color, iconUrl }) => {
+            const hidden = hiddenKeys.has(key);
+            return (
+              <button
+                key={key}
+                onClick={() => toggleKey(key)}
+                title={hidden ? "表示する" : "非表示にする"}
+                className={`flex items-center gap-1.5 rounded-md px-2 py-1 transition-all hover:bg-gray-50 ${hidden ? "opacity-30" : ""}`}
+              >
+                {iconUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={iconUrl} alt={channelName} className={`h-4 w-4 flex-shrink-0 rounded-full object-cover ${hidden ? "grayscale" : ""}`} />
+                ) : (
+                  <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: hidden ? "#d1d5db" : color }} />
+                )}
+                <span className={`whitespace-nowrap text-xs ${hidden ? "text-gray-400 line-through" : "text-gray-600"}`}>
+                  {channelName}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── チャート ── */}
+      <ResponsiveContainer width="100%" height={graphHeight}>
+        <ComposedChart data={data} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
+          <defs>
+            {lines.map(({ key, color }) => (
+              <linearGradient key={key} id={`grad-${key}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color} stopOpacity={0.18} />
+                <stop offset="85%" stopColor={color} stopOpacity={0} />
+              </linearGradient>
+            ))}
+          </defs>
+
+          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+          <XAxis
+            dataKey="t"
+            tick={{ fill: "#9ca3af", fontSize: 11 }}
+            axisLine={{ stroke: "#e5e7eb" }}
+            tickLine={false}
+          />
+          <YAxis
+            tickFormatter={formatK}
+            tick={{ fill: "#9ca3af", fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+            width={44}
+          />
+          <Tooltip
+            content={(props) => (
+              <CustomTooltip
+                active={(props as unknown as { active?: boolean }).active}
+                payload={(props as unknown as { payload?: TooltipPayload[] }).payload}
+                label={(props as unknown as { label?: string }).label}
+                lines={lines}
+              />
+            )}
+            isAnimationActive={false}
+          />
+
+          {/* グラデーション塗り（ライン背面） */}
+          {visibleLines.map(({ key }) => (
+            <Area
+              key={`area-${key}`}
+              type="monotone"
+              dataKey={key}
+              fill={`url(#grad-${key})`}
+              stroke="none"
+              connectNulls
+              isAnimationActive={false}
+            />
+          ))}
+
+          {/* ライン（前面） */}
+          {visibleLines.map(({ key, color }) => (
+            <Line
+              key={key}
+              type="monotone"
+              dataKey={key}
+              stroke={color}
+              strokeWidth={2.5}
+              dot={false}
+              activeDot={{ r: 5, fill: color, strokeWidth: 0 }}
+              connectNulls
+              isAnimationActive={false}
+            />
+          ))}
+        </ComposedChart>
       </ResponsiveContainer>
-      <Legend lines={lines} />
+
+      {/* ── 凡例（視聴者数付きリンク） ── */}
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-gray-100 pt-2.5">
+        {visibleLines.map(({ key, channelName, color, iconUrl }) => {
+          const current = currentByKey[key];
+          return (
+            <a
+              key={key}
+              href={`/live/${key}`}
+              className="flex flex-shrink-0 items-center gap-1.5 transition-opacity hover:opacity-70"
+            >
+              {iconUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={iconUrl} alt={channelName} className="h-4 w-4 flex-shrink-0 rounded-full object-cover" />
+              ) : (
+                <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: color }} />
+              )}
+              <span className="whitespace-nowrap text-xs text-gray-600">{channelName}</span>
+              {current != null && (
+                <span className="font-mono text-xs font-bold" style={{ color }}>
+                  {current.toLocaleString()}
+                </span>
+              )}
+            </a>
+          );
+        })}
+      </div>
+
     </div>
   );
 }

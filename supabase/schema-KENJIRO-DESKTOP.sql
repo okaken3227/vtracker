@@ -1,0 +1,228 @@
+-- ============================================================
+-- VTracker スキーマ定義
+-- Supabase SQL Editor に貼り付けて実行してください
+-- ============================================================
+
+-- channels
+create table if not exists channels (
+  channel_id        text primary key,
+  name              text        not null,
+  description       text        not null default '',
+  icon_url          text        not null default '',
+  custom_url        text        not null default '',
+  published_at      timestamptz not null,
+  subscriber_count  bigint      not null default 0,
+  view_count        bigint      not null default 0,
+  video_count       bigint      not null default 0,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+
+-- videos
+create table if not exists videos (
+  video_id              text primary key,
+  channel_id            text        not null references channels(channel_id) on delete cascade,
+  title                 text        not null,
+  description           text        not null default '',
+  thumbnail_url         text        not null default '',
+  live_chat_id          text,
+  start_time            timestamptz,
+  end_time              timestamptz,
+  scheduled_start_time  timestamptz,
+  status                text        not null default 'none'
+                          check (status in ('live', 'upcoming', 'none')),
+  created_at            timestamptz not null default now(),
+  updated_at            timestamptz not null default now()
+);
+
+create index if not exists videos_channel_id_idx on videos(channel_id);
+create index if not exists videos_status_idx     on videos(status);
+
+-- superchats
+create table if not exists superchats (
+  id                  text primary key,
+  video_id            text        not null references videos(video_id) on delete cascade,
+  author_channel_id   text        not null,
+  author_name         text        not null,
+  amount              integer     not null,
+  currency            text        not null default 'JPY',
+  comment             text        not null default '',
+  tier                integer     not null default 1,
+  published_at        timestamptz not null,
+  created_at          timestamptz not null default now()
+);
+
+create index if not exists superchats_video_id_idx    on superchats(video_id);
+create index if not exists superchats_published_at_idx on superchats(published_at desc);
+
+-- updated_at を自動更新するトリガー
+create or replace function update_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+create or replace trigger channels_updated_at
+  before update on channels
+  for each row execute function update_updated_at();
+
+create or replace trigger videos_updated_at
+  before update on videos
+  for each row execute function update_updated_at();
+
+-- RLS（Row Level Security）: サービスロールキーで書き込み、公開読み取り
+alter table channels   enable row level security;
+alter table videos     enable row level security;
+alter table superchats enable row level security;
+
+-- 読み取りは全員OK（ダッシュボード表示用）
+create policy "public read channels"   on channels   for select using (true);
+create policy "public read videos"     on videos     for select using (true);
+create policy "public read superchats" on superchats for select using (true);
+
+-- 書き込みはサービスロールのみ（RLSはservice_roleをバイパスするので定義不要だが明示）
+
+-- ============================================================
+-- live_graph_points  ライブ中の同接・再生数を5秒おきに記録
+-- ============================================================
+create table if not exists live_graph_points (
+  id                  bigserial   primary key,
+  video_id            text        not null references videos(video_id) on delete cascade,
+  recorded_at         timestamptz not null default now(),
+  concurrent_viewers  integer     not null default 0,
+  view_count          bigint      not null default 0,
+  like_count          bigint      not null default 0,
+  interval_seconds    integer     not null default 5  -- 5=生データ, 300=5分集約, 3600=1時間集約
+);
+
+-- 既存テーブルへのカラム追加（初回スキーマ適用後に実行）
+alter table live_graph_points add column if not exists interval_seconds integer not null default 5;
+
+-- プラットフォーム識別カラム（youtube / twitch）
+alter table channels add column if not exists platform text not null default 'youtube'
+  check (platform in ('youtube', 'twitch'));
+alter table videos add column if not exists platform text not null default 'youtube'
+  check (platform in ('youtube', 'twitch'));
+
+create index if not exists lgp_video_id_idx on live_graph_points(video_id, recorded_at);
+create index if not exists lgp_interval_idx on live_graph_points(interval_seconds, recorded_at);
+
+alter table live_graph_points enable row level security;
+create policy "public read live_graph_points" on live_graph_points for select using (true);
+
+grant all on public.live_graph_points to service_role;
+grant usage, select on public.live_graph_points_id_seq to service_role;
+
+-- ============================================================
+-- channel_stats_history  登録者数推移を1時間おきに記録
+-- ============================================================
+create table if not exists channel_stats_history (
+  id               bigserial   primary key,
+  channel_id       text        not null references channels(channel_id) on delete cascade,
+  subscriber_count bigint      not null default 0,
+  view_count       bigint      not null default 0,
+  recorded_at      timestamptz not null default now()
+);
+
+create index if not exists csh_channel_id_idx on channel_stats_history(channel_id, recorded_at);
+
+alter table channel_stats_history enable row level security;
+create policy "public read channel_stats_history" on channel_stats_history for select using (true);
+
+grant all on public.channel_stats_history to service_role;
+grant usage, select on public.channel_stats_history_id_seq to service_role;
+
+-- ============================================================
+-- groups  グループ（事務所・箱・チーム）
+-- ============================================================
+create table if not exists groups (
+  id               text        primary key,  -- e.g. "nijisanji", "vspo"
+  name             text        not null,     -- e.g. "にじさんじ"
+  color            text        not null default '#8b5cf6',
+  parent_group_id  text        references groups(id) on delete set null,
+  icon_url         text,
+  keywords         text,       -- カンマ区切りキーワード（自動分類用）
+  category         text        default 'vtuber',  -- vtuber/esports/indie/other
+  created_at       timestamptz not null default now()
+);
+
+alter table groups enable row level security;
+create policy "public read groups" on groups for select using (true);
+grant all on public.groups to service_role;
+grant select on public.groups to anon;
+
+-- channels に group_id カラムを追加
+alter table channels add column if not exists group_id text references groups(id) on delete set null;
+alter table channels add column if not exists banner_url text;
+alter table channels add column if not exists color text;
+
+-- 同一配信者の別プラットフォームチャンネルを紐付け（YouTube ↔ Twitch など）
+alter table channels add column if not exists linked_channel_id text references channels(channel_id) on delete set null;
+
+-- ============================================================
+-- api_usage_daily  YouTube API 使用量トラッキング
+-- ============================================================
+create table if not exists api_usage_daily (
+  date        date    primary key default current_date,
+  units_used  integer not null default 0,
+  calls_count integer not null default 0
+);
+
+alter table api_usage_daily enable row level security;
+grant all on public.api_usage_daily to service_role;
+
+-- ============================================================
+-- ダウンサンプル関数
+-- 毎日深夜に /api/cron/downsample から呼び出す
+-- 直近7日: 生データ(5秒)をそのまま保持
+-- 7〜90日: 5分集約に圧縮
+-- 90日以上: 1時間集約に圧縮
+-- ============================================================
+create or replace function downsample_live_graph_points()
+returns void language plpgsql as $$
+begin
+  -- Step 1: 7〜90日の生データ(5秒) → 5分集約
+  insert into live_graph_points (video_id, recorded_at, concurrent_viewers, view_count, like_count, interval_seconds)
+  select
+    video_id,
+    date_trunc('hour', recorded_at) + (extract(minute from recorded_at)::int / 5) * interval '5 minutes',
+    round(avg(concurrent_viewers))::int,
+    max(view_count),
+    max(like_count),
+    300
+  from live_graph_points
+  where recorded_at >= now() - interval '90 days'
+    and recorded_at <  now() - interval '7 days'
+    and interval_seconds = 5
+  group by
+    video_id,
+    date_trunc('hour', recorded_at) + (extract(minute from recorded_at)::int / 5) * interval '5 minutes';
+
+  delete from live_graph_points
+  where recorded_at >= now() - interval '90 days'
+    and recorded_at <  now() - interval '7 days'
+    and interval_seconds = 5;
+
+  -- Step 2: 90日以上の5分集約 → 1時間集約
+  insert into live_graph_points (video_id, recorded_at, concurrent_viewers, view_count, like_count, interval_seconds)
+  select
+    video_id,
+    date_trunc('hour', recorded_at),
+    round(avg(concurrent_viewers))::int,
+    max(view_count),
+    max(like_count),
+    3600
+  from live_graph_points
+  where recorded_at < now() - interval '90 days'
+    and interval_seconds = 300
+  group by
+    video_id,
+    date_trunc('hour', recorded_at);
+
+  delete from live_graph_points
+  where recorded_at < now() - interval '90 days'
+    and interval_seconds = 300;
+end;
+$$;

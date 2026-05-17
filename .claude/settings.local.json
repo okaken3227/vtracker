@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl *)",
+      "Bash(npx tsc *)",
+      "Bash(Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue)",
+      "Bash(Write-Host \"done\")",
+      "Bash(npm run *)",
+      "Bash(npx vitest *)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('next:', p.dependencies.next\\)\")",
+      "Bash(cat next.config.*)",
+      "Bash(ls next.config*)",
+      "Bash(node -e ' *)",
+      "Bash(node --env-file=.env.local -e ' *)",
+      "Bash(git config *)",
+      "Bash(git pull *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  }
+}

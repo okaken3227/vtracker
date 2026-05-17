@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import type { Group, GroupCategory } from "@/lib/types";
 
 const CATEGORY_LABEL: Record<GroupCategory, string> = {
@@ -11,69 +10,80 @@ const CATEGORY_LABEL: Record<GroupCategory, string> = {
   other: "その他",
 };
 
-type Props = { groups: Group[]; selected?: string };
+type Props = { groups: Group[]; selected?: string; onSelect?: (groupId: string | undefined) => void };
 
-export default function GroupTabs({ groups, selected }: Props) {
+export default function GroupTabs({ groups, selected, onSelect }: Props) {
   const router = useRouter();
 
   function select(groupId: string | undefined) {
+    if (onSelect) { onSelect(groupId); return; }
     router.push(groupId ? `/?group=${groupId}` : "/");
   }
 
-  // カテゴリ順にグループを分類
   const categories: GroupCategory[] = ["vtuber", "esports", "indie", "other"];
   const byCategory = categories
-    .map((cat) => ({
-      cat,
-      items: groups.filter((g) => (g.category ?? "vtuber") === cat),
-    }))
+    .map((cat) => ({ cat, items: groups.filter((g) => (g.category ?? "vtuber") === cat) }))
     .filter((c) => c.items.length > 0);
 
   return (
-    <div className="mb-6 space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="mb-6 space-y-3">
+      {/* すべて */}
+      <div
+        className="flex gap-1.5 overflow-x-auto pb-0.5"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none", maskImage: "linear-gradient(to right, black 85%, transparent 100%)", WebkitMaskImage: "linear-gradient(to right, black 85%, transparent 100%)" } as React.CSSProperties}
+      >
         <button
           onClick={() => select(undefined)}
-          className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+          className={`inline-flex shrink-0 items-center rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
             !selected
-              ? "bg-violet-600 text-white shadow-sm"
-              : "border border-gray-200 bg-white text-gray-500 hover:border-violet-300 hover:text-violet-600"
+              ? "bg-gray-900 text-white shadow-sm"
+              : "border border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-800"
           }`}
         >
           すべて
         </button>
       </div>
 
+      {/* カテゴリ別 */}
       {byCategory.map(({ cat, items }) => (
-        <div key={cat} className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-gray-400 w-16 flex-shrink-0">{CATEGORY_LABEL[cat]}</span>
-          {items.map((g) => (
-            <div key={g.id} className="flex items-center gap-0.5">
-              <button
-                onClick={() => select(g.id)}
-                className={`rounded-l-full px-3 py-1 text-sm font-medium transition-colors ${
-                  selected === g.id
-                    ? "text-white shadow-sm"
-                    : "border border-gray-200 bg-white text-gray-500 hover:text-gray-900"
-                }`}
-                style={selected === g.id ? { backgroundColor: g.color } : undefined}
-              >
-                {g.name}
-              </button>
-              <Link
-                href={`/group/${g.id}`}
-                className={`rounded-r-full px-1.5 py-1 text-xs transition-colors ${
-                  selected === g.id
-                    ? "text-white/70 shadow-sm hover:text-white"
-                    : "border border-l-0 border-gray-200 bg-white text-gray-300 hover:text-violet-500"
-                }`}
-                style={selected === g.id ? { backgroundColor: g.color } : undefined}
-                title={`${g.name}のページへ`}
-              >
-                ↗
-              </Link>
-            </div>
-          ))}
+        <div key={cat}>
+          {/* カテゴリラベル */}
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+            {CATEGORY_LABEL[cat]}
+          </p>
+
+          {/* 横スクロール pill 列 */}
+          <div
+            className="flex gap-1.5 overflow-x-auto pb-0.5"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none", maskImage: "linear-gradient(to right, black 85%, transparent 100%)", WebkitMaskImage: "linear-gradient(to right, black 85%, transparent 100%)" } as React.CSSProperties}
+          >
+            {items.map((g) => {
+              const isSelected = selected === g.id;
+              return (
+                <button
+                  key={g.id}
+                  onClick={() => select(isSelected ? undefined : g.id)}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-all ${
+                    isSelected
+                      ? "text-white shadow-sm"
+                      : "border border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900"
+                  }`}
+                  style={isSelected ? { backgroundColor: g.color, borderColor: g.color } : undefined}
+                >
+                  {g.icon_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={g.icon_url} alt="" className="h-3.5 w-3.5 rounded-full object-cover" />
+                  ) : (
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: isSelected ? "rgba(255,255,255,0.6)" : g.color }}
+                    />
+                  )}
+                  {g.name}
+                </button>
+              );
+            })}
+          </div>
         </div>
       ))}
     </div>
