@@ -56,30 +56,21 @@ function tierColor(tier: number) {
   return TIER_COLORS[tier] ?? TIER_COLORS[1];
 }
 
-function aggregateTo5Min(points: LiveGraphPoint[], startTime: string | null): GraphDataPoint[] {
+function toChartData(points: LiveGraphPoint[], startTime: string | null): GraphDataPoint[] {
   if (points.length === 0 || !startTime) return [];
   const startMs = new Date(startTime).getTime();
-  const buckets = new Map<number, number[]>();
-
-  for (const p of points) {
-    const ms = new Date(p.recorded_at).getTime() - startMs;
-    const t = Math.max(0, Math.floor(ms / (5 * 60 * 1000)) * 5);
-    if (!buckets.has(t)) buckets.set(t, []);
-    buckets.get(t)!.push(p.concurrent_viewers);
-  }
-
-  return Array.from(buckets.entries())
-    .sort((a, b) => a[0] - b[0])
-    .map(([t, vs]) => ({
-      t,
-      viewers: Math.round(vs.reduce((s, x) => s + x, 0) / vs.length),
-    }));
+  return points
+    .map((p) => ({
+      t: Math.max(0, Math.round((new Date(p.recorded_at).getTime() - startMs) / 60000)),
+      viewers: p.concurrent_viewers,
+    }))
+    .sort((a, b) => a.t - b.t);
 }
 
 function getTimeBucket(publishedAt: string, startTime: string | null): number {
   if (!startTime) return 0;
   const ms = new Date(publishedAt).getTime() - new Date(startTime).getTime();
-  return Math.max(0, Math.floor(ms / (5 * 60 * 1000)) * 5);
+  return Math.max(0, Math.round(ms / 60000));
 }
 
 function formatJST(iso: string) {
@@ -163,7 +154,7 @@ export default async function LivePage({
   const channel = channelRes.data as Channel | null;
   const graphPoints = (gpRes.data ?? []) as LiveGraphPoint[];
   const superchats = (scRes.data ?? []) as Superchat[];
-  const chartData = aggregateTo5Min(graphPoints, video.start_time);
+  const chartData = toChartData(graphPoints, video.start_time);
 
   // スパチャを5分バケットごとにグループ化（アンカー用）
   const bucketSet = new Set<number>();
