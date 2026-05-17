@@ -1,10 +1,7 @@
 import { supabase } from "@/lib/supabase/client";
 import type { Video, Channel, Superchat, LiveGraphPoint } from "@/lib/types";
-import type { GraphDataPoint } from "./LiveGraphSection";
-import LiveGraphSection from "./LiveGraphSection";
-import SuperchatList from "./SuperchatList";
-import type { SCItem } from "./SuperchatList";
 import RefreshButton from "@/app/components/RefreshButton";
+import LiveDetailDialogs from "./LiveDetailDialogs";
 import LiveTimer from "@/app/components/LiveTimer";
 import { fetchRatesToJPY } from "@/lib/exchange";
 import Link from "next/link";
@@ -236,77 +233,41 @@ export default async function LivePage({
         </div>
       </div>
 
-      {/* グラフ */}
-      <section className="mb-8">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">同接推移</h2>
-          {video.status === "live" && <RefreshButton videoId={video.video_id} />}
+      {/* 更新ボタン（ライブ中のみ） */}
+      {video.status === "live" && (
+        <div className="mb-4 flex justify-end">
+          <RefreshButton videoId={video.video_id} />
         </div>
-        {chartData.length > 0 ? (
-          <LiveGraphSection
-            data={chartData}
-            videoId={video.video_id}
-            iconUrl={channel?.icon_url ?? undefined}
-            channelName={channel?.name ?? undefined}
-            startTime={video.start_time ?? undefined}
-            height={400}
-            platform={video.platform ?? channel?.platform ?? undefined}
-            twitchLogin={channel?.custom_url ?? undefined}
-          />
-        ) : (
-          <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-400">
-            グラフデータがまだありません（ライブ中に自動収集されます）
-          </div>
-        )}
-      </section>
+      )}
 
-      {/* スパチャ一覧 */}
-      <section className="mb-10">
-        <h2 className="mb-3 text-lg font-semibold text-gray-900">
-          スパチャ一覧{" "}
-          <span className="text-sm font-normal text-gray-400">
-            ({superchats.length}件 / 合計 ≈ ¥{totalJPY.toLocaleString()})
-          </span>
-          {hasMultiCurrency && (
-            <p className="mt-0.5 text-xs text-gray-400">
-              {Array.from(byCurrencyOrig.entries()).map(([cur, orig], i) => {
-                const jpy = byCurrencyJPY.get(cur) ?? 0;
-                return (
-                  <span key={cur}>
-                    {i > 0 && <span className="mx-1">+</span>}
-                    {cur === "JPY"
-                      ? `¥${orig.toLocaleString()}`
-                      : `${cur} ${orig.toLocaleString()} → ¥${jpy.toLocaleString()}`}
-                  </span>
-                );
-              })}
-            </p>
-          )}
-        </h2>
-
-        {superchats.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-400">
-            スパチャはありません
-          </div>
-        ) : (
-          <SuperchatList
-            videoId={videoId}
-            platform={video.platform}
-            items={scWithBucket.map(({ sc, bucket, isFirstInBucket }) => ({
-              id: sc.id,
-              author_name: sc.author_name,
-              amount: sc.amount,
-              currency: sc.currency,
-              comment: sc.comment,
-              tier: sc.tier,
-              published_at: sc.published_at,
-              amount_jpy: sc.currency !== "JPY" ? toJPY(sc.amount, sc.currency, rates) : null,
-              bucket,
-              isFirstInBucket,
-            } satisfies SCItem))}
-          />
-        )}
-      </section>
+      {/* グラフ・スパチャ（ダイアログ） */}
+      <LiveDetailDialogs
+        videoId={videoId}
+        platform={video.platform}
+        chartData={chartData}
+        iconUrl={channel?.icon_url ?? undefined}
+        channelName={channel?.name ?? undefined}
+        startTime={video.start_time ?? undefined}
+        twitchLogin={channel?.custom_url ?? undefined}
+        scItems={scWithBucket.map(({ sc, bucket, isFirstInBucket }) => ({
+          id: sc.id,
+          author_name: sc.author_name,
+          amount: sc.amount,
+          currency: sc.currency,
+          comment: sc.comment,
+          tier: sc.tier,
+          published_at: sc.published_at,
+          amount_jpy: sc.currency !== "JPY" ? toJPY(sc.amount, sc.currency, rates) : null,
+          bucket,
+          isFirstInBucket,
+        }))}
+        scCount={superchats.length}
+        totalJPY={totalJPY}
+        hasMultiCurrency={hasMultiCurrency}
+        byCurrencyOrig={Array.from(byCurrencyOrig.entries())}
+        byCurrencyJPY={Array.from(byCurrencyJPY.entries())}
+        isLive={video.status === "live"}
+      />
 
       {/* チャンネルへのリンク */}
       <div className="flex items-center gap-3">
