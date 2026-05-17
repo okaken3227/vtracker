@@ -202,7 +202,7 @@ export default async function LivePage({
             src={channel.icon_url}
             alt=""
             aria-hidden
-            className="pointer-events-none absolute right-0 top-1/2 h-32 w-32 -translate-y-1/2 translate-x-6 rounded-full object-cover opacity-[0.07] select-none md:h-56 md:w-56 md:translate-x-10"
+            className="pointer-events-none absolute right-0 top-1/2 h-32 w-32 -translate-y-1/2 translate-x-6 rounded-full object-cover opacity-100 select-none md:h-56 md:w-56 md:translate-x-10"
           />
         )}
         <div className="relative p-4 sm:p-5">
