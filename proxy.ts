@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export function proxy(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  // Admin routes only — pass everything else through immediately
+  if (!pathname.startsWith("/admin") && !pathname.startsWith("/api/admin")) {
+    return NextResponse.next();
+  }
+
   const password = process.env.ADMIN_PASSWORD;
 
   // No password configured → allow through (open during initial setup)
@@ -28,5 +35,5 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*"],
+  matcher: ["/(.*)", "/api/(.*)"],
 };
