@@ -236,6 +236,8 @@ export default async function LivePage({
         </div>
       </div>
 
+      )}
+
       {/* グラフ */}
       <section className="mb-8">
         <div className="mb-3 flex items-center justify-between">
