@@ -728,8 +728,21 @@ export default function AdminPage() {
 
   const deleteTarget = deleteConfirmId ? channelMap.get(deleteConfirmId) : null;
 
+  async function handleLogout() {
+    await fetch("/api/admin/logout", { method: "POST" });
+    window.location.href = "/admin/login";
+  }
+
   return (
     <div className="space-y-10">
+      <div className="flex justify-end">
+        <button
+          onClick={handleLogout}
+          className="rounded-xl border border-gray-200 px-3 py-1.5 text-xs text-gray-500 transition-colors hover:border-red-300 hover:text-red-500"
+        >
+          ログアウト
+        </button>
+      </div>
       {/* カラーピッカー背面クリックで閉じる */}
       {colorPickerChannelId && (
         <div

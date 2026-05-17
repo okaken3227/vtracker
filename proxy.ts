@@ -1,39 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ADMIN_COOKIE, verifyAdminToken } from "@/lib/admin-auth";
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Admin routes only — pass everything else through immediately
-  if (!pathname.startsWith("/admin") && !pathname.startsWith("/api/admin")) {
+  if (!pathname.startsWith("/api/admin")) {
     return NextResponse.next();
   }
 
   const password = process.env.ADMIN_PASSWORD;
-
-  // No password configured → allow through (open during initial setup)
   if (!password) return NextResponse.next();
 
-  const auth = req.headers.get("authorization");
-  if (auth?.startsWith("Basic ")) {
-    try {
-      const decoded = atob(auth.slice(6));
-      const colonIdx = decoded.indexOf(":");
-      const entered = colonIdx >= 0 ? decoded.slice(colonIdx + 1) : decoded;
-      if (entered === password) return NextResponse.next();
-    } catch {
-      // malformed base64 → fall through to 401
-    }
+  const token = req.cookies.get(ADMIN_COOKIE)?.value;
+  if (token && verifyAdminToken(token, password)) {
+    return NextResponse.next();
   }
 
-  return new NextResponse("Unauthorized", {
-    status: 401,
-    headers: {
-      "WWW-Authenticate": 'Basic realm="Admin"',
-      "Content-Type": "text/plain",
-    },
-  });
+  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*"],
+  matcher: ["/api/admin/:path*"],
 };
