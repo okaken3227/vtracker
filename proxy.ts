@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const password = process.env.ADMIN_PASSWORD;
 
   // No password configured → allow through (open during initial setup)
