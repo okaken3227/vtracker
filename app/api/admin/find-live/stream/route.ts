@@ -48,6 +48,11 @@ export async function POST() {
 
         const channelNameMap = new Map(allChannels.map((c) => [c.channel_id, c.name]));
         const liveVideos: LiveEntry[] = [];
+        const initialGraphPoints: {
+          video_id: string; recorded_at: string;
+          concurrent_viewers: number; view_count: number; like_count: number;
+        }[] = [];
+        const now = new Date().toISOString();
         let totalApiCalls = 0;
         let totalApiUnits = 0;
 
@@ -132,6 +137,14 @@ export async function POST() {
                         const channelName = channelNameMap.get(v.channel_id) ?? v.channel_id;
                         liveVideos.push({ videoId: v.video_id, channelId: v.channel_id, channelName, title: v.title, platform: "youtube" });
                         send({ type: "live_new", channel: channelName, title: v.title });
+                        // 新規ライブ検知と同時に初回グラフポイントを記録
+                        const concurrentViewers = parseInt(
+                          video.liveStreamingDetails?.concurrentViewers ?? "0", 10
+                        );
+                        initialGraphPoints.push({
+                          video_id: v.video_id, recorded_at: now,
+                          concurrent_viewers: concurrentViewers, view_count: 0, like_count: 0,
+                        });
                       }
                     }
                   })
@@ -188,6 +201,11 @@ export async function POST() {
                     send({ type: "live_known", channel: channelName, title: stream.title, platform: "twitch" });
                   } else {
                     send({ type: "live_new", channel: channelName, title: stream.title, platform: "twitch" });
+                    // 新規ライブ検知と同時に初回グラフポイントを記録
+                    initialGraphPoints.push({
+                      video_id: video.video_id, recorded_at: now,
+                      concurrent_viewers: stream.viewer_count, view_count: stream.viewer_count, like_count: 0,
+                    });
                   }
                 }
               }
@@ -215,6 +233,10 @@ export async function POST() {
 
         if (liveVideos.length === 0) {
           send({ type: "no_live", message: "現在ライブ中のチャンネルはありません" });
+        }
+        // 新規検知分の初回グラフポイントをまとめて保存
+        if (initialGraphPoints.length > 0) {
+          await supabase.from("live_graph_points").insert(initialGraphPoints);
         }
         send({ type: "done", found: liveVideos.length, lives: liveVideos, apiCalls: totalApiCalls, apiUnits: totalApiUnits });
         controller.close();

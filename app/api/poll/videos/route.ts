@@ -6,6 +6,14 @@ import { extractVideo } from "@/lib/youtube/extractors";
 import { extractTwitchStream } from "@/lib/twitch/extractors";
 import type { Video } from "@/lib/types";
 
+type GraphPoint = {
+  video_id: string;
+  recorded_at: string;
+  concurrent_viewers: number;
+  view_count: number;
+  like_count: number;
+};
+
 async function fetchRssVideoIds(channelId: string): Promise<string[]> {
   try {
     const res = await fetch(
@@ -55,6 +63,9 @@ async function pollVideos(): Promise<NextResponse> {
       .filter((c) => c.platform === "twitch")
       .map((c) => c.channel_id);
 
+    const now = new Date().toISOString();
+    const initialGraphPoints: GraphPoint[] = [];
+
     // ── Twitch: 新規配信の検知 ────────────────────────────────────
     let twitchStarted = 0;
     if (twitchChannelIds.length > 0) {
@@ -78,6 +89,14 @@ async function pollVideos(): Promise<NextResponse> {
                 const video = extractTwitchStream(stream);
                 await supabase.from("videos").upsert(video, { onConflict: "video_id" });
                 twitchStarted++;
+                // ライブ検知と同時に初回グラフポイントを記録
+                initialGraphPoints.push({
+                  video_id: stream.id,
+                  recorded_at: now,
+                  concurrent_viewers: stream.viewer_count,
+                  view_count: stream.viewer_count,
+                  like_count: 0,
+                });
               }
             }
           }
@@ -88,6 +107,9 @@ async function pollVideos(): Promise<NextResponse> {
     }
 
     if (ytChannelIds.length === 0) {
+      if (initialGraphPoints.length > 0) {
+        await supabase.from("live_graph_points").insert(initialGraphPoints);
+      }
       return NextResponse.json({ checked: 0, started: twitchStarted, discovered: twitchStarted });
     }
 
@@ -101,6 +123,9 @@ async function pollVideos(): Promise<NextResponse> {
     }
 
     if (allVideoIds.size === 0) {
+      if (initialGraphPoints.length > 0) {
+        await supabase.from("live_graph_points").insert(initialGraphPoints);
+      }
       return NextResponse.json({ checked: 0, started: twitchStarted, discovered: twitchStarted });
     }
 
@@ -121,6 +146,9 @@ async function pollVideos(): Promise<NextResponse> {
     });
 
     if (toCheck.length === 0) {
+      if (initialGraphPoints.length > 0) {
+        await supabase.from("live_graph_points").insert(initialGraphPoints);
+      }
       return NextResponse.json({ checked: 0, started: twitchStarted, discovered: twitchStarted });
     }
 
@@ -140,6 +168,9 @@ async function pollVideos(): Promise<NextResponse> {
         checked++;
         const updated = extractVideo(item);
         const existing = existingMap.get(item.id);
+        const isNewLive =
+          (existing === undefined && updated.status === "live") ||
+          (existing !== undefined && updated.status === "live" && existing !== "live");
 
         if (existing === undefined) {
           if (updated.status === "live" || updated.status === "upcoming") {
@@ -159,7 +190,26 @@ async function pollVideos(): Promise<NextResponse> {
             .eq("video_id", item.id);
           if (updated.status === "live" && existing !== "live") started++;
         }
+
+        // ライブ検知と同時に初回グラフポイントを記録
+        if (isNewLive) {
+          const concurrentViewers = parseInt(
+            item.liveStreamingDetails?.concurrentViewers ?? "0",
+            10,
+          );
+          initialGraphPoints.push({
+            video_id: item.id,
+            recorded_at: now,
+            concurrent_viewers: concurrentViewers,
+            view_count: 0,
+            like_count: 0,
+          });
+        }
       }
+    }
+
+    if (initialGraphPoints.length > 0) {
+      await supabase.from("live_graph_points").insert(initialGraphPoints);
     }
 
     return NextResponse.json({
