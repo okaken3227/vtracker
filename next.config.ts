@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  allowedDevOrigins: ["192.168.0.132"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "yt3.ggpht.com" },

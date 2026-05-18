@@ -90,6 +90,18 @@ function CustomTooltip({
   );
 }
 
+function StarDot({ cx, cy, color }: { cx?: number; cy?: number; color: string }) {
+  if (cx == null || cy == null) return null;
+  const R = 10;
+  const r = R * 0.42;
+  const pts = Array.from({ length: 5 }, (_, i) => {
+    const a1 = (i * 72 - 90) * (Math.PI / 180);
+    const a2 = a1 + 36 * (Math.PI / 180);
+    return `${cx + R * Math.cos(a1)},${cy + R * Math.sin(a1)} ${cx + r * Math.cos(a2)},${cy + r * Math.sin(a2)}`;
+  }).join(" ");
+  return <polygon points={pts} fill={color} stroke="white" strokeWidth={2} />;
+}
+
 type SelectedPoint = { t: number; viewers: number; url: string; label: string; thumbnailUrl?: string };
 
 function GraphDialog({ point, onClose }: { point: SelectedPoint; onClose: () => void }) {
@@ -166,6 +178,10 @@ export default function LiveGraphSection({
 }) {
   const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(null);
 
+  const peakPoint = data.length > 0
+    ? data.reduce((best, p) => p.viewers > best.viewers ? p : best, data[0])
+    : null;
+
   const handleClick = (chartData: { activeLabel?: string | number | undefined; activePayload?: { value: number }[] }) => {
     if (chartData?.activeLabel == null) return;
     const t = Number(chartData.activeLabel);
@@ -239,7 +255,12 @@ export default function LiveGraphSection({
             dataKey="viewers"
             stroke="#7c3aed"
             strokeWidth={2.5}
-            dot={{ r: 4, fill: "#7c3aed", strokeWidth: 0 }}
+            dot={(props: { cx?: number; cy?: number; payload?: GraphDataPoint }) => {
+              if (peakPoint && props.payload?.t === peakPoint.t) {
+                return <StarDot key={`star-${props.payload.t}`} cx={props.cx} cy={props.cy} color="#7c3aed" />;
+              }
+              return <g key={`empty-${props.payload?.t}`} />;
+            }}
             activeDot={{ r: 7, fill: "#7c3aed", strokeWidth: 0 }}
           />
         </LineChart>

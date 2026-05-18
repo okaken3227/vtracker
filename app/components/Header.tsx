@@ -12,7 +12,7 @@ export default function Header() {
   const pathname = usePathname();
 
   return (
-    <header className="shrink-0 bg-white/30 backdrop-blur-xl">
+    <header className="shrink-0 bg-white">
       <div className="mx-auto flex h-14 max-w-full items-center gap-3 px-4">
 
         {/* ── モバイル検索モード ── */}

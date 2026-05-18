@@ -16,7 +16,10 @@ export type StreamInfo = {
 
 export type ChartPoint = { t: number } & Record<string, number>;
 
-const STREAM_COLORS = ["#8b5cf6", "#06b6d4", "#f59e0b", "#10b981", "#ef4444", "#ec4899"];
+const STREAM_COLORS = [
+  "#8b5cf6", "#06b6d4", "#f59e0b", "#10b981", "#ef4444", "#ec4899",
+  "#3b82f6", "#84cc16", "#f97316", "#a855f7", "#14b8a6", "#f43f5e",
+];
 const BUCKET_MS = 5 * 60 * 1000;
 
 export function buildChart(
