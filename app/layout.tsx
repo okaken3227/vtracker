@@ -50,6 +50,7 @@ export const metadata: Metadata = {
   other: {
     "google-adsense-account": "ca-pub-6560735293239350",
   },
+  manifest: "/site.webmanifest",
 };
 
 export const viewport: Viewport = {
