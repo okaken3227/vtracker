@@ -6,6 +6,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from("groups")
     .select("*")
+    .order("sort_order", { ascending: true, nullsFirst: false })
     .order("name");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data ?? []);
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const { id, icon_url, keywords, parent_group_id, name, color, category } = await req.json();
+  const { id, icon_url, keywords, parent_group_id, name, color, category, sort_order } = await req.json();
   if (!id) return NextResponse.json({ error: "id は必須です" }, { status: 400 });
   const updates: Partial<Group> = {};
   if (name !== undefined) updates.name = name.trim();
@@ -40,6 +41,7 @@ export async function PATCH(req: NextRequest) {
   if (icon_url !== undefined) updates.icon_url = icon_url || null;
   if (keywords !== undefined) updates.keywords = keywords || null;
   if (parent_group_id !== undefined) updates.parent_group_id = parent_group_id || null;
+  if (sort_order !== undefined) updates.sort_order = sort_order;
   const { error } = await supabase.from("groups").update(updates).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

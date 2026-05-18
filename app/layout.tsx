@@ -64,7 +64,8 @@ export default async function RootLayout({
 }>) {
   const { data: groups } = await supabase
     .from("groups")
-    .select("id, name, color, icon_url")
+    .select("id, name, color, icon_url, sort_order")
+    .order("sort_order", { ascending: true, nullsFirst: false })
     .order("name");
 
   return (

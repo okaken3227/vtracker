@@ -10,6 +10,7 @@ export type Group = {
   keywords?: string | null;
   category?: GroupCategory | null;
   slug?: string | null;
+  sort_order?: number | null;
 };
 
 export type Platform = "youtube" | "twitch";

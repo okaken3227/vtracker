@@ -245,6 +245,35 @@ export default function AdminPage() {
     await load();
   }
 
+  async function handleMoveGroup(groupId: string, direction: "up" | "down") {
+    const idx = groups.findIndex((g) => g.id === groupId);
+    if (direction === "up" && idx === 0) return;
+    if (direction === "down" && idx === groups.length - 1) return;
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    const current = groups[idx];
+    const swapWith = groups[swapIdx];
+    const currentOrder = current.sort_order ?? idx + 1;
+    const swapOrder = swapWith.sort_order ?? swapIdx + 1;
+    setGroups((prev) => {
+      const next = [...prev];
+      next[idx] = { ...current, sort_order: swapOrder };
+      next[swapIdx] = { ...swapWith, sort_order: currentOrder };
+      return next.sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
+    });
+    await Promise.all([
+      fetch("/api/admin/groups", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: current.id, sort_order: swapOrder }),
+      }),
+      fetch("/api/admin/groups", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: swapWith.id, sort_order: currentOrder }),
+      }),
+    ]);
+  }
+
   async function handleDeleteGroup(id: string, name: string) {
     if (!confirm(`「${name}」を削除しますか？`)) return;
     await fetch("/api/admin/groups", {
@@ -1053,6 +1082,18 @@ export default function AdminPage() {
             {groups.map((g) => (
               <div key={g.id} className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
                 <div className="flex items-center gap-3">
+                  <div className="flex flex-col gap-0.5">
+                    <button
+                      onClick={() => handleMoveGroup(g.id, "up")}
+                      disabled={groups.indexOf(g) === 0}
+                      className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none"
+                    >▲</button>
+                    <button
+                      onClick={() => handleMoveGroup(g.id, "down")}
+                      disabled={groups.indexOf(g) === groups.length - 1}
+                      className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none"
+                    >▼</button>
+                  </div>
                   <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: g.color }} />
                   <span className="flex-1 text-sm font-medium text-gray-900">{g.name}</span>
                   <span className="text-xs text-gray-400">{g.category ? CATEGORY_LABELS[g.category] : ""}</span>
