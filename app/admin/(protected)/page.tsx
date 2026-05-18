@@ -104,6 +104,7 @@ export default function AdminPage() {
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editKeywords, setEditKeywords] = useState("");
   const [editGroupIconUrl, setEditGroupIconUrl] = useState("");
+  const [editGroupColor, setEditGroupColor] = useState("");
   const [keywordSaving, setKeywordSaving] = useState(false);
 
   // チャンネル追加 - 単件
@@ -236,6 +237,7 @@ export default function AdminPage() {
         id: groupId,
         keywords: editKeywords.trim() || null,
         icon_url: editGroupIconUrl.trim() || null,
+        color: editGroupColor || null,
       }),
     });
     setKeywordSaving(false);
@@ -1047,7 +1049,7 @@ export default function AdminPage() {
                   <span className="text-xs text-gray-400">{g.category ? CATEGORY_LABELS[g.category] : ""}</span>
                   {editingGroupId !== g.id && (
                     <button
-                      onClick={() => { setEditingGroupId(g.id); setEditKeywords(g.keywords ?? ""); setEditGroupIconUrl(g.icon_url ?? ""); }}
+                      onClick={() => { setEditingGroupId(g.id); setEditKeywords(g.keywords ?? ""); setEditGroupIconUrl(g.icon_url ?? ""); setEditGroupColor(g.color ?? ""); }}
                       className="text-xs text-violet-500 hover:underline"
                     >
                       編集
@@ -1062,6 +1064,17 @@ export default function AdminPage() {
                 </div>
                 {editingGroupId === g.id ? (
                   <div className="mt-2 space-y-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      {GROUP_COLORS.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setEditGroupColor(c)}
+                          className={`h-6 w-6 rounded-full transition-transform ${editGroupColor === c ? "scale-125 ring-2 ring-offset-1 ring-gray-400" : ""}`}
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
+                    </div>
                     <div className="flex items-center gap-2">
                       {editGroupIconUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
