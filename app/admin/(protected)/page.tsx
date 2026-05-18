@@ -1011,7 +1011,7 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs text-gray-500">カラー</label>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {GROUP_COLORS.map((c) => (
                       <button
                         key={c}
@@ -1021,6 +1021,15 @@ export default function AdminPage() {
                         style={{ backgroundColor: c }}
                       />
                     ))}
+                    <label className="flex cursor-pointer items-center gap-1 rounded border border-gray-200 px-1.5 py-0.5 text-[10px] text-gray-500 hover:border-gray-400">
+                      <input
+                        type="color"
+                        value={newGroupColor}
+                        onChange={(e) => setNewGroupColor(e.target.value)}
+                        className="h-4 w-4 cursor-pointer rounded border-0 bg-transparent p-0"
+                      />
+                      自由
+                    </label>
                   </div>
                 </div>
               </div>
@@ -1064,7 +1073,7 @@ export default function AdminPage() {
                 </div>
                 {editingGroupId === g.id ? (
                   <div className="mt-2 space-y-2">
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       {GROUP_COLORS.map((c) => (
                         <button
                           key={c}
@@ -1074,6 +1083,15 @@ export default function AdminPage() {
                           style={{ backgroundColor: c }}
                         />
                       ))}
+                      <label className="flex cursor-pointer items-center gap-1 rounded border border-gray-200 px-1.5 py-0.5 text-[10px] text-gray-500 hover:border-gray-400">
+                        <input
+                          type="color"
+                          value={editGroupColor || "#8b5cf6"}
+                          onChange={(e) => setEditGroupColor(e.target.value)}
+                          className="h-4 w-4 cursor-pointer rounded border-0 bg-transparent p-0"
+                        />
+                        自由
+                      </label>
                     </div>
                     <div className="flex items-center gap-2">
                       {editGroupIconUrl && (
