@@ -45,6 +45,7 @@ export type HomeData = {
   scByChannel: Record<string, number>;
   groups: Group[];
   todayPoints: GraphPoint[];
+  livePoints: GraphPoint[];
   error: string | null;
 };
 
@@ -105,7 +106,7 @@ type PreviewVideo = {
   status: string;
 };
 
-export default function HomeContent({ channels, videos, scByVideo, scByChannel, groups, todayPoints, error }: HomeData) {
+export default function HomeContent({ channels, videos, scByVideo, scByChannel, groups, todayPoints, livePoints, error }: HomeData) {
   const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
   const [preview, setPreview] = useState<PreviewVideo | null>(null);
   const channelListRef = useRef<HTMLElement>(null);
@@ -169,7 +170,7 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
     .filter((v) => !selectedGroup || filteredChannelIds.has(v.channel_id))
     .sort((a, b) => (b.start_time ?? "").localeCompare(a.start_time ?? ""));
 
-  const { merged: graphData, lines: graphLines } = buildCombinedGraph(liveVideos, channelMap, todayPoints);
+  const { merged: graphData, lines: graphLines } = buildCombinedGraph(liveVideos, channelMap, livePoints);
 
   // チャンネルカード用の最新動画情報
   const latestByChannel: Record<string, { status: string; startTime: string | null }> = {};

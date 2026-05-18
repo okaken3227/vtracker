@@ -18,6 +18,7 @@ type GraphPoint = { video_id: string; concurrent_viewers: number; recorded_at: s
 
 async function fetchData() {
   const jstMidnightMs = getJstMidnightMs();
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   try {
     const [chRes, vRes, scRes, grRes, gpRes] = await Promise.all([
       supabase.from("channels").select("*").order("subscriber_count", { ascending: false }),
@@ -30,18 +31,36 @@ async function fetchData() {
         .gte("recorded_at", new Date(jstMidnightMs).toISOString())
         .order("recorded_at", { ascending: true }),
     ]);
+
+    // ライブ中の動画IDを取得し、24時間窓でグラフポイントを別途取得
+    const liveVideoIds = ((vRes.data ?? []) as Video[])
+      .filter((v) => v.status === "live")
+      .map((v) => v.video_id);
+
+    let livePoints: GraphPoint[] = [];
+    if (liveVideoIds.length > 0) {
+      const { data: lpData } = await supabase
+        .from("live_graph_points")
+        .select("video_id, concurrent_viewers, recorded_at")
+        .in("video_id", liveVideoIds)
+        .gte("recorded_at", since24h)
+        .order("recorded_at", { ascending: true });
+      livePoints = (lpData ?? []) as GraphPoint[];
+    }
+
     return {
       channels: (chRes.data ?? []) as Channel[],
       videos: (vRes.data ?? []) as Video[],
       superchats: (scRes.data ?? []) as SCRow[],
       groups: (grRes.data ?? []) as Group[],
       todayPoints: (gpRes.data ?? []) as GraphPoint[],
+      livePoints,
       error:
         chRes.error?.message ?? vRes.error?.message ??
         scRes.error?.message ?? grRes.error?.message ?? gpRes.error?.message ?? null,
     };
   } catch (e) {
-    return { channels: [], videos: [], superchats: [], groups: [], todayPoints: [], error: String(e) };
+    return { channels: [], videos: [], superchats: [], groups: [], todayPoints: [], livePoints: [], error: String(e) };
   }
 }
 
@@ -61,7 +80,7 @@ function scTotalByChannel(videos: Video[], scByVideo: Record<string, number>): R
 }
 
 export default async function Home() {
-  const { channels, videos, superchats, groups, todayPoints, error } = await fetchData();
+  const { channels, videos, superchats, groups, todayPoints, livePoints, error } = await fetchData();
   const scByVideo = scTotalByVideo(superchats);
   const scByChannel = scTotalByChannel(videos, scByVideo);
 
@@ -73,6 +92,7 @@ export default async function Home() {
       scByChannel={scByChannel}
       groups={groups}
       todayPoints={todayPoints}
+      livePoints={livePoints}
       error={error}
     />
   );
