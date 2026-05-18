@@ -94,14 +94,16 @@ export default function AdminPage() {
   // グループ作成
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupIconUrl, setNewGroupIconUrl] = useState("");
   const [newGroupKeywords, setNewGroupKeywords] = useState("");
   const [newGroupCategory, setNewGroupCategory] = useState<GroupCategory>("vtuber");
   const [newGroupColor, setNewGroupColor] = useState(GROUP_COLORS[0]);
   const [newGroupStatus, setNewGroupStatus] = useState("");
 
-  // グループキーワード編集
+  // グループキーワード・アイコン編集
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editKeywords, setEditKeywords] = useState("");
+  const [editGroupIconUrl, setEditGroupIconUrl] = useState("");
   const [keywordSaving, setKeywordSaving] = useState(false);
 
   // チャンネル追加 - 単件
@@ -192,6 +194,7 @@ export default function AdminPage() {
       body: JSON.stringify({
         id: autoId(newGroupName),
         name: newGroupName.trim(),
+        icon_url: newGroupIconUrl.trim() || undefined,
         keywords: newGroupKeywords.trim() || undefined,
         category: newGroupCategory,
         color: newGroupColor,
@@ -201,6 +204,7 @@ export default function AdminPage() {
     if (res.ok) {
       setNewGroupStatus("✓ 作成しました");
       setNewGroupName("");
+      setNewGroupIconUrl("");
       setNewGroupKeywords("");
       setNewGroupCategory("vtuber");
       setNewGroupColor(GROUP_COLORS[0]);
@@ -228,7 +232,11 @@ export default function AdminPage() {
     await fetch("/api/admin/groups", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: groupId, keywords: editKeywords.trim() || null }),
+      body: JSON.stringify({
+        id: groupId,
+        keywords: editKeywords.trim() || null,
+        icon_url: editGroupIconUrl.trim() || null,
+      }),
     });
     setKeywordSaving(false);
     setEditingGroupId(null);
@@ -958,6 +966,22 @@ export default function AdminPage() {
                 />
               </div>
               <div>
+                <label className="mb-1 block text-xs text-gray-500">アイコン画像URL（任意）</label>
+                <div className="flex items-center gap-2">
+                  {newGroupIconUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={newGroupIconUrl} alt="" className="h-8 w-8 flex-shrink-0 rounded-full object-cover" />
+                  )}
+                  <input
+                    type="url"
+                    value={newGroupIconUrl}
+                    onChange={(e) => setNewGroupIconUrl(e.target.value)}
+                    placeholder="https://example.com/icon.png"
+                    className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-violet-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
                 <label className="mb-1 block text-xs text-gray-500">キーワード（カンマ区切りで複数指定可）</label>
                 <input
                   type="text"
@@ -1023,10 +1047,10 @@ export default function AdminPage() {
                   <span className="text-xs text-gray-400">{g.category ? CATEGORY_LABELS[g.category] : ""}</span>
                   {editingGroupId !== g.id && (
                     <button
-                      onClick={() => { setEditingGroupId(g.id); setEditKeywords(g.keywords ?? ""); }}
+                      onClick={() => { setEditingGroupId(g.id); setEditKeywords(g.keywords ?? ""); setEditGroupIconUrl(g.icon_url ?? ""); }}
                       className="text-xs text-violet-500 hover:underline"
                     >
-                      {g.keywords ? "キーワード編集" : "+ キーワード追加"}
+                      編集
                     </button>
                   )}
                   <button
@@ -1037,32 +1061,53 @@ export default function AdminPage() {
                   </button>
                 </div>
                 {editingGroupId === g.id ? (
-                  <div className="mt-2 flex items-center gap-2">
-                    <input
-                      autoFocus
-                      type="text"
-                      value={editKeywords}
-                      onChange={(e) => setEditKeywords(e.target.value)}
-                      placeholder="キーワード1,キーワード2,略称"
-                      className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:border-violet-500 focus:outline-none"
-                    />
-                    <button
-                      onClick={() => handleSaveKeywords(g.id)}
-                      disabled={keywordSaving}
-                      className="flex-shrink-0 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-500 disabled:opacity-40"
-                    >
-                      {keywordSaving ? "保存中..." : "保存"}
-                    </button>
-                    <button
-                      onClick={() => setEditingGroupId(null)}
-                      className="flex-shrink-0 text-xs text-gray-400 hover:text-gray-600"
-                    >
-                      キャンセル
-                    </button>
+                  <div className="mt-2 space-y-2">
+                    <div className="flex items-center gap-2">
+                      {editGroupIconUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={editGroupIconUrl} alt="" className="h-7 w-7 flex-shrink-0 rounded-full object-cover" />
+                      )}
+                      <input
+                        type="url"
+                        value={editGroupIconUrl}
+                        onChange={(e) => setEditGroupIconUrl(e.target.value)}
+                        placeholder="アイコン画像URL"
+                        className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:border-violet-500 focus:outline-none"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        autoFocus
+                        type="text"
+                        value={editKeywords}
+                        onChange={(e) => setEditKeywords(e.target.value)}
+                        placeholder="キーワード1,キーワード2,略称"
+                        className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:border-violet-500 focus:outline-none"
+                      />
+                      <button
+                        onClick={() => handleSaveKeywords(g.id)}
+                        disabled={keywordSaving}
+                        className="flex-shrink-0 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-500 disabled:opacity-40"
+                      >
+                        {keywordSaving ? "保存中..." : "保存"}
+                      </button>
+                      <button
+                        onClick={() => setEditingGroupId(null)}
+                        className="flex-shrink-0 text-xs text-gray-400 hover:text-gray-600"
+                      >
+                        キャンセル
+                      </button>
+                    </div>
                   </div>
-                ) : g.keywords ? (
-                  <p className="mt-1 pl-5 text-xs text-gray-400">{g.keywords}</p>
-                ) : null}
+                ) : (
+                  <div className="mt-1 pl-5 flex items-center gap-2">
+                    {g.icon_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={g.icon_url} alt="" className="h-4 w-4 rounded-full object-cover" />
+                    )}
+                    {g.keywords && <p className="text-xs text-gray-400">{g.keywords}</p>}
+                  </div>
+                )}
               </div>
             ))}
           </div>
