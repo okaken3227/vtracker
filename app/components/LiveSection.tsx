@@ -225,7 +225,10 @@ export default function LiveSection({
 
         {/* バナーリスト */}
         {isOpen && (
-        <div>
+        <div
+          className="overflow-y-auto"
+          style={{ maxHeight: "320px", scrollbarWidth: "thin" }}
+        >
           <div className="flex flex-col gap-1.5">
             {sorted.map((v, i) => (
               <div

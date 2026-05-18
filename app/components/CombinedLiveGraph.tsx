@@ -150,33 +150,6 @@ export default function CombinedLiveGraph({
         </div>
       </div>
 
-      {/* ── チャンネルトグル ── */}
-      {lines.length > 1 && (
-        <div className="mb-2 flex flex-wrap gap-x-1 gap-y-1">
-          {lines.map(({ key, channelName, color, iconUrl }) => {
-            const hidden = hiddenKeys.has(key);
-            return (
-              <button
-                key={key}
-                onClick={() => toggleKey(key)}
-                title={hidden ? "表示する" : "非表示にする"}
-                className={`flex items-center gap-1.5 rounded-md px-2 py-1 transition-all hover:bg-gray-50 ${hidden ? "opacity-30" : ""}`}
-              >
-                {iconUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={iconUrl} alt={channelName} className={`h-4 w-4 flex-shrink-0 rounded-full object-cover ${hidden ? "grayscale" : ""}`} />
-                ) : (
-                  <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: hidden ? "#d1d5db" : color }} />
-                )}
-                <span className={`whitespace-nowrap text-xs ${hidden ? "text-gray-400 line-through" : "text-gray-600"}`}>
-                  {channelName}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       {/* ── チャート ── */}
       <ResponsiveContainer width="100%" height={graphHeight}>
         <ComposedChart data={data} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
@@ -245,29 +218,33 @@ export default function CombinedLiveGraph({
         </ComposedChart>
       </ResponsiveContainer>
 
-      {/* ── 凡例（視聴者数付きリンク） ── */}
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-gray-100 pt-2.5">
-        {visibleLines.map(({ key, channelName, color, iconUrl }) => {
+      {/* ── 凡例（視聴者数付き・クリックでトグル） ── */}
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5 border-t border-gray-100 pt-2.5">
+        {lines.map(({ key, channelName, color, iconUrl }) => {
+          const hidden = hiddenKeys.has(key);
           const current = currentByKey[key];
           return (
-            <a
-              key={key}
-              href={`/live/${key}`}
-              className="flex flex-shrink-0 items-center gap-1.5 transition-opacity hover:opacity-70"
-            >
-              {iconUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={iconUrl} alt={channelName} className="h-4 w-4 flex-shrink-0 rounded-full object-cover" />
-              ) : (
-                <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: color }} />
+            <div key={key} className="flex items-center gap-0.5">
+              <button
+                onClick={() => toggleKey(key)}
+                title={hidden ? "表示する" : "非表示にする"}
+                className={`flex items-center gap-1.5 rounded-md px-1.5 py-0.5 transition-all hover:bg-gray-50 ${hidden ? "opacity-30" : ""}`}
+              >
+                {iconUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={iconUrl} alt={channelName} className={`h-4 w-4 flex-shrink-0 rounded-full object-cover ${hidden ? "grayscale" : ""}`} />
+                ) : (
+                  <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: hidden ? "#d1d5db" : color }} />
+                )}
+                <span className={`whitespace-nowrap text-xs ${hidden ? "text-gray-400 line-through" : "text-gray-600"}`}>{channelName}</span>
+                {!hidden && current != null && (
+                  <span className="font-mono text-xs font-bold" style={{ color }}>{current.toLocaleString()}</span>
+                )}
+              </button>
+              {!hidden && (
+                <a href={`/live/${key}`} title="詳細を見る" className="text-gray-300 transition-colors hover:text-gray-500 text-xs leading-none">↗</a>
               )}
-              <span className="whitespace-nowrap text-xs text-gray-600">{channelName}</span>
-              {current != null && (
-                <span className="font-mono text-xs font-bold" style={{ color }}>
-                  {current.toLocaleString()}
-                </span>
-              )}
-            </a>
+            </div>
           );
         })}
       </div>
