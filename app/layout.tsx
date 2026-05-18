@@ -47,6 +47,9 @@ export const metadata: Metadata = {
       "VTuberのリアルタイム視聴者数・スパチャ・配信履歴を追跡するサービスです。",
   },
   robots: { index: true, follow: true },
+  other: {
+    "google-adsense-account": "ca-pub-6560735293239350",
+  },
 };
 
 export const viewport: Viewport = {
