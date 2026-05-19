@@ -180,9 +180,13 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
     }
   }
 
-  // ライブ中チャンネルを先頭にソート
+  // グループ順（サイドバーと同じ）→ライブ優先→登録者数
   const liveChannelIds = new Set(liveVideos.map((v) => v.channel_id));
+  const groupOrderMap = new Map(groups.map((g, i) => [g.id, i]));
   const sortedChannels = [...filteredChannels].sort((a, b) => {
+    const aGroupOrder = a.group_id != null ? (groupOrderMap.get(a.group_id) ?? 999) : 999;
+    const bGroupOrder = b.group_id != null ? (groupOrderMap.get(b.group_id) ?? 999) : 999;
+    if (aGroupOrder !== bGroupOrder) return aGroupOrder - bGroupOrder;
     const aLive = liveChannelIds.has(a.channel_id) ? 0 : 1;
     const bLive = liveChannelIds.has(b.channel_id) ? 0 : 1;
     if (aLive !== bLive) return aLive - bLive;
