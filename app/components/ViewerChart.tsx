@@ -225,26 +225,9 @@ export default function ViewerChart({ data, streams }: Props) {
 
   const visibleStreams = groupFiltered.filter((s) => !hiddenIds.has(s.videoId));
 
-  const trimmed = visibleStreams.length > 0
+  const chartData = visibleStreams.length > 0
     ? data.filter((row) => visibleStreams.some((s) => row[s.videoId] != null))
     : data;
-
-  // Clamp values to [yMin, yMax] so lines never render outside the axis bounds
-  const chartData = (yMin !== null || yMax !== null)
-    ? trimmed.map((row) => {
-        const next = { ...row } as ChartPoint;
-        for (const s of visibleStreams) {
-          const v = next[s.videoId];
-          if (typeof v === "number") {
-            let c = v;
-            if (yMax !== null) c = Math.min(c, yMax);
-            if (yMin !== null) c = Math.max(c, yMin);
-            next[s.videoId] = c;
-          }
-        }
-        return next;
-      })
-    : trimmed;
 
   const lastHoveredVideoId = { current: "" };
 

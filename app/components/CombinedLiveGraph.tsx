@@ -143,26 +143,9 @@ export default function CombinedLiveGraph({
   const { currentTotal, peakTotal, currentByKey } = computeStats(data, visibleLines);
 
   // Trim X-axis to rows where at least one visible line has data
-  const trimmed = visibleLines.length > 0
+  const chartData = visibleLines.length > 0
     ? data.filter((row) => visibleLines.some((l) => row[l.key] != null))
     : data;
-
-  // Clamp values to [yMin, yMax] so lines never render outside the axis bounds
-  const chartData = (yMin !== null || yMax !== null)
-    ? trimmed.map((row) => {
-        const next = { ...row };
-        for (const l of visibleLines) {
-          const v = next[l.key];
-          if (typeof v === "number") {
-            let c = v;
-            if (yMax !== null) c = Math.min(c, yMax);
-            if (yMin !== null) c = Math.max(c, yMin);
-            next[l.key] = c;
-          }
-        }
-        return next;
-      })
-    : trimmed;
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
