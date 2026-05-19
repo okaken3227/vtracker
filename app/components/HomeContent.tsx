@@ -79,7 +79,10 @@ function buildCombinedGraph(
 
   if (allBuckets.size < 2) return { merged: [], lines };
 
-  const sorted = Array.from(allBuckets).sort((a, b) => a - b);
+  const allSorted = Array.from(allBuckets).sort((a, b) => a - b);
+  const latestBucket = allSorted[allSorted.length - 1];
+  const windowStart = latestBucket - 90 * 60 * 1000;
+  const sorted = allSorted.filter((b) => b >= windowStart);
   const merged = sorted.map((bucket) => {
     const t = new Date(bucket).toLocaleTimeString("ja-JP", {
       hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo",

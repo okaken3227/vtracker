@@ -19,7 +19,7 @@ type GraphPoint = { video_id: string; concurrent_viewers: number; recorded_at: s
 async function fetchData() {
   const jstMidnightMs = getJstMidnightMs();
   const todayIso = new Date(jstMidnightMs).toISOString();
-  const since3hIso = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+  const since90mIso = new Date(Date.now() - 90 * 60 * 1000).toISOString();
   try {
     const [chRes, vRes, scRes, grRes, gpRes, lpRes] = await Promise.all([
       supabase.from("channels").select("*").order("subscriber_count", { ascending: false }),
@@ -35,7 +35,7 @@ async function fetchData() {
       supabase
         .from("live_graph_points")
         .select("video_id, concurrent_viewers, recorded_at")
-        .gte("recorded_at", since3hIso)
+        .gte("recorded_at", since90mIso)
         .order("recorded_at", { ascending: true })
         .limit(100000),
     ]);
