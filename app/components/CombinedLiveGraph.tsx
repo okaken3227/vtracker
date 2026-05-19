@@ -101,6 +101,7 @@ function CustomTooltip({
 }
 
 const Y_MAX_PRESETS: { label: string; value: number }[] = [
+  { label: "1K", value: 1000 },
   { label: "5K", value: 5000 },
   { label: "1万", value: 10000 },
   { label: "5万", value: 50000 },
@@ -108,6 +109,8 @@ const Y_MAX_PRESETS: { label: string; value: number }[] = [
 ];
 
 const Y_MIN_PRESETS: { label: string; value: number }[] = [
+  { label: "10", value: 10 },
+  { label: "100", value: 100 },
   { label: "1K", value: 1000 },
   { label: "5K", value: 5000 },
   { label: "1万", value: 10000 },
@@ -140,19 +143,55 @@ export default function CombinedLiveGraph({
   const { currentTotal, peakTotal, currentByKey } = computeStats(data, visibleLines);
 
   // Trim X-axis to rows where at least one visible line has data
-  const chartData = visibleLines.length > 0
+  const trimmed = visibleLines.length > 0
     ? data.filter((row) => visibleLines.some((l) => row[l.key] != null))
     : data;
+
+  // Clamp values to [yMin, yMax] so lines never render outside the axis bounds
+  const chartData = (yMin !== null || yMax !== null)
+    ? trimmed.map((row) => {
+        const next = { ...row };
+        for (const l of visibleLines) {
+          const v = next[l.key];
+          if (typeof v === "number") {
+            let c = v;
+            if (yMax !== null) c = Math.min(c, yMax);
+            if (yMin !== null) c = Math.max(c, yMin);
+            next[l.key] = c;
+          }
+        }
+        return next;
+      })
+    : trimmed;
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
 
       {/* ── 統計ヘッダー ── */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
           <span className="text-xs font-semibold text-gray-700">同時視聴者数</span>
         </div>
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Now</div>
+            <div className="font-mono text-lg font-bold leading-none text-gray-900">
+              {currentTotal > 0 ? currentTotal.toLocaleString() : "—"}
+            </div>
+          </div>
+          <div className="h-8 w-px bg-gray-100" />
+          <div className="text-right">
+            <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Peak</div>
+            <div className="font-mono text-lg font-bold leading-none text-gray-400">
+              {peakTotal > 0 ? peakTotal.toLocaleString() : "—"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── スケールコントロール ── */}
+      <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1.5">
         {/* 自動リセット */}
         <button
           onClick={() => { setYMax(null); setYMin(null); }}
@@ -202,21 +241,6 @@ export default function CombinedLiveGraph({
             ))}
           </div>
         </div>
-        <div className="ml-auto flex items-center gap-3">
-          <div className="text-right">
-            <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Now</div>
-            <div className="font-mono text-lg font-bold leading-none text-gray-900">
-              {currentTotal > 0 ? currentTotal.toLocaleString() : "—"}
-            </div>
-          </div>
-          <div className="h-8 w-px bg-gray-100" />
-          <div className="text-right">
-            <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Peak</div>
-            <div className="font-mono text-lg font-bold leading-none text-gray-400">
-              {peakTotal > 0 ? peakTotal.toLocaleString() : "—"}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* ── チャート ── */}
@@ -245,7 +269,7 @@ export default function CombinedLiveGraph({
             tickLine={false}
             width={44}
             domain={[yMin ?? 0, yMax ?? "auto"]}
-            allowDataOverflow={false}
+            allowDataOverflow
           />
           <Tooltip
             content={(props) => (

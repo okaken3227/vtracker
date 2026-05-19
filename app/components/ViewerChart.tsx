@@ -79,6 +79,7 @@ const RANK_STYLES = [
 ];
 
 const Y_MAX_PRESETS = [
+  { label: "1K", value: 1000 },
   { label: "5K", value: 5000 },
   { label: "1万", value: 10000 },
   { label: "5万", value: 50000 },
@@ -86,6 +87,8 @@ const Y_MAX_PRESETS = [
 ];
 
 const Y_MIN_PRESETS = [
+  { label: "10", value: 10 },
+  { label: "100", value: 100 },
   { label: "1K", value: 1000 },
   { label: "5K", value: 5000 },
   { label: "1万", value: 10000 },
@@ -222,9 +225,26 @@ export default function ViewerChart({ data, streams }: Props) {
 
   const visibleStreams = groupFiltered.filter((s) => !hiddenIds.has(s.videoId));
 
-  const chartData = visibleStreams.length > 0
+  const trimmed = visibleStreams.length > 0
     ? data.filter((row) => visibleStreams.some((s) => row[s.videoId] != null))
     : data;
+
+  // Clamp values to [yMin, yMax] so lines never render outside the axis bounds
+  const chartData = (yMin !== null || yMax !== null)
+    ? trimmed.map((row) => {
+        const next = { ...row } as ChartPoint;
+        for (const s of visibleStreams) {
+          const v = next[s.videoId];
+          if (typeof v === "number") {
+            let c = v;
+            if (yMax !== null) c = Math.min(c, yMax);
+            if (yMin !== null) c = Math.max(c, yMin);
+            next[s.videoId] = c;
+          }
+        }
+        return next;
+      })
+    : trimmed;
 
   const lastHoveredVideoId = { current: "" };
 
@@ -295,7 +315,7 @@ export default function ViewerChart({ data, streams }: Props) {
       )}
 
       {/* Y軸スケールコントロール */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1.5">
         <button
           onClick={() => { setYMax(null); setYMin(null); }}
           className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-all border ${
@@ -366,7 +386,7 @@ export default function ViewerChart({ data, streams }: Props) {
             tickLine={false}
             width={64}
             domain={[yMin ?? 0, yMax ?? "auto"]}
-            allowDataOverflow={false}
+            allowDataOverflow
           />
           <Tooltip
             content={(props) => {
