@@ -122,10 +122,7 @@ export default function LiveSection({
         {/* 2行目: ソート + 更新（開いているときのみ） */}
         {isOpen && (
           <div className="mb-2 mt-1.5 flex items-center gap-1.5">
-            {/* ソートボタン: 更新中・完了時はスマホで非表示 */}
-            <div className={`flex items-center gap-0.5 rounded-full bg-gray-100 p-0.5 text-xs font-medium transition-opacity ${
-              refreshState !== "idle" ? "hidden sm:flex" : "flex"
-            }`}>
+            <div className="flex items-center gap-0.5 rounded-full bg-gray-100 p-0.5 text-xs font-medium">
               <button
                 onClick={() => applySort("elapsed")}
                 className={`rounded-full px-2.5 py-1 transition-all ${
@@ -150,7 +147,7 @@ export default function LiveSection({
             <button
               onClick={handleRefresh}
               disabled={refreshState === "loading"}
-              className={`ml-auto flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-60 ${
+              className={`ml-auto flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-60 ${
                 refreshState === "done"
                   ? "bg-green-50 text-green-600"
                   : refreshState === "loading"
@@ -167,15 +164,11 @@ export default function LiveSection({
                 </>
               ) : (
                 <>
-                  <svg className={`h-3 w-3 ${refreshState === "loading" ? "animate-spin" : ""}`} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                  <svg className={`h-3 w-3 shrink-0 ${refreshState === "loading" ? "animate-spin" : ""}`} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M13.5 8a5.5 5.5 0 1 1-1.1-3.3" />
                     <path d="M13.5 2.5v3h-3" />
                   </svg>
-                  {refreshState === "loading" ? "更新中…" : (
-                    <>
-                      <span className="hidden sm:inline">リアルタイム更新</span>
-                    </>
-                  )}
+                  {refreshState === "loading" ? "更新中…" : "更新"}
                 </>
               )}
             </button>
