@@ -3,7 +3,6 @@ import { supabase } from "@/lib/supabase/client";
 import { YouTubeClient, getYouTubeApiKeys } from "@/lib/youtube/client";
 import { TwitchClient } from "@/lib/twitch/client";
 import { extractTwitchStream } from "@/lib/twitch/extractors";
-import { fetchRatesToJPY } from "@/lib/exchange";
 import type { Video } from "@/lib/types";
 
 
@@ -54,7 +53,6 @@ async function pollLive(targetVideoId: string | null): Promise<NextResponse> {
       like_count: number;
     }[] = [];
     const toEnd: { videoId: string; endTime: string }[] = [];
-    const liveChatIds: { videoId: string; chatId: string }[] = [];
 
     // ── YouTube ──────────────────────────────────────────────────
     if (ytVideos.length > 0) {
@@ -87,10 +85,6 @@ async function pollLive(targetVideoId: string | null): Promise<NextResponse> {
               view_count: Math.max(0, parseInt(item.statistics?.viewCount ?? "0", 10) || 0),
               like_count: Math.max(0, parseInt(item.statistics?.likeCount ?? "0", 10) || 0),
             });
-
-            if (details?.activeLiveChatId) {
-              liveChatIds.push({ videoId: item.id, chatId: details.activeLiveChatId });
-            }
           }
         }
       }
@@ -163,68 +157,9 @@ async function pollLive(targetVideoId: string | null): Promise<NextResponse> {
         .eq("video_id", videoId);
     }
 
-    // ── スパチャ収集（YouTube のみ）──────────────────────────────
-    let newSuperchats = 0;
-    if (liveChatIds.length > 0) {
-      const ytKeys = getYouTubeApiKeys();
-      const yt = new YouTubeClient(ytKeys);
-
-      const rates = await fetchRatesToJPY().catch(() => ({} as Record<string, number>));
-
-      for (const { videoId, chatId } of liveChatIds) {
-        try {
-          const chatRes = await yt.liveChatMessages({
-            part: "snippet,authorDetails",
-            liveChatId: chatId,
-            maxResults: "2000",
-          });
-
-          const scItems = (chatRes.items ?? []).filter(
-            (item) => item.snippet.type === "superChatEvent" && item.snippet.superChatDetails,
-          );
-          if (scItems.length === 0) continue;
-
-          const rows = scItems.map((item) => {
-            const details = item.snippet.superChatDetails!;
-            const currency = details.currency;
-            const amount = Math.round(parseInt(details.amountMicros, 10) / 1_000_000);
-            const exchangeRate = currency === "JPY" ? 1 : (rates[currency] ?? null);
-            const amountJpy =
-              currency === "JPY"
-                ? amount
-                : exchangeRate != null
-                ? Math.round(amount / exchangeRate)
-                : null;
-            return {
-              id: item.id,
-              video_id: videoId,
-              author_channel_id: item.authorDetails.channelId,
-              author_name: item.authorDetails.displayName,
-              amount,
-              currency,
-              comment: details.userComment ?? "",
-              tier: details.tier,
-              published_at: item.snippet.publishedAt,
-              amount_jpy: amountJpy,
-              exchange_rate: exchangeRate,
-            };
-          });
-
-          const { error: scErr } = await supabase
-            .from("superchats")
-            .upsert(rows, { onConflict: "id", ignoreDuplicates: true });
-          if (scErr) throw scErr;
-          newSuperchats += rows.length;
-        } catch (e) {
-          console.error(`[poll/live] superchat fetch failed for ${videoId}:`, e);
-        }
-      }
-    }
-
     return NextResponse.json({
       updated: graphPoints.length,
       ended: toEnd.length,
-      superchats: newSuperchats,
       youtube: ytVideos.length,
       twitch: twitchVideos.length,
     });
