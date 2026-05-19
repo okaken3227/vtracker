@@ -30,7 +30,7 @@ async function ytFetch<T>(
   apiKey: string,
   endpoint: string,
   params: Record<string, string>,
-  keyIndex: 1 | 2 | 3 = 1,
+  keyIndex: 1 | 2 | 3 | 4 | 5 | 6 = 1,
 ): Promise<T> {
   const url = new URL(`${BASE_URL}/${endpoint}`);
   url.searchParams.set("key", apiKey);
@@ -53,6 +53,9 @@ export function getYouTubeApiKeys(): string[] {
     process.env.YOUTUBE_API_KEY,
     process.env.YOUTUBE_API_KEY_2,
     process.env.YOUTUBE_API_KEY_3,
+    process.env.YOUTUBE_API_KEY_4,
+    process.env.YOUTUBE_API_KEY_5,
+    process.env.YOUTUBE_API_KEY_6,
   ].filter((k): k is string => Boolean(k));
 }
 
@@ -70,10 +73,10 @@ export class YouTubeClient {
     for (let idx = 0; idx < this.keys.length; idx++) {
       const key = this.keys[idx];
       try {
-        return await ytFetch<T>(key, endpoint, params, (idx + 1) as 1 | 2 | 3);
+        return await ytFetch<T>(key, endpoint, params, (idx + 1) as 1 | 2 | 3 | 4 | 5 | 6);
       } catch (err) {
         if (isQuotaExceeded(err)) {
-          const keyNum = (idx + 1) as 1 | 2 | 3;
+          const keyNum = (idx + 1) as 1 | 2 | 3 | 4 | 5 | 6;
           console.warn(`[YouTubeClient] quota exceeded on key #${keyNum}, trying next`);
           trackQuotaExceeded(keyNum).catch(() => {});
           lastError = err;

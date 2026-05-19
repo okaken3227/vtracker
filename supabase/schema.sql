@@ -149,9 +149,21 @@ alter table channels add column if not exists group_id text references groups(id
 -- api_usage_daily  YouTube API 使用量トラッキング
 -- ============================================================
 create table if not exists api_usage_daily (
-  date        date    primary key default current_date,
-  units_used  integer not null default 0,
-  calls_count integer not null default 0
+  date                 date    primary key default current_date,
+  units_used           integer not null default 0,
+  units_used_key2      integer not null default 0,
+  units_used_key3      integer not null default 0,
+  units_used_key4      integer not null default 0,
+  units_used_key5      integer not null default 0,
+  units_used_key6      integer not null default 0,
+  calls_count          integer not null default 0,
+  twitch_calls_count   integer not null default 0,
+  quota_exceeded_key1  boolean not null default false,
+  quota_exceeded_key2  boolean not null default false,
+  quota_exceeded_key3  boolean not null default false,
+  quota_exceeded_key4  boolean not null default false,
+  quota_exceeded_key5  boolean not null default false,
+  quota_exceeded_key6  boolean not null default false
 );
 
 alter table api_usage_daily enable row level security;

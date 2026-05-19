@@ -31,6 +31,9 @@ export async function GET(req: NextRequest) {
     { env: process.env.YOUTUBE_API_KEY, label: "KEY_1 (YOUTUBE_API_KEY)" },
     { env: process.env.YOUTUBE_API_KEY_2, label: "KEY_2 (YOUTUBE_API_KEY_2)" },
     { env: process.env.YOUTUBE_API_KEY_3, label: "KEY_3 (YOUTUBE_API_KEY_3)" },
+    { env: process.env.YOUTUBE_API_KEY_4, label: "KEY_4 (YOUTUBE_API_KEY_4)" },
+    { env: process.env.YOUTUBE_API_KEY_5, label: "KEY_5 (YOUTUBE_API_KEY_5)" },
+    { env: process.env.YOUTUBE_API_KEY_6, label: "KEY_6 (YOUTUBE_API_KEY_6)" },
   ];
 
   const results = await Promise.all(
