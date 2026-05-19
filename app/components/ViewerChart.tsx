@@ -296,41 +296,37 @@ export default function ViewerChart({ data, streams }: Props) {
       )}
 
       {/* Y軸スケールコントロール */}
-      <div className="mb-3 flex flex-col gap-1.5">
-        {/* 自動 + 最大 */}
-        <div className="flex items-center gap-2">
+      <div className="mb-3 flex flex-col gap-1">
+        <div className="flex items-center gap-1.5">
+          <span className="w-6 shrink-0 text-right text-[10px] text-gray-400">最大</span>
+          <div className="flex items-center gap-0.5 rounded-full bg-gray-100 p-0.5">
+            {Y_MAX_PRESETS.map((p) => (
+              <button
+                key={p.label}
+                onClick={() => setYMax(yMax === p.value ? null : p.value)}
+                className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-all ${
+                  yMax === p.value
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
           <button
             onClick={() => { setYMax(null); setYMin(null); }}
-            className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-all border ${
+            className={`ml-auto shrink-0 rounded-full px-3 py-0.5 text-[10px] font-medium transition-all ${
               yMax === null && yMin === null
-                ? "border-gray-300 bg-white text-gray-900 shadow-sm"
-                : "border-gray-200 text-gray-400 hover:text-gray-600"
+                ? "bg-gray-800 text-white shadow-sm"
+                : "bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
             }`}
           >
             自動
           </button>
-          <div className="flex items-center gap-1">
-            <span className="shrink-0 text-[10px] text-gray-400">最大</span>
-            <div className="flex items-center gap-0.5 rounded-full bg-gray-100 p-0.5">
-              {Y_MAX_PRESETS.map((p) => (
-                <button
-                  key={p.label}
-                  onClick={() => setYMax(yMax === p.value ? null : p.value)}
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-all ${
-                    yMax === p.value
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
-        {/* 最小 */}
-        <div className="flex items-center gap-1">
-          <span className="shrink-0 text-[10px] text-gray-400">最小</span>
+        <div className="flex items-center gap-1.5">
+          <span className="w-6 shrink-0 text-right text-[10px] text-gray-400">最小</span>
           <div className="flex items-center gap-0.5 rounded-full bg-gray-100 p-0.5">
             {Y_MIN_PRESETS.map((p) => (
               <button
