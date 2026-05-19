@@ -40,6 +40,7 @@ type BulkRow = {
   preview?: ChannelPreview;
   error?: string;
   selectedGroupId: string;
+  keywords: string;
   include: boolean;
   addStatus?: "adding" | "added" | "failed";
   addError?: string;
@@ -367,29 +368,30 @@ export default function AdminPage() {
       if (!confirm(`${nameLines.length}件が名前検索になります（Search API: ${cost}ユニット消費）。続けますか？\n\n該当:\n${nameLines.join("\n")}`)) return;
     }
     setBulkSearching(true);
-    setBulkRows(lines.map((input, i) => ({ id: i, input, status: "loading", selectedGroupId: "", include: true })));
+    setBulkRows(lines.map((input, i) => ({ id: i, input, status: "loading", selectedGroupId: "", keywords: "", include: true })));
 
     const results = await Promise.all(
       lines.map(async (input, i): Promise<BulkRow> => {
         const result = await fetchPreview(input);
         if (result.error) {
-          return { id: i, input, status: "error", error: result.error, selectedGroupId: "", include: false };
+          return { id: i, input, status: "error", error: result.error, selectedGroupId: "", keywords: "", include: false };
         }
         if (result.candidates) {
           if (result.candidates.length === 0) {
-            return { id: i, input, status: "error", error: "見つかりません", selectedGroupId: "", include: false };
+            return { id: i, input, status: "error", error: "見つかりません", selectedGroupId: "", keywords: "", include: false };
           }
           const c = result.candidates[0];
           return {
             id: i, input, status: "found",
             preview: { channelId: c.channelId, name: c.name, iconUrl: c.iconUrl, description: c.description, detectedGroupId: null, alreadyExists: false, existingGroupId: null },
             selectedGroupId: "",
+            keywords: "",
             include: true,
             platform: "youtube",
           };
         }
         const p = result.preview!;
-        return { id: i, input, status: "found", preview: p, selectedGroupId: p.existingGroupId ?? p.detectedGroupId ?? "", include: true, platform: p.platform ?? "youtube" };
+        return { id: i, input, status: "found", preview: p, selectedGroupId: p.existingGroupId ?? p.detectedGroupId ?? "", keywords: "", include: true, platform: p.platform ?? "youtube" };
       })
     );
 
@@ -406,10 +408,12 @@ export default function AdminPage() {
       let ok = false;
       let errMsg = "";
       if (p.alreadyExists) {
+        const patchBody: Record<string, unknown> = { channelId: p.channelId, groupId: row.selectedGroupId || null };
+        if (row.keywords.trim()) patchBody.keywords = row.keywords.trim();
         const res = await fetch("/api/admin/channels", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ channelId: p.channelId, groupId: row.selectedGroupId || null }),
+          body: JSON.stringify(patchBody),
         });
         const data = await res.json();
         ok = res.ok;
@@ -421,7 +425,7 @@ export default function AdminPage() {
         const res = await fetch("/api/crawl", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: crawlUrl, groupId: row.selectedGroupId || undefined }),
+          body: JSON.stringify({ url: crawlUrl, groupId: row.selectedGroupId || undefined, ...(row.keywords.trim() ? { keywords: row.keywords.trim() } : {}) }),
         });
         const data = await res.json();
         ok = res.ok;
@@ -1382,48 +1386,62 @@ export default function AdminPage() {
               <div className="mt-4">
                 <div className="flex flex-col divide-y divide-gray-100 rounded-xl border border-gray-200 overflow-hidden">
                   {bulkRows.map((row) => (
-                    <div key={row.id} className={`flex items-center gap-3 px-3 py-2.5 ${row.status === "error" ? "bg-red-50" : "bg-white"}`}>
-                      <input
-                        type="checkbox"
-                        checked={row.include}
-                        disabled={row.status !== "found"}
-                        onChange={(e) => setBulkRows((prev) => prev.map((r) => r.id === row.id ? { ...r, include: e.target.checked } : r))}
-                        className="h-4 w-4 flex-shrink-0 accent-violet-600"
-                      />
-                      {row.status === "loading" && (
-                        <span className="text-xs text-gray-400 animate-pulse">検索中... {row.input}</span>
-                      )}
-                      {row.status === "error" && (
-                        <>
-                          <span className="min-w-0 flex-1 truncate text-xs text-gray-500">{row.input}</span>
-                          <span className="text-xs text-red-500">{row.error}</span>
-                        </>
-                      )}
-                      {row.status === "found" && row.preview && (
-                        <>
-                          {row.preview.iconUrl && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={row.preview.iconUrl} alt="" className="h-8 w-8 flex-shrink-0 rounded-full object-cover" />
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <p className="truncate text-sm font-medium text-gray-900">{row.preview.name}</p>
-                              <PlatformBadge platform={row.platform ?? row.preview.platform} />
+                    <div key={row.id} className={row.status === "error" ? "bg-red-50" : "bg-white"}>
+                      <div className="flex items-center gap-3 px-3 py-2.5">
+                        <input
+                          type="checkbox"
+                          checked={row.include}
+                          disabled={row.status !== "found"}
+                          onChange={(e) => setBulkRows((prev) => prev.map((r) => r.id === row.id ? { ...r, include: e.target.checked } : r))}
+                          className="h-4 w-4 flex-shrink-0 accent-violet-600"
+                        />
+                        {row.status === "loading" && (
+                          <span className="text-xs text-gray-400 animate-pulse">検索中... {row.input}</span>
+                        )}
+                        {row.status === "error" && (
+                          <>
+                            <span className="min-w-0 flex-1 truncate text-xs text-gray-500">{row.input}</span>
+                            <span className="text-xs text-red-500">{row.error}</span>
+                          </>
+                        )}
+                        {row.status === "found" && row.preview && (
+                          <>
+                            {row.preview.iconUrl && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={row.preview.iconUrl} alt="" className="h-8 w-8 flex-shrink-0 rounded-full object-cover" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <p className="truncate text-sm font-medium text-gray-900">{row.preview.name}</p>
+                                <PlatformBadge platform={row.platform ?? row.preview.platform} />
+                              </div>
+                              <p className="text-xs text-gray-400">{row.preview.alreadyExists ? "登録済" : "新規"}</p>
                             </div>
-                            <p className="text-xs text-gray-400">{row.preview.alreadyExists ? "登録済" : "新規"}</p>
-                          </div>
-                          <select
-                            value={row.selectedGroupId}
-                            onChange={(e) => setBulkRows((prev) => prev.map((r) => r.id === row.id ? { ...r, selectedGroupId: e.target.value } : r))}
-                            className="flex-shrink-0 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-xs text-gray-700 focus:border-violet-400 focus:outline-none"
-                          >
-                            <option value="">未分類</option>
-                            {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-                          </select>
-                          {row.addStatus === "adding" && <span className="text-xs text-gray-400">登録中...</span>}
-                          {row.addStatus === "added" && <span className="text-xs text-green-600">✓</span>}
-                          {row.addStatus === "failed" && <span className="text-xs text-red-500" title={row.addError}>✕</span>}
-                        </>
+                            <select
+                              value={row.selectedGroupId}
+                              onChange={(e) => setBulkRows((prev) => prev.map((r) => r.id === row.id ? { ...r, selectedGroupId: e.target.value } : r))}
+                              className="flex-shrink-0 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-xs text-gray-700 focus:border-violet-400 focus:outline-none"
+                            >
+                              <option value="">未分類</option>
+                              {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                            </select>
+                            {row.addStatus === "adding" && <span className="text-xs text-gray-400">登録中...</span>}
+                            {row.addStatus === "added" && <span className="text-xs text-green-600">✓</span>}
+                            {row.addStatus === "failed" && <span className="text-xs text-red-500" title={row.addError}>✕</span>}
+                          </>
+                        )}
+                      </div>
+                      {row.status === "found" && !row.addStatus && (
+                        <div className="flex items-center gap-1.5 border-t border-gray-50 px-3 py-1.5">
+                          <span className="shrink-0 text-[10px] text-gray-400">キーワード</span>
+                          <input
+                            type="text"
+                            value={row.keywords}
+                            onChange={(e) => setBulkRows((prev) => prev.map((r) => r.id === row.id ? { ...r, keywords: e.target.value } : r))}
+                            placeholder="別名,英語名,略称（任意）"
+                            className="min-w-0 flex-1 rounded border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-700 placeholder-gray-300 focus:border-violet-400 focus:outline-none"
+                          />
+                        </div>
                       )}
                     </div>
                   ))}
