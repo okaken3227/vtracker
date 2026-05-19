@@ -26,7 +26,8 @@ export default async function TodayPage() {
       .from("live_graph_points")
       .select("*")
       .gte("recorded_at", todayIso)
-      .order("recorded_at", { ascending: true }),
+      .order("recorded_at", { ascending: true })
+      .limit(100000),
     supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
     supabase
       .from("superchats")

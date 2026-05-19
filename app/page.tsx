@@ -30,12 +30,14 @@ async function fetchData() {
         .from("live_graph_points")
         .select("video_id, concurrent_viewers, recorded_at")
         .gte("recorded_at", todayIso)
-        .order("recorded_at", { ascending: true }),
+        .order("recorded_at", { ascending: true })
+        .limit(100000),
       supabase
         .from("live_graph_points")
         .select("video_id, concurrent_viewers, recorded_at")
         .gte("recorded_at", since3hIso)
-        .order("recorded_at", { ascending: true }),
+        .order("recorded_at", { ascending: true })
+        .limit(100000),
     ]);
 
     return {
