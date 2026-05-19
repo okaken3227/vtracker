@@ -91,6 +91,8 @@ export default function AdminPage() {
   const [syncLog, setSyncLog] = useState<string[]>([]);
   const syncLogRef = useRef<HTMLDivElement>(null);
   const [apiUsage, setApiUsage] = useState<{ unitsUsed: number; callsCount: number; quotaLimit: number; twitchCallsCount: number; keyCount: number; perKeyUnits: number[]; quotaExceededKeys: boolean[] } | null>(null);
+  const [testKeysResult, setTestKeysResult] = useState<{ results: { label: string; ok: boolean; error?: string }[]; testedAt: string } | null>(null);
+  const [testKeysLoading, setTestKeysLoading] = useState(false);
 
   // グループ作成
   const [showNewGroup, setShowNewGroup] = useState(false);
@@ -156,6 +158,13 @@ export default function AdminPage() {
   const loadApiUsage = useCallback(async () => {
     const res = await fetch("/api/admin/api-usage").then((r) => r.json()).catch(() => null);
     if (res) setApiUsage(res);
+  }, []);
+
+  const handleTestKeys = useCallback(async () => {
+    setTestKeysLoading(true);
+    const res = await fetch("/api/admin/test-keys").then((r) => r.json()).catch(() => null);
+    setTestKeysResult(res);
+    setTestKeysLoading(false);
   }, []);
 
   const loadFeedback = useCallback(async () => {
@@ -852,6 +861,7 @@ export default function AdminPage() {
                   const pct = Math.min(100, (used / 10000) * 100);
                   const color = exceeded ? "text-red-600" : pct > 80 ? "text-amber-600" : "text-green-600";
                   const remaining = Math.max(0, 10000 - used);
+                  const testResult = testKeysResult?.results[i];
                   return (
                     <span key={i} className={`rounded border px-2 py-0.5 text-[11px] font-medium ${exceeded ? "border-red-200 bg-red-50" : "border-gray-200 bg-gray-50"}`}>
                       <span className="text-gray-400">API{i + 1}  </span>
@@ -859,9 +869,21 @@ export default function AdminPage() {
                       <span className="text-gray-300"> / 10,000</span>
                       {!exceeded && <span className="ml-1 text-gray-400">（余裕 {remaining.toLocaleString()}）</span>}
                       {exceeded && <span className="ml-1 text-red-500">枯渇</span>}
+                      {testResult && (
+                        <span className={`ml-1.5 ${testResult.ok ? "text-green-600" : "text-red-500"}`}>
+                          {testResult.ok ? "✓ 疎通OK" : `✗ ${testResult.error ?? "NG"}`}
+                        </span>
+                      )}
                     </span>
                   );
                 })}
+                <button
+                  onClick={handleTestKeys}
+                  disabled={testKeysLoading}
+                  className="rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-600 transition-colors hover:bg-blue-100 disabled:opacity-50"
+                >
+                  {testKeysLoading ? "確認中..." : "疎通確認"}
+                </button>
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-32 overflow-hidden rounded-full bg-gray-200">
