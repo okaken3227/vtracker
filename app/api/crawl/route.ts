@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { YouTubeClient } from "@/lib/youtube/client";
+import { YouTubeClient, getYouTubeApiKeys } from "@/lib/youtube/client";
 import { VTrackerCrawler } from "@/lib/crawler/index";
 import { TwitchClient } from "@/lib/twitch/client";
 import { TwitchCrawler } from "@/lib/twitch/crawler";
@@ -97,12 +97,12 @@ export async function POST(req: NextRequest) {
     }
 
     // ── YouTube ──────────────────────────────────────────────────
-    const apiKey = process.env.YOUTUBE_API_KEY;
-    if (!apiKey) {
+    const ytKeys = getYouTubeApiKeys();
+    if (ytKeys.length === 0) {
       return NextResponse.json({ error: "YOUTUBE_API_KEY is not configured" }, { status: 500 });
     }
 
-    const yt = new YouTubeClient(apiKey);
+    const yt = new YouTubeClient(ytKeys);
     const repo = new VTrackerRepository(supabase);
     const crawler = new VTrackerCrawler(yt, repo);
 

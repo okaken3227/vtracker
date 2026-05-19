@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
-import { YouTubeClient } from "@/lib/youtube/client";
+import { YouTubeClient, getYouTubeApiKeys } from "@/lib/youtube/client";
 import { extractChannel } from "@/lib/youtube/extractors";
 
 export async function GET(req: NextRequest) {
@@ -20,8 +20,8 @@ export async function POST() {
 
 async function pollChannels(): Promise<NextResponse> {
   try {
-    const apiKey = process.env.YOUTUBE_API_KEY;
-    if (!apiKey) {
+    const ytKeys = getYouTubeApiKeys();
+    if (ytKeys.length === 0) {
       return NextResponse.json({ error: "YOUTUBE_API_KEY missing" }, { status: 500 });
     }
 
@@ -35,7 +35,7 @@ async function pollChannels(): Promise<NextResponse> {
     }
 
     const channelIds = (channels as { channel_id: string }[]).map((c) => c.channel_id);
-    const yt = new YouTubeClient(apiKey);
+    const yt = new YouTubeClient(ytKeys);
     const now = new Date().toISOString();
     let updated = 0;
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { YouTubeClient, YouTubeApiError } from "@/lib/youtube/client";
+import { YouTubeClient, YouTubeApiError, getYouTubeApiKeys } from "@/lib/youtube/client";
 import { TwitchClient } from "@/lib/twitch/client";
 import { parseChannelUrl } from "@/lib/crawler/urlParser";
 import { extractChannel } from "@/lib/youtube/extractors";
@@ -83,9 +83,9 @@ export async function POST(req: NextRequest) {
   // ── YouTube ──────────────────────────────────────────────────
   const ref = parseChannelUrl(trimmed);
 
-  const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "YOUTUBE_API_KEY が未設定です" }, { status: 500 });
-  const yt = new YouTubeClient(apiKey);
+  const ytKeys = getYouTubeApiKeys();
+  if (ytKeys.length === 0) return NextResponse.json({ error: "YOUTUBE_API_KEY が未設定です" }, { status: 500 });
+  const yt = new YouTubeClient(ytKeys);
 
   // 名前検索: URLでもハンドルでもないテキストはチャンネル検索（100ユニット）
   if (!ref) {

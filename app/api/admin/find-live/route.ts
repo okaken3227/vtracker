@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
-import { YouTubeClient } from "@/lib/youtube/client";
+import { YouTubeClient, getYouTubeApiKeys } from "@/lib/youtube/client";
 import { extractVideo } from "@/lib/youtube/extractors";
 
 async function fetchChannelVideoIds(channelId: string, yt: YouTubeClient): Promise<string[]> {
@@ -19,8 +19,8 @@ async function fetchChannelVideoIds(channelId: string, yt: YouTubeClient): Promi
 
 export async function POST() {
   try {
-    const apiKey = process.env.YOUTUBE_API_KEY;
-    if (!apiKey) return NextResponse.json({ error: "YOUTUBE_API_KEY missing" }, { status: 500 });
+    const ytKeys = getYouTubeApiKeys();
+    if (ytKeys.length === 0) return NextResponse.json({ error: "YOUTUBE_API_KEY missing" }, { status: 500 });
 
     const { data: channelsData } = await supabase
       .from("channels")
@@ -29,7 +29,7 @@ export async function POST() {
     if (channels.length === 0) return NextResponse.json({ found: 0, lives: [] });
 
     const channelNameMap = new Map(channels.map((c) => [c.channel_id, c.name]));
-    const yt = new YouTubeClient(apiKey);
+    const yt = new YouTubeClient(ytKeys);
 
     // playlistItems で最新動画IDを収集（1ユニット/チャンネル）
     const rssResults = await Promise.allSettled(

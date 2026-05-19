@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { YouTubeClient } from "@/lib/youtube/client";
+import { YouTubeClient, getYouTubeApiKeys } from "@/lib/youtube/client";
 
 export type BulkSearchResult = {
   query: string;
@@ -25,12 +25,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey) {
+  const ytKeys = getYouTubeApiKeys();
+  if (ytKeys.length === 0) {
     return NextResponse.json({ error: "YOUTUBE_API_KEY missing" }, { status: 500 });
   }
 
-  const yt = new YouTubeClient(apiKey);
+  const yt = new YouTubeClient(ytKeys);
   const results: BulkSearchResult[] = [];
   const errors: string[] = [];
 

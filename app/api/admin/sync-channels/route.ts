@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { YouTubeClient } from "@/lib/youtube/client";
+import { YouTubeClient, getYouTubeApiKeys } from "@/lib/youtube/client";
 import { TwitchClient } from "@/lib/twitch/client";
 import { supabase } from "@/lib/supabase/client";
 import { extractChannel } from "@/lib/youtube/extractors";
@@ -7,8 +7,8 @@ import { extractChannel } from "@/lib/youtube/extractors";
 export const dynamic = "force-dynamic";
 
 export async function POST() {
-  const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey) {
+  const ytKeys = getYouTubeApiKeys();
+  if (ytKeys.length === 0) {
     return NextResponse.json({ error: "YOUTUBE_API_KEY not set" }, { status: 500 });
   }
 
@@ -49,7 +49,7 @@ export async function POST() {
           message: `対象: YouTube ${ytChannels.length}件 / Twitch ${twChannels.length}件`,
         });
 
-        const yt = new YouTubeClient(apiKey!);
+        const yt = new YouTubeClient(ytKeys);
         let updated = 0;
         let errors = 0;
 

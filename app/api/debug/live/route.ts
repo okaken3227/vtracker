@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
-import { YouTubeClient } from "@/lib/youtube/client";
+import { YouTubeClient, getYouTubeApiKeys } from "@/lib/youtube/client";
 import { extractVideo } from "@/lib/youtube/extractors";
 
 async function fetchChannelVideoIds(channelId: string, yt: YouTubeClient): Promise<{ ids: string[]; ok: boolean; error?: string }> {
@@ -19,10 +19,10 @@ async function fetchChannelVideoIds(channelId: string, yt: YouTubeClient): Promi
 }
 
 export async function POST() {
-  const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "YOUTUBE_API_KEY missing" }, { status: 500 });
+  const ytKeys = getYouTubeApiKeys();
+  if (ytKeys.length === 0) return NextResponse.json({ error: "YOUTUBE_API_KEY missing" }, { status: 500 });
 
-  const yt = new YouTubeClient(apiKey);
+  const yt = new YouTubeClient(ytKeys);
 
   // Step 1: チャンネル一覧取得
   const { data: channelsData } = await supabase.from("channels").select("channel_id, name");

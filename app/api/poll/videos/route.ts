@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
-import { YouTubeClient } from "@/lib/youtube/client";
+import { YouTubeClient, getYouTubeApiKeys } from "@/lib/youtube/client";
 import { TwitchClient } from "@/lib/twitch/client";
 import { extractVideo } from "@/lib/youtube/extractors";
 import { extractTwitchStream } from "@/lib/twitch/extractors";
@@ -45,8 +45,8 @@ export async function POST() {
 
 async function pollVideos(): Promise<NextResponse> {
   try {
-    const apiKey = process.env.YOUTUBE_API_KEY;
-    if (!apiKey) {
+    const ytKeys = getYouTubeApiKeys();
+    if (ytKeys.length === 0) {
       return NextResponse.json({ error: "YOUTUBE_API_KEY missing" }, { status: 500 });
     }
 
@@ -152,7 +152,7 @@ async function pollVideos(): Promise<NextResponse> {
       return NextResponse.json({ checked: 0, started: twitchStarted, discovered: twitchStarted });
     }
 
-    const yt = new YouTubeClient(apiKey);
+    const yt = new YouTubeClient(ytKeys);
     let started = 0;
     let discovered = 0;
     let checked = 0;

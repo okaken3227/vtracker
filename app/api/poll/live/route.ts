@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
-import { YouTubeClient } from "@/lib/youtube/client";
+import { YouTubeClient, getYouTubeApiKeys } from "@/lib/youtube/client";
 import { TwitchClient } from "@/lib/twitch/client";
 import { extractTwitchStream } from "@/lib/twitch/extractors";
 import type { Video } from "@/lib/types";
@@ -57,11 +57,11 @@ async function pollLive(targetVideoId: string | null): Promise<NextResponse> {
 
     // ── YouTube ──────────────────────────────────────────────────
     if (ytVideos.length > 0) {
-      const apiKey = process.env.YOUTUBE_API_KEY;
-      if (!apiKey) {
+      const ytKeys = getYouTubeApiKeys();
+      if (ytKeys.length === 0) {
         console.error("[poll/live] YOUTUBE_API_KEY missing");
       } else {
-        const yt = new YouTubeClient(apiKey);
+        const yt = new YouTubeClient(ytKeys);
         const videoIds = ytVideos.map((v) => v.video_id);
 
         for (let i = 0; i < videoIds.length; i += 50) {
@@ -165,8 +165,8 @@ async function pollLive(targetVideoId: string | null): Promise<NextResponse> {
     // ── スパチャ収集（YouTube のみ）──────────────────────────────
     let newSuperchats = 0;
     if (liveChatIds.length > 0) {
-      const apiKey = process.env.YOUTUBE_API_KEY!;
-      const yt = new YouTubeClient(apiKey);
+      const ytKeys = getYouTubeApiKeys();
+      const yt = new YouTubeClient(ytKeys);
 
       let rates: Record<string, number> = {};
       try {

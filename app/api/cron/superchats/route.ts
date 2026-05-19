@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
-import { YouTubeClient } from "@/lib/youtube/client";
+import { YouTubeClient, getYouTubeApiKeys } from "@/lib/youtube/client";
 import type { Video } from "@/lib/types";
 
 export async function GET(req: NextRequest) {
@@ -12,8 +12,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey) {
+  const ytKeys = getYouTubeApiKeys();
+  if (ytKeys.length === 0) {
     return NextResponse.json({ error: "YOUTUBE_API_KEY missing" }, { status: 500 });
   }
 
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   }
 
   const videos = liveVideos as Pick<Video, "video_id" | "live_chat_id">[];
-  const yt = new YouTubeClient(apiKey);
+  const yt = new YouTubeClient(ytKeys);
 
   // 為替レート取得
   let rates: Record<string, number> = {};

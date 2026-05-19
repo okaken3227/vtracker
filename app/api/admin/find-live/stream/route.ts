@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
-import { YouTubeClient } from "@/lib/youtube/client";
+import { YouTubeClient, getYouTubeApiKeys } from "@/lib/youtube/client";
 import { TwitchClient } from "@/lib/twitch/client";
 import { extractVideo } from "@/lib/youtube/extractors";
 import { extractTwitchStream } from "@/lib/twitch/extractors";
@@ -58,11 +58,11 @@ export async function POST() {
 
         // ── YouTube ──────────────────────────────────────────────
         if (ytChannels.length > 0) {
-          const apiKey = process.env.YOUTUBE_API_KEY;
-          if (!apiKey) {
+          const ytKeys = getYouTubeApiKeys();
+          if (ytKeys.length === 0) {
             send({ type: "error", message: "YOUTUBE_API_KEY missing" });
           } else {
-            const yt = new YouTubeClient(apiKey);
+            const yt = new YouTubeClient(ytKeys);
 
             // RSS取得（並列）
             const allVideoIds = new Set<string>();
