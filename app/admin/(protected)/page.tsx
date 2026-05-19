@@ -1653,7 +1653,7 @@ export default function AdminPage() {
                     }
 
                     return (
-                      <div className="mb-2 ml-9 rounded-xl border border-violet-100 bg-violet-50 p-3 space-y-3">
+                      <div className="mb-2 ml-0 sm:ml-9 rounded-xl border border-violet-100 bg-violet-50 p-3 space-y-3">
                         {/* キーワード編集 */}
                         <div>
                           <p className="mb-1 text-xs text-gray-500">
@@ -1682,10 +1682,10 @@ export default function AdminPage() {
                           )}
                         </div>
 
-                        {/* YouTube / Twitch カード横並び */}
-                        <div className="flex gap-2 items-start">
+                        {/* YouTube / Twitch カード */}
+                        <div className="flex flex-col sm:flex-row gap-2 items-stretch">
                           <ChannelCard c={ytCh} label="YouTube" showUnlink={!!linked} />
-                          <div className="flex flex-col items-center justify-center pt-7">
+                          <div className="flex items-center justify-center sm:pt-7">
                             <span className="text-gray-300 text-sm">⟷</span>
                           </div>
                           <ChannelCard c={twCh} label="Twitch" showUnlink={!!linked} />
