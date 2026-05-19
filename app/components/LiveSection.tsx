@@ -147,7 +147,7 @@ export default function LiveSection({
             <button
               onClick={handleRefresh}
               disabled={refreshState === "loading"}
-              className={`ml-auto flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-60 ${
+              className={`ml-auto flex w-20 shrink-0 items-center justify-center gap-1.5 rounded-full py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
                 refreshState === "done"
                   ? "bg-green-50 text-green-600"
                   : refreshState === "loading"
@@ -157,10 +157,10 @@ export default function LiveSection({
             >
               {refreshState === "done" ? (
                 <>
-                  <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg className="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 8l3.5 3.5L13 5" />
                   </svg>
-                  更新完了
+                  完了
                 </>
               ) : (
                 <>
@@ -168,7 +168,7 @@ export default function LiveSection({
                     <path d="M13.5 8a5.5 5.5 0 1 1-1.1-3.3" />
                     <path d="M13.5 2.5v3h-3" />
                   </svg>
-                  {refreshState === "loading" ? "更新中…" : "更新"}
+                  {refreshState === "loading" ? "更新中" : "更新"}
                 </>
               )}
             </button>
