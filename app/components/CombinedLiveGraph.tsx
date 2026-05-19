@@ -100,6 +100,21 @@ function CustomTooltip({
   );
 }
 
+const Y_MAX_PRESETS: { label: string; value: number | null }[] = [
+  { label: "自動", value: null },
+  { label: "5K", value: 5000 },
+  { label: "1万", value: 10000 },
+  { label: "5万", value: 50000 },
+  { label: "10万", value: 100000 },
+];
+
+const Y_MIN_PRESETS: { label: string; value: number | null }[] = [
+  { label: "0", value: null },
+  { label: "1K", value: 1000 },
+  { label: "5K", value: 5000 },
+  { label: "1万", value: 10000 },
+];
+
 export default function CombinedLiveGraph({
   data,
   lines,
@@ -110,6 +125,8 @@ export default function CombinedLiveGraph({
   graphHeight?: number;
 }) {
   const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
+  const [yMax, setYMax] = useState<number | null>(null);
+  const [yMin, setYMin] = useState<number | null>(null);
 
   function toggleKey(key: string) {
     setHiddenKeys((prev) => {
@@ -124,14 +141,54 @@ export default function CombinedLiveGraph({
   const visibleLines = lines.filter((l) => !hiddenKeys.has(l.key));
   const { currentTotal, peakTotal, currentByKey } = computeStats(data, visibleLines);
 
+  // Trim X-axis to rows where at least one visible line has data
+  const chartData = visibleLines.length > 0
+    ? data.filter((row) => visibleLines.some((l) => row[l.key] != null))
+    : data;
+
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
 
       {/* ── 統計ヘッダー ── */}
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
           <span className="text-xs font-semibold text-gray-700">同時視聴者数</span>
+        </div>
+        {/* Y軸上限プリセット */}
+        <div className="flex items-center gap-0.5 rounded-full bg-gray-100 p-0.5">
+          {Y_MAX_PRESETS.map((p) => (
+            <button
+              key={p.label}
+              onClick={() => setYMax(p.value)}
+              className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-all ${
+                yMax === p.value
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {/* Y軸下限プリセット */}
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-gray-400">最小</span>
+          <div className="flex items-center gap-0.5 rounded-full bg-gray-100 p-0.5">
+            {Y_MIN_PRESETS.map((p) => (
+              <button
+                key={p.label}
+                onClick={() => setYMin(p.value)}
+                className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-all ${
+                  yMin === p.value
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="ml-auto flex items-center gap-3">
           <div className="text-right">
@@ -152,7 +209,7 @@ export default function CombinedLiveGraph({
 
       {/* ── チャート ── */}
       <ResponsiveContainer width="100%" height={graphHeight}>
-        <ComposedChart data={data} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
+        <ComposedChart data={chartData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
           <defs>
             {lines.map(({ key, color }) => (
               <linearGradient key={key} id={`grad-${key}`} x1="0" y1="0" x2="0" y2="1">
@@ -175,6 +232,8 @@ export default function CombinedLiveGraph({
             axisLine={false}
             tickLine={false}
             width={44}
+            domain={[yMin ?? 0, yMax ?? "auto"]}
+            allowDataOverflow={false}
           />
           <Tooltip
             content={(props) => (
