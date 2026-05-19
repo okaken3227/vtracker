@@ -5,6 +5,7 @@ import { buildChart } from "@/lib/buildChart";
 import { fetchRatesToJPY } from "@/lib/exchange";
 import { JST_OFFSET_MS, getJstMidnightMs, offsetDate, getTodayJST } from "@/lib/jst";
 import ViewerChart from "@/app/components/ViewerChart";
+import AutoRefresher from "@/app/components/AutoRefresher";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +59,7 @@ export default async function TodayPage() {
 
   return (
     <div>
+      <AutoRefresher intervalMs={60000} />
       {/* ヘッダー */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>

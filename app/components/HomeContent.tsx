@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import type { Channel, Video, Group } from "@/lib/types";
 import { GRAPH_COLORS, NICE_BUCKET_MS } from "@/lib/chartConfig";
+import AutoRefresher from "./AutoRefresher";
 import ChannelCard from "./ChannelCard";
 import VideoCard from "./VideoCard";
 import Marquee from "./Marquee";
@@ -244,6 +245,7 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
 
   return (
     <div>
+      {liveVideos.length > 0 && <AutoRefresher intervalMs={60000} />}
       {error && (
           <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
             DB エラー: {error}
