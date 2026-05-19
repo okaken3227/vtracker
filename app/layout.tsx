@@ -8,6 +8,7 @@ import DesktopSidebar from "./components/DesktopSidebar";
 import SidebarProvider from "./components/SidebarProvider";
 import { GroupsProvider } from "./components/GroupsProvider";
 import { supabase } from "@/lib/supabase/client";
+import { cacheLife } from "next/cache";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -53,6 +54,17 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
 };
 
+async function fetchLayoutGroups() {
+  "use cache";
+  cacheLife("minutes");
+  const { data } = await supabase
+    .from("groups")
+    .select("id, name, color, icon_url, sort_order")
+    .order("sort_order", { ascending: true, nullsFirst: false })
+    .order("name");
+  return data ?? [];
+}
+
 export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: "#faf8ff",
@@ -63,11 +75,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { data: groups } = await supabase
-    .from("groups")
-    .select("id, name, color, icon_url, sort_order")
-    .order("sort_order", { ascending: true, nullsFirst: false })
-    .order("name");
+  const groups = await fetchLayoutGroups();
 
   return (
     <html
@@ -81,7 +89,7 @@ export default async function RootLayout({
         strategy="afterInteractive"
       />
       <body className="text-gray-900">
-        <GroupsProvider groups={groups ?? []}>
+        <GroupsProvider groups={groups}>
           <SidebarProvider>
             <div className="sticky top-0 z-30 shrink-0">
               <Header />

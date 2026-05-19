@@ -18,35 +18,25 @@ type GraphPoint = { video_id: string; concurrent_viewers: number; recorded_at: s
 
 async function fetchData() {
   const jstMidnightMs = getJstMidnightMs();
-  const since3h = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+  const todayIso = new Date(jstMidnightMs).toISOString();
+  const since3hIso = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
   try {
-    const [chRes, vRes, scRes, grRes, gpRes] = await Promise.all([
+    const [chRes, vRes, scRes, grRes, gpRes, lpRes] = await Promise.all([
       supabase.from("channels").select("*").order("subscriber_count", { ascending: false }),
       supabase.from("videos").select("*").order("start_time", { ascending: false }).limit(500),
-      supabase.from("superchats").select("video_id, amount, amount_jpy, currency").limit(5000),
+      supabase.from("superchats").select("video_id, amount, amount_jpy, currency").gte("published_at", todayIso).limit(2000),
       supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
       supabase
         .from("live_graph_points")
         .select("video_id, concurrent_viewers, recorded_at")
-        .gte("recorded_at", new Date(jstMidnightMs).toISOString())
+        .gte("recorded_at", todayIso)
         .order("recorded_at", { ascending: true }),
-    ]);
-
-    // ライブ中の動画IDを取得し、24時間窓でグラフポイントを別途取得
-    const liveVideoIds = ((vRes.data ?? []) as Video[])
-      .filter((v) => v.status === "live")
-      .map((v) => v.video_id);
-
-    let livePoints: GraphPoint[] = [];
-    if (liveVideoIds.length > 0) {
-      const { data: lpData } = await supabase
+      supabase
         .from("live_graph_points")
         .select("video_id, concurrent_viewers, recorded_at")
-        .in("video_id", liveVideoIds)
-        .gte("recorded_at", since3h)
-        .order("recorded_at", { ascending: true });
-      livePoints = (lpData ?? []) as GraphPoint[];
-    }
+        .gte("recorded_at", since3hIso)
+        .order("recorded_at", { ascending: true }),
+    ]);
 
     return {
       channels: (chRes.data ?? []) as Channel[],
@@ -54,10 +44,10 @@ async function fetchData() {
       superchats: (scRes.data ?? []) as SCRow[],
       groups: (grRes.data ?? []) as Group[],
       todayPoints: (gpRes.data ?? []) as GraphPoint[],
-      livePoints,
+      livePoints: (lpRes.data ?? []) as GraphPoint[],
       error:
         chRes.error?.message ?? vRes.error?.message ??
-        scRes.error?.message ?? grRes.error?.message ?? gpRes.error?.message ?? null,
+        scRes.error?.message ?? grRes.error?.message ?? gpRes.error?.message ?? lpRes.error?.message ?? null,
     };
   } catch (e) {
     return { channels: [], videos: [], superchats: [], groups: [], todayPoints: [], livePoints: [], error: String(e) };
