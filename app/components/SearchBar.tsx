@@ -144,7 +144,7 @@ export default function SearchBar({
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder="チャンネルを検索..."
-          className="min-w-0 flex-1 bg-transparent text-sm text-gray-900 outline-none placeholder:text-gray-400"
+          className="min-w-0 flex-1 bg-transparent text-base text-gray-900 outline-none placeholder:text-gray-400 sm:text-sm"
           autoComplete="off"
           spellCheck={false}
           // eslint-disable-next-line jsx-a11y/no-autofocus
