@@ -78,6 +78,19 @@ const RANK_STYLES = [
   "bg-amber-700/80 text-white",
 ];
 
+const Y_MAX_PRESETS = [
+  { label: "5K", value: 5000 },
+  { label: "1万", value: 10000 },
+  { label: "5万", value: 50000 },
+  { label: "10万", value: 100000 },
+];
+
+const Y_MIN_PRESETS = [
+  { label: "1K", value: 1000 },
+  { label: "5K", value: 5000 },
+  { label: "1万", value: 10000 },
+];
+
 type PeakSortKey = "peak" | "time" | "sc";
 
 const PEAK_SORT_LABELS: Record<PeakSortKey, string> = {
@@ -179,6 +192,8 @@ export default function ViewerChart({ data, streams }: Props) {
   const [filterGroup, setFilterGroup] = useState<string | null>(null);
   const [filterAnimRev, setFilterAnimRev] = useState(0);
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
+  const [yMax, setYMax] = useState<number | null>(null);
+  const [yMin, setYMin] = useState<number | null>(null);
 
   const groupEntries = Array.from(
     new Map(
@@ -206,6 +221,10 @@ export default function ViewerChart({ data, streams }: Props) {
     : streams;
 
   const visibleStreams = groupFiltered.filter((s) => !hiddenIds.has(s.videoId));
+
+  const chartData = visibleStreams.length > 0
+    ? data.filter((row) => visibleStreams.some((s) => row[s.videoId] != null))
+    : data;
 
   const lastHoveredVideoId = { current: "" };
 
@@ -275,9 +294,59 @@ export default function ViewerChart({ data, streams }: Props) {
         </div>
       )}
 
+      {/* Y軸スケールコントロール */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => { setYMax(null); setYMin(null); }}
+          className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-all border ${
+            yMax === null && yMin === null
+              ? "border-gray-300 bg-white text-gray-900 shadow-sm"
+              : "border-gray-200 text-gray-400 hover:text-gray-600"
+          }`}
+        >
+          自動
+        </button>
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-gray-400">最大</span>
+          <div className="flex items-center gap-0.5 rounded-full bg-gray-100 p-0.5">
+            {Y_MAX_PRESETS.map((p) => (
+              <button
+                key={p.label}
+                onClick={() => setYMax(yMax === p.value ? null : p.value)}
+                className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-all ${
+                  yMax === p.value
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-gray-400">最小</span>
+          <div className="flex items-center gap-0.5 rounded-full bg-gray-100 p-0.5">
+            {Y_MIN_PRESETS.map((p) => (
+              <button
+                key={p.label}
+                onClick={() => setYMin(yMin === p.value ? null : p.value)}
+                className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-all ${
+                  yMin === p.value
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <ResponsiveContainer width="100%" height={400}>
         <LineChart
-          data={data}
+          data={chartData}
           onClick={handleChartClick}
           style={{ cursor: "pointer" }}
           margin={{ top: 20, right: 24, bottom: 8, left: 8 }}
@@ -296,6 +365,8 @@ export default function ViewerChart({ data, streams }: Props) {
             axisLine={false}
             tickLine={false}
             width={64}
+            domain={[yMin ?? 0, yMax ?? "auto"]}
+            allowDataOverflow={false}
           />
           <Tooltip
             content={(props) => {
