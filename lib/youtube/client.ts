@@ -30,6 +30,7 @@ async function ytFetch<T>(
   apiKey: string,
   endpoint: string,
   params: Record<string, string>,
+  keyIndex: 1 | 2 | 3 = 1,
 ): Promise<T> {
   const url = new URL(`${BASE_URL}/${endpoint}`);
   url.searchParams.set("key", apiKey);
@@ -42,7 +43,7 @@ async function ytFetch<T>(
     const body = await res.text().catch(() => "");
     throw new YouTubeApiError(res.status, endpoint, body);
   }
-  trackApiCall(endpoint).catch(() => {});
+  trackApiCall(endpoint, keyIndex).catch(() => {});
   return res.json() as Promise<T>;
 }
 
@@ -69,7 +70,7 @@ export class YouTubeClient {
     for (let idx = 0; idx < this.keys.length; idx++) {
       const key = this.keys[idx];
       try {
-        return await ytFetch<T>(key, endpoint, params);
+        return await ytFetch<T>(key, endpoint, params, (idx + 1) as 1 | 2 | 3);
       } catch (err) {
         if (isQuotaExceeded(err)) {
           const keyNum = (idx + 1) as 1 | 2 | 3;

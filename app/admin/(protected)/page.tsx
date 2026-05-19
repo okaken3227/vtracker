@@ -89,7 +89,7 @@ export default function AdminPage() {
   const [syncStatus, setSyncStatus] = useState("");
   const [syncLog, setSyncLog] = useState<string[]>([]);
   const syncLogRef = useRef<HTMLDivElement>(null);
-  const [apiUsage, setApiUsage] = useState<{ unitsUsed: number; callsCount: number; quotaLimit: number; twitchCallsCount: number; keyCount: number; quotaExceededKeys: boolean[] } | null>(null);
+  const [apiUsage, setApiUsage] = useState<{ unitsUsed: number; callsCount: number; quotaLimit: number; twitchCallsCount: number; keyCount: number; perKeyUnits: number[]; quotaExceededKeys: boolean[] } | null>(null);
 
   // グループ作成
   const [showNewGroup, setShowNewGroup] = useState(false);
@@ -840,17 +840,21 @@ export default function AdminPage() {
                 </span>
                 <button onClick={loadApiUsage} className="text-xs text-gray-300 hover:text-gray-500">↻</button>
               </div>
-              {/* キー別ステータス */}
-              <div className="flex items-center gap-1.5">
+              {/* キー別使用量 */}
+              <div className="flex flex-wrap items-center gap-1.5">
                 {Array.from({ length: apiUsage.keyCount }, (_, i) => {
+                  const used = apiUsage.perKeyUnits[i] ?? 0;
                   const exceeded = apiUsage.quotaExceededKeys[i] ?? false;
+                  const pct = Math.min(100, (used / 10000) * 100);
+                  const color = exceeded ? "text-red-600" : pct > 80 ? "text-amber-600" : "text-green-600";
+                  const remaining = Math.max(0, 10000 - used);
                   return (
-                    <span
-                      key={i}
-                      title={exceeded ? `キー${i + 1}: クォータ超過` : `キー${i + 1}: 正常`}
-                      className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${exceeded ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}
-                    >
-                      KEY{i + 1} {exceeded ? "✕" : "✓"}
+                    <span key={i} className={`rounded border px-2 py-0.5 text-[11px] font-medium ${exceeded ? "border-red-200 bg-red-50" : "border-gray-200 bg-gray-50"}`}>
+                      <span className="text-gray-400">API{i + 1}  </span>
+                      <span className={color}>{used.toLocaleString()}</span>
+                      <span className="text-gray-300"> / 10,000</span>
+                      {!exceeded && <span className="ml-1 text-gray-400">（余裕 {remaining.toLocaleString()}）</span>}
+                      {exceeded && <span className="ml-1 text-red-500">枯渇</span>}
                     </span>
                   );
                 })}

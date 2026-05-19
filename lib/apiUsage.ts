@@ -8,25 +8,29 @@ const ENDPOINT_UNITS: Record<string, number> = {
   "search": 100,
 };
 
-export async function trackApiCall(endpoint: string): Promise<void> {
+export async function trackApiCall(endpoint: string, keyIndex: 1 | 2 | 3 = 1): Promise<void> {
   const units = ENDPOINT_UNITS[endpoint] ?? 1;
   const date = new Date().toISOString().split("T")[0];
+  const unitsCol = keyIndex === 2 ? "units_used_key2" : keyIndex === 3 ? "units_used_key3" : "units_used";
   try {
     const { data } = await supabase
       .from("api_usage_daily")
-      .select("units_used, calls_count")
+      .select("units_used, units_used_key2, units_used_key3, calls_count")
       .eq("date", date)
       .maybeSingle();
 
     if (data) {
       await supabase
         .from("api_usage_daily")
-        .update({ units_used: data.units_used + units, calls_count: data.calls_count + 1 })
+        .update({
+          [unitsCol]: ((data[unitsCol as keyof typeof data] as number) ?? 0) + units,
+          calls_count: data.calls_count + 1,
+        })
         .eq("date", date);
     } else {
       await supabase
         .from("api_usage_daily")
-        .insert({ date, units_used: units, calls_count: 1 });
+        .insert({ date, units_used: 0, units_used_key2: 0, units_used_key3: 0, calls_count: 1, [unitsCol]: units });
     }
   } catch {
     // tracking failure must not break the main flow
