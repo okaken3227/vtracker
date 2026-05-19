@@ -21,7 +21,7 @@ export default async function TodayPage() {
 
   const [chRes, vRes, gpRes, grRes, scRes] = await Promise.all([
     supabase.from("channels").select("*"),
-    supabase.from("videos").select("*"),
+    supabase.from("videos").select("*").order("start_time", { ascending: false, nullsFirst: false }).limit(10000),
     supabase
       .from("live_graph_points")
       .select("*")

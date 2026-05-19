@@ -34,13 +34,14 @@ export default async function TimelinePage({
 
   const [chRes, vRes, gpRes, grRes, scRes] = await Promise.all([
     supabase.from("channels").select("*"),
-    supabase.from("videos").select("*"),
+    supabase.from("videos").select("*").order("start_time", { ascending: false, nullsFirst: false }).limit(10000),
     supabase
       .from("live_graph_points")
       .select("*")
       .gte("recorded_at", fromIso)
       .lt("recorded_at", toIso)
-      .order("recorded_at", { ascending: true }),
+      .order("recorded_at", { ascending: true })
+      .limit(100000),
     supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
     supabase
       .from("superchats")
