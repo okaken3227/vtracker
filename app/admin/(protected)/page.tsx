@@ -89,7 +89,7 @@ export default function AdminPage() {
   const [syncStatus, setSyncStatus] = useState("");
   const [syncLog, setSyncLog] = useState<string[]>([]);
   const syncLogRef = useRef<HTMLDivElement>(null);
-  const [apiUsage, setApiUsage] = useState<{ unitsUsed: number; callsCount: number; quotaLimit: number; twitchCallsCount: number } | null>(null);
+  const [apiUsage, setApiUsage] = useState<{ unitsUsed: number; callsCount: number; quotaLimit: number; twitchCallsCount: number; keyCount: number; quotaExceededKeys: boolean[] } | null>(null);
 
   // グループ作成
   const [showNewGroup, setShowNewGroup] = useState(false);
@@ -839,6 +839,21 @@ export default function AdminPage() {
                   <span className="ml-1 text-gray-400">（{apiUsage.callsCount}回）</span>
                 </span>
                 <button onClick={loadApiUsage} className="text-xs text-gray-300 hover:text-gray-500">↻</button>
+              </div>
+              {/* キー別ステータス */}
+              <div className="flex items-center gap-1.5">
+                {Array.from({ length: apiUsage.keyCount }, (_, i) => {
+                  const exceeded = apiUsage.quotaExceededKeys[i] ?? false;
+                  return (
+                    <span
+                      key={i}
+                      title={exceeded ? `キー${i + 1}: クォータ超過` : `キー${i + 1}: 正常`}
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${exceeded ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}
+                    >
+                      KEY{i + 1} {exceeded ? "✕" : "✓"}
+                    </span>
+                  );
+                })}
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-32 overflow-hidden rounded-full bg-gray-200">

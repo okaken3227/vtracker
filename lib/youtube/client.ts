@@ -5,7 +5,7 @@ import type {
   YtSearchResponse,
   YtPlaylistItemsResponse,
 } from "./types";
-import { trackApiCall } from "../apiUsage";
+import { trackApiCall, trackQuotaExceeded } from "../apiUsage";
 
 const BASE_URL = "https://www.googleapis.com/youtube/v3";
 
@@ -66,12 +66,15 @@ export class YouTubeClient {
 
   private async fetch<T>(endpoint: string, params: Record<string, string>): Promise<T> {
     let lastError: unknown;
-    for (const key of this.keys) {
+    for (let idx = 0; idx < this.keys.length; idx++) {
+      const key = this.keys[idx];
       try {
         return await ytFetch<T>(key, endpoint, params);
       } catch (err) {
         if (isQuotaExceeded(err)) {
-          console.warn(`[YouTubeClient] quota exceeded on key ...${key.slice(-4)}, trying next`);
+          const keyNum = (idx + 1) as 1 | 2 | 3;
+          console.warn(`[YouTubeClient] quota exceeded on key #${keyNum}, trying next`);
+          trackQuotaExceeded(keyNum).catch(() => {});
           lastError = err;
           continue;
         }

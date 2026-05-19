@@ -33,6 +33,22 @@ export async function trackApiCall(endpoint: string): Promise<void> {
   }
 }
 
+/** クォータ超過したキー番号（1-based）を記録する */
+export async function trackQuotaExceeded(keyIndex: 1 | 2 | 3): Promise<void> {
+  const date = new Date().toISOString().split("T")[0];
+  const col = keyIndex === 1 ? "quota_exceeded_key1" : keyIndex === 2 ? "quota_exceeded_key2" : "quota_exceeded_key3";
+  try {
+    const { data } = await supabase.from("api_usage_daily").select("date").eq("date", date).maybeSingle();
+    if (data) {
+      await supabase.from("api_usage_daily").update({ [col]: true }).eq("date", date);
+    } else {
+      await supabase.from("api_usage_daily").insert({ date, units_used: 0, calls_count: 0, [col]: true });
+    }
+  } catch {
+    // tracking failure must not break the main flow
+  }
+}
+
 export async function trackTwitchApiCall(): Promise<void> {
   const date = new Date().toISOString().split("T")[0];
   try {
