@@ -8,7 +8,7 @@ import DesktopSidebar from "./components/DesktopSidebar";
 import SidebarProvider from "./components/SidebarProvider";
 import { GroupsProvider } from "./components/GroupsProvider";
 import { supabase } from "@/lib/supabase/client";
-import { cacheLife } from "next/cache";
+import { unstable_cache } from "next/cache";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -54,16 +54,18 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
 };
 
-async function fetchLayoutGroups() {
-  "use cache";
-  cacheLife("minutes");
-  const { data } = await supabase
-    .from("groups")
-    .select("id, name, color, icon_url, sort_order")
-    .order("sort_order", { ascending: true, nullsFirst: false })
-    .order("name");
-  return data ?? [];
-}
+const fetchLayoutGroups = unstable_cache(
+  async () => {
+    const { data } = await supabase
+      .from("groups")
+      .select("id, name, color, icon_url, sort_order")
+      .order("sort_order", { ascending: true, nullsFirst: false })
+      .order("name");
+    return data ?? [];
+  },
+  ["layout-groups"],
+  { revalidate: 60 },
+);
 
 export const viewport: Viewport = {
   viewportFit: "cover",
