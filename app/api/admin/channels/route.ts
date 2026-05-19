@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
+import { requireAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const authError = requireAdmin(req);
+  if (authError) return authError;
   const { data, error } = await supabase
     .from("channels")
     .select("channel_id, name, group_id, icon_url, platform, linked_channel_id, custom_url, color, keywords")
@@ -13,6 +16,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
+  const authError = requireAdmin(req);
+  if (authError) return authError;
   const body = await req.json();
   const { channelId, groupId, linkedChannelId, color, keywords } = body as {
     channelId?: string;
@@ -106,6 +111,8 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const authError = requireAdmin(req);
+  if (authError) return authError;
   const { channelId } = await req.json();
   if (!channelId) {
     return NextResponse.json({ error: "channelId は必須です" }, { status: 400 });

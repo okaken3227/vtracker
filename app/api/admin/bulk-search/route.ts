@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { YouTubeClient, getYouTubeApiKeys } from "@/lib/youtube/client";
+import { requireAdmin } from "@/lib/admin-auth";
 
 export type BulkSearchResult = {
   query: string;
@@ -13,6 +14,8 @@ export type BulkSearchResult = {
 const MAX_PER_REQUEST = 20;
 
 export async function POST(req: NextRequest) {
+  const authError = requireAdmin(req);
+  if (authError) return authError;
   const { names, suffix } = await req.json() as { names: string[]; suffix?: string };
 
   if (!Array.isArray(names) || names.length === 0) {

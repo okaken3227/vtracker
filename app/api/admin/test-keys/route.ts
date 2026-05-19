@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/admin-auth";
 
 const BASE_URL = "https://www.googleapis.com/youtube/v3";
 // 既知のチャンネルID（YouTube公式）で最小コストの疎通確認
@@ -23,7 +24,9 @@ async function testKey(key: string, label: string): Promise<{ label: string; ok:
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const authError = requireAdmin(req);
+  if (authError) return authError;
   const keyEnvs = [
     { env: process.env.YOUTUBE_API_KEY, label: "KEY_1 (YOUTUBE_API_KEY)" },
     { env: process.env.YOUTUBE_API_KEY_2, label: "KEY_2 (YOUTUBE_API_KEY_2)" },

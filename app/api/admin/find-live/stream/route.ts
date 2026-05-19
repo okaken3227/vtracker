@@ -1,5 +1,7 @@
+import { NextRequest } from "next/server";
 import { supabase } from "@/lib/supabase/client";
 import { YouTubeClient, getYouTubeApiKeys } from "@/lib/youtube/client";
+import { requireAdmin } from "@/lib/admin-auth";
 import { TwitchClient } from "@/lib/twitch/client";
 import { extractVideo } from "@/lib/youtube/extractors";
 import { extractTwitchStream } from "@/lib/twitch/extractors";
@@ -16,7 +18,9 @@ type LiveEntry = {
   url?: string;
 };
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const authError = requireAdmin(req);
+  if (authError) return authError;
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({

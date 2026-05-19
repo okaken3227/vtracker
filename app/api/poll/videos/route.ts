@@ -78,14 +78,18 @@ async function pollVideos(): Promise<NextResponse> {
             const batch = twitchChannelIds.slice(i, i + 100);
             const streamsRes = await tw.streams({ user_id: batch });
 
-            for (const stream of streamsRes.data) {
-              const { data: existing } = await supabase
-                .from("videos")
-                .select("video_id, status")
-                .eq("video_id", stream.id)
-                .maybeSingle();
+            const streamIds = streamsRes.data.map((s) => s.id);
+            const { data: existingData } = await supabase
+              .from("videos")
+              .select("video_id, status")
+              .in("video_id", streamIds);
+            const existingTwitchMap = new Map(
+              ((existingData ?? []) as { video_id: string; status: string }[]).map((v) => [v.video_id, v.status])
+            );
 
-              if (!existing || existing.status !== "live") {
+            for (const stream of streamsRes.data) {
+              const existingStatus = existingTwitchMap.get(stream.id);
+              if (!existingStatus || existingStatus !== "live") {
                 const video = extractTwitchStream(stream);
                 await supabase.from("videos").upsert(video, { onConflict: "video_id" });
                 twitchStarted++;

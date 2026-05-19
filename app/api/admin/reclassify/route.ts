@@ -1,7 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
+import { requireAdmin } from "@/lib/admin-auth";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const authError = requireAdmin(req);
+  if (authError) return authError;
   // グループのキーワード一覧を取得
   const { data: groups, error: gErr } = await supabase
     .from("groups")

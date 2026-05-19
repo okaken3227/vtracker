@@ -1,26 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
 import type { Superchat } from "@/lib/types";
+import { fetchRatesToJPY } from "@/lib/exchange";
+import { requireAdmin } from "@/lib/admin-auth";
 
-async function fetchRatesToJPY(): Promise<Record<string, number>> {
-  const endpoints = [
-    "https://open.er-api.com/v6/latest/JPY",
-    "https://api.exchangerate-api.com/v4/latest/JPY",
-  ];
-  for (const url of endpoints) {
-    try {
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) continue;
-      const data = (await res.json()) as { rates?: Record<string, number> };
-      if (data.rates && Object.keys(data.rates).length > 0) return data.rates;
-    } catch {
-      // 次のエンドポイントを試す
-    }
-  }
-  return {};
-}
-
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const authError = requireAdmin(req);
+  if (authError) return authError;
   // amount_jpy が未設定のスパチャをすべて取得
   const { data, error } = await supabase
     .from("superchats")

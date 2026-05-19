@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { YouTubeClient, YouTubeApiError, getYouTubeApiKeys } from "@/lib/youtube/client";
+import { requireAdmin } from "@/lib/admin-auth";
 import { TwitchClient } from "@/lib/twitch/client";
 import { parseChannelUrl } from "@/lib/crawler/urlParser";
 import { extractChannel } from "@/lib/youtube/extractors";
@@ -40,6 +41,8 @@ function quotaError() {
 }
 
 export async function POST(req: NextRequest) {
+  const authError = requireAdmin(req);
+  if (authError) return authError;
   const { url } = await req.json();
   if (!url) return NextResponse.json({ error: "url は必須です" }, { status: 400 });
 

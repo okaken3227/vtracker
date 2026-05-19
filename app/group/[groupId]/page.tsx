@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase/client";
 import type { Channel, Video, Group, GroupCategory, LiveGraphPoint } from "@/lib/types";
+import { GRAPH_COLORS, GRAPH_BUCKET_MS } from "@/lib/chartConfig";
 import { getJstMidnightMs } from "@/lib/jst";
 import ChannelAvatar from "@/app/components/ChannelAvatar";
 import ChannelCard from "@/app/components/ChannelCard";
@@ -34,8 +35,8 @@ export async function generateMetadata({
   };
 }
 
-const BUCKET_MS = 5 * 60 * 1000;
-const LINE_COLORS = ["#7c3aed", "#e11d48", "#0891b2", "#d97706", "#16a34a", "#9333ea", "#64748b"];
+const BUCKET_MS = GRAPH_BUCKET_MS;
+const LINE_COLORS = GRAPH_COLORS;
 
 function buildLiveGraph(
   liveVideos: Video[],
@@ -122,7 +123,12 @@ export default async function GroupPage({
 
   const group = groupRes.data as Group | null;
   if (!group) {
-    return <div className="py-20 text-center text-gray-400">グループが見つかりません</div>;
+    return (
+      <div className="py-20 text-center text-gray-400">
+        <p>グループが見つかりません</p>
+        <Link href="/" className="mt-3 inline-block text-sm text-violet-500 hover:underline">ホームへ戻る</Link>
+      </div>
+    );
   }
 
   const allGroups = (allGroupsRes.data ?? []) as Group[];

@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
 import type { Group, GroupCategory } from "@/lib/types";
+import { requireAdmin } from "@/lib/admin-auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const authError = requireAdmin(req);
+  if (authError) return authError;
   const { data, error } = await supabase
     .from("groups")
     .select("*")
@@ -13,6 +16,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const authError = requireAdmin(req);
+  if (authError) return authError;
   const { id, name, color, icon_url, keywords, parent_group_id, category } = await req.json();
   if (!id || !name) {
     return NextResponse.json({ error: "id と name は必須です" }, { status: 400 });
@@ -32,6 +37,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const authError = requireAdmin(req);
+  if (authError) return authError;
   const { id, icon_url, keywords, parent_group_id, name, color, category, sort_order } = await req.json();
   if (!id) return NextResponse.json({ error: "id は必須です" }, { status: 400 });
   const updates: Partial<Group> = {};
@@ -48,6 +55,8 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const authError = requireAdmin(req);
+  if (authError) return authError;
   const { id } = await req.json();
   if (!id) return NextResponse.json({ error: "id は必須です" }, { status: 400 });
   const { error } = await supabase.from("groups").delete().eq("id", id);

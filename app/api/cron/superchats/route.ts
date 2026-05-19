@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
 import { YouTubeClient, getYouTubeApiKeys } from "@/lib/youtube/client";
+import { fetchRatesToJPY } from "@/lib/exchange";
 import type { Video } from "@/lib/types";
 
 export async function GET(req: NextRequest) {
@@ -34,16 +35,7 @@ export async function GET(req: NextRequest) {
   const yt = new YouTubeClient(ytKeys);
 
   // 為替レート取得
-  let rates: Record<string, number> = {};
-  try {
-    const rateRes = await fetch("https://open.er-api.com/v6/latest/JPY");
-    if (rateRes.ok) {
-      const rateData = (await rateRes.json()) as { rates?: Record<string, number> };
-      rates = rateData.rates ?? {};
-    }
-  } catch {
-    // 失敗時は amount_jpy を null で保存して続行
-  }
+  const rates = await fetchRatesToJPY().catch(() => ({} as Record<string, number>));
 
   let totalNew = 0;
 

@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
+import { requireAdmin } from "@/lib/admin-auth";
 import { YouTubeClient, getYouTubeApiKeys } from "@/lib/youtube/client";
 import { extractVideo } from "@/lib/youtube/extractors";
 
@@ -17,7 +18,9 @@ async function fetchChannelVideoIds(channelId: string, yt: YouTubeClient): Promi
   }
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const authError = requireAdmin(req);
+  if (authError) return authError;
   try {
     const ytKeys = getYouTubeApiKeys();
     if (ytKeys.length === 0) return NextResponse.json({ error: "YOUTUBE_API_KEY missing" }, { status: 500 });

@@ -11,18 +11,26 @@ export default function LivePoller({ hasLive }: { hasLive: boolean }) {
     if (!hasLive) return;
 
     let active = true;
+    let retryDelay = 5000;
+
     const poll = async () => {
       if (!active) return;
-      const res = await fetch("/api/poll/live", { method: "POST" }).catch(() => null);
-      if (res?.ok && active) router.refresh();
+      try {
+        const res = await fetch("/api/poll/live", { method: "POST" });
+        if (res.ok) {
+          retryDelay = 5000;
+          if (active) router.refresh();
+        } else {
+          retryDelay = Math.min(retryDelay * 2, 60000);
+        }
+      } catch {
+        retryDelay = Math.min(retryDelay * 2, 60000);
+      }
+      if (active) setTimeout(poll, retryDelay);
     };
 
     poll();
-    const id = setInterval(poll, 5000);
-    return () => {
-      active = false;
-      clearInterval(id);
-    };
+    return () => { active = false; };
   }, [hasLive, router]);
 
   // 1時間ごとにチャンネル情報を更新

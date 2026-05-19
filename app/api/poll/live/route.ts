@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase/client";
 import { YouTubeClient, getYouTubeApiKeys } from "@/lib/youtube/client";
 import { TwitchClient } from "@/lib/twitch/client";
 import { extractTwitchStream } from "@/lib/twitch/extractors";
+import { fetchRatesToJPY } from "@/lib/exchange";
 import type { Video } from "@/lib/types";
 
 
@@ -82,9 +83,9 @@ async function pollLive(targetVideoId: string | null): Promise<NextResponse> {
             graphPoints.push({
               video_id: item.id,
               recorded_at: now,
-              concurrent_viewers: parseInt(details?.concurrentViewers ?? "0", 10),
-              view_count: parseInt(item.statistics?.viewCount ?? "0", 10),
-              like_count: parseInt(item.statistics?.likeCount ?? "0", 10),
+              concurrent_viewers: Math.max(0, parseInt(details?.concurrentViewers ?? "0", 10) || 0),
+              view_count: Math.max(0, parseInt(item.statistics?.viewCount ?? "0", 10) || 0),
+              like_count: Math.max(0, parseInt(item.statistics?.likeCount ?? "0", 10) || 0),
             });
 
             if (details?.activeLiveChatId) {
@@ -168,16 +169,7 @@ async function pollLive(targetVideoId: string | null): Promise<NextResponse> {
       const ytKeys = getYouTubeApiKeys();
       const yt = new YouTubeClient(ytKeys);
 
-      let rates: Record<string, number> = {};
-      try {
-        const rateRes = await fetch("https://open.er-api.com/v6/latest/JPY");
-        if (rateRes.ok) {
-          const rateData = (await rateRes.json()) as { rates?: Record<string, number> };
-          rates = rateData.rates ?? {};
-        }
-      } catch {
-        // 為替取得失敗は amount_jpy を null で保存して継続
-      }
+      const rates = await fetchRatesToJPY().catch(() => ({} as Record<string, number>));
 
       for (const { videoId, chatId } of liveChatIds) {
         try {

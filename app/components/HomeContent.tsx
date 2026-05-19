@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import type { Channel, Video, Group } from "@/lib/types";
+import { GRAPH_COLORS, NICE_BUCKET_MS } from "@/lib/chartConfig";
 import ChannelCard from "./ChannelCard";
 import VideoCard from "./VideoCard";
 import Marquee from "./Marquee";
@@ -11,9 +12,7 @@ import ChannelAvatar from "./ChannelAvatar";
 import LiveSection from "./LiveSection";
 import type { LineConfig } from "./CombinedLiveGraph";
 
-const LINE_COLORS = ["#7c3aed", "#e11d48", "#0891b2", "#d97706", "#16a34a", "#9333ea", "#64748b"];
-
-const NICE_BUCKET_MS = [1, 2, 3, 5, 10, 15, 20, 30, 60].map((m) => m * 60 * 1000);
+const LINE_COLORS = GRAPH_COLORS;
 
 function computeBucketMs(points: GraphPoint[], liveIds: Set<string>): number {
   const gaps: number[] = [];

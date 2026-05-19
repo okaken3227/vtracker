@@ -170,10 +170,14 @@ export default async function LivePage({
   const rates = hasNonJPY ? await fetchRatesToJPY() : {};
 
   // 通貨別に「元の合計」と「円換算合計」を両方集計
-  const byCurrencyOrig = new Map<string, number>(); // 元の金額
-  const byCurrencyJPY = new Map<string, number>();  // 円換算後
+  const byCurrencyOrig = new Map<string, number>();
+  const byCurrencyJPY = new Map<string, number>();
+  let hasPartialJPY = false;
   for (const sc of superchats) {
     byCurrencyOrig.set(sc.currency, (byCurrencyOrig.get(sc.currency) ?? 0) + sc.amount);
+    if (sc.amount_jpy == null && sc.currency !== "JPY" && !rates[sc.currency]) {
+      hasPartialJPY = true;
+    }
     const jpy = sc.amount_jpy ?? toJPY(sc.amount, sc.currency, rates);
     byCurrencyJPY.set(sc.currency, (byCurrencyJPY.get(sc.currency) ?? 0) + jpy);
   }
@@ -288,7 +292,7 @@ export default async function LivePage({
         <h2 className="mb-3 text-lg font-semibold text-gray-900">
           スパチャ一覧{" "}
           <span className="text-sm font-normal text-gray-400">
-            ({superchats.length}件 / 合計 ≈ ¥{totalJPY.toLocaleString()})
+            ({superchats.length}件 / 合計 {hasPartialJPY ? "≈" : ""} ¥{totalJPY.toLocaleString()}{hasPartialJPY && <span className="ml-1 text-amber-500 text-xs">※一部未確定</span>})
           </span>
           {hasMultiCurrency && (
             <p className="mt-0.5 text-xs text-gray-400">

@@ -1,12 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { YouTubeClient, getYouTubeApiKeys } from "@/lib/youtube/client";
+import { requireAdmin } from "@/lib/admin-auth";
 import { TwitchClient } from "@/lib/twitch/client";
 import { supabase } from "@/lib/supabase/client";
 import { extractChannel } from "@/lib/youtube/extractors";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const authError = requireAdmin(req);
+  if (authError) return authError;
   const ytKeys = getYouTubeApiKeys();
   if (ytKeys.length === 0) {
     return NextResponse.json({ error: "YOUTUBE_API_KEY not set" }, { status: 500 });
