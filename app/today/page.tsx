@@ -19,9 +19,8 @@ export default async function TodayPage() {
   const jstMidnightMs = getJstMidnightMs();
   const todayIso = new Date(jstMidnightMs).toISOString();
 
-  const [chRes, vRes, gpRes, grRes, scRes] = await Promise.all([
+  const [chRes, gpRes, grRes, scRes] = await Promise.all([
     supabase.from("channels").select("*"),
-    supabase.from("videos").select("*").order("start_time", { ascending: false, nullsFirst: false }).limit(10000),
     supabase
       .from("live_graph_points")
       .select("*")
@@ -36,8 +35,14 @@ export default async function TodayPage() {
   ]);
 
   const channels = (chRes.data ?? []) as Channel[];
-  const videos = (vRes.data ?? []) as Video[];
   const graphPoints = (gpRes.data ?? []) as LiveGraphPoint[];
+
+  // グラフデータに登場する video_id だけを直接クエリ（全件取得→フィルタより確実）
+  const videoIds = [...new Set(graphPoints.map((p) => p.video_id))];
+  const vRes = videoIds.length > 0
+    ? await supabase.from("videos").select("*").in("video_id", videoIds)
+    : { data: [] as Video[], error: null };
+  const videos = (vRes.data ?? []) as Video[];
   const groups = (grRes.data ?? []) as Group[];
   const scRows = (scRes.data ?? []) as Pick<Superchat, "video_id" | "amount" | "currency" | "amount_jpy">[];
 
