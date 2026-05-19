@@ -100,16 +100,14 @@ function CustomTooltip({
   );
 }
 
-const Y_MAX_PRESETS: { label: string; value: number | null }[] = [
-  { label: "自動", value: null },
+const Y_MAX_PRESETS: { label: string; value: number }[] = [
   { label: "5K", value: 5000 },
   { label: "1万", value: 10000 },
   { label: "5万", value: 50000 },
   { label: "10万", value: 100000 },
 ];
 
-const Y_MIN_PRESETS: { label: string; value: number | null }[] = [
-  { label: "0", value: null },
+const Y_MIN_PRESETS: { label: string; value: number }[] = [
   { label: "1K", value: 1000 },
   { label: "5K", value: 5000 },
   { label: "1万", value: 10000 },
@@ -155,21 +153,35 @@ export default function CombinedLiveGraph({
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
           <span className="text-xs font-semibold text-gray-700">同時視聴者数</span>
         </div>
+        {/* 自動リセット */}
+        <button
+          onClick={() => { setYMax(null); setYMin(null); }}
+          className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-all border ${
+            yMax === null && yMin === null
+              ? "border-gray-300 bg-white text-gray-900 shadow-sm"
+              : "border-gray-200 text-gray-400 hover:text-gray-600"
+          }`}
+        >
+          自動
+        </button>
         {/* Y軸上限プリセット */}
-        <div className="flex items-center gap-0.5 rounded-full bg-gray-100 p-0.5">
-          {Y_MAX_PRESETS.map((p) => (
-            <button
-              key={p.label}
-              onClick={() => setYMax(p.value)}
-              className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-all ${
-                yMax === p.value
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-gray-400">最大</span>
+          <div className="flex items-center gap-0.5 rounded-full bg-gray-100 p-0.5">
+            {Y_MAX_PRESETS.map((p) => (
+              <button
+                key={p.label}
+                onClick={() => setYMax(yMax === p.value ? null : p.value)}
+                className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-all ${
+                  yMax === p.value
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
         {/* Y軸下限プリセット */}
         <div className="flex items-center gap-1">
@@ -178,7 +190,7 @@ export default function CombinedLiveGraph({
             {Y_MIN_PRESETS.map((p) => (
               <button
                 key={p.label}
-                onClick={() => setYMin(p.value)}
+                onClick={() => setYMin(yMin === p.value ? null : p.value)}
                 className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-all ${
                   yMin === p.value
                     ? "bg-white text-gray-900 shadow-sm"
