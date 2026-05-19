@@ -230,28 +230,28 @@ export default function LiveSection({
               >
                 <a
                   href={`/live/${v.videoId}`}
-                  className="flex items-center gap-2 rounded-xl border border-red-100 bg-red-50/60 px-2.5 py-2 transition-all hover:border-red-200 hover:bg-red-50 hover:shadow-sm"
+                  className="flex items-center gap-1.5 rounded-lg border border-red-100 bg-red-50/60 px-2 py-1.5 transition-all hover:border-red-200 hover:bg-red-50 hover:shadow-sm sm:gap-2 sm:rounded-xl sm:px-2.5 sm:py-2"
                 >
                   {v.groupColor && (
                     <div
-                      className="h-8 w-0.5 shrink-0 rounded-full opacity-60"
+                      className="h-6 w-0.5 shrink-0 rounded-full opacity-60 sm:h-8"
                       style={{ backgroundColor: v.groupColor }}
                     />
                   )}
-                  <ChannelAvatar channelId={v.channelId} name={v.channelName} iconUrl={v.iconUrl} size={28} />
+                  <ChannelAvatar channelId={v.channelId} name={v.channelName} iconUrl={v.iconUrl} size={22} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-semibold leading-tight text-gray-900">{v.channelName}</p>
-                    <p className="truncate text-xs leading-snug text-gray-500">{v.title}</p>
+                    <p className="truncate text-[11px] font-semibold leading-tight text-gray-900 sm:text-xs">{v.channelName}</p>
+                    <p className="truncate text-[10px] leading-snug text-gray-500 sm:text-xs">{v.title}</p>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-0.5">
                     <div className="rounded-full bg-white/80 p-0.5 shadow-sm">
-                      <PlatformIcon platform={v.platform} size={10} />
+                      <PlatformIcon platform={v.platform} size={9} />
                     </div>
-                    <span className="animate-pulse text-[10px] text-red-400">●</span>
+                    <span className="animate-pulse text-[9px] text-red-400">●</span>
                     {v.startTime && (
                       <LiveTimer
                         startTime={v.startTime}
-                        className="font-mono text-[10px] tabular-nums text-red-400"
+                        className="font-mono text-[9px] tabular-nums text-red-400"
                       />
                     )}
                   </div>
