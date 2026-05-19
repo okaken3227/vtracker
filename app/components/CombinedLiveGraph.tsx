@@ -142,10 +142,7 @@ export default function CombinedLiveGraph({
   const visibleLines = lines.filter((l) => !hiddenKeys.has(l.key));
   const { currentTotal, peakTotal, currentByKey } = computeStats(data, visibleLines);
 
-  // Trim X-axis to rows where at least one visible line has data
-  const chartData = visibleLines.length > 0
-    ? data.filter((row) => visibleLines.some((l) => row[l.key] != null))
-    : data;
+  const chartData = data;
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -174,40 +171,41 @@ export default function CombinedLiveGraph({
       </div>
 
       {/* ── スケールコントロール ── */}
-      <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1.5">
-        {/* 自動リセット */}
-        <button
-          onClick={() => { setYMax(null); setYMin(null); }}
-          className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-all border ${
-            yMax === null && yMin === null
-              ? "border-gray-300 bg-white text-gray-900 shadow-sm"
-              : "border-gray-200 text-gray-400 hover:text-gray-600"
-          }`}
-        >
-          自動
-        </button>
-        {/* Y軸上限プリセット */}
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] text-gray-400">最大</span>
-          <div className="flex items-center gap-0.5 rounded-full bg-gray-100 p-0.5">
-            {Y_MAX_PRESETS.map((p) => (
-              <button
-                key={p.label}
-                onClick={() => setYMax(yMax === p.value ? null : p.value)}
-                className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-all ${
-                  yMax === p.value
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
+      <div className="mb-3 flex flex-col gap-1.5">
+        {/* 自動 + 最大 */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setYMax(null); setYMin(null); }}
+            className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-all border ${
+              yMax === null && yMin === null
+                ? "border-gray-300 bg-white text-gray-900 shadow-sm"
+                : "border-gray-200 text-gray-400 hover:text-gray-600"
+            }`}
+          >
+            自動
+          </button>
+          <div className="flex items-center gap-1">
+            <span className="shrink-0 text-[10px] text-gray-400">最大</span>
+            <div className="flex items-center gap-0.5 rounded-full bg-gray-100 p-0.5">
+              {Y_MAX_PRESETS.map((p) => (
+                <button
+                  key={p.label}
+                  onClick={() => setYMax(yMax === p.value ? null : p.value)}
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-all ${
+                    yMax === p.value
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-        {/* Y軸下限プリセット */}
+        {/* 最小 */}
         <div className="flex items-center gap-1">
-          <span className="text-[10px] text-gray-400">最小</span>
+          <span className="shrink-0 text-[10px] text-gray-400">最小</span>
           <div className="flex items-center gap-0.5 rounded-full bg-gray-100 p-0.5">
             {Y_MIN_PRESETS.map((p) => (
               <button
