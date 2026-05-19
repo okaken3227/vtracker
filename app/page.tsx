@@ -24,7 +24,7 @@ async function fetchData() {
       supabase.from("channels").select("*").order("subscriber_count", { ascending: false }),
       supabase.from("videos").select("*").order("start_time", { ascending: false }).limit(500),
       supabase.from("superchats").select("video_id, amount, amount_jpy, currency").limit(5000),
-      supabase.from("groups").select("*").order("name"),
+      supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
       supabase
         .from("live_graph_points")
         .select("video_id, concurrent_viewers, recorded_at")

@@ -26,7 +26,7 @@ export default async function TodayPage() {
       .select("*")
       .gte("recorded_at", todayIso)
       .order("recorded_at", { ascending: true }),
-    supabase.from("groups").select("*"),
+    supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
     supabase
       .from("superchats")
       .select("video_id, amount, currency, amount_jpy")

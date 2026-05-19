@@ -112,7 +112,7 @@ export default async function GroupPage({
 
   const [groupRes, allGroupsRes, channelsRes] = await Promise.all([
     supabase.from("groups").select("*").eq("id", groupId).single(),
-    supabase.from("groups").select("*"),
+    supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
     supabase
       .from("channels")
       .select("*")
