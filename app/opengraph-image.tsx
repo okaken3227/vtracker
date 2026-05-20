@@ -6,7 +6,7 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default function Image() {
-  const iconData = fs.readFileSync(path.join(process.cwd(), "public/icon-512.png"));
+  const iconData = fs.readFileSync(path.join(process.cwd(), "app/icon.png"));
   const iconSrc = `data:image/png;base64,${iconData.toString("base64")}`;
 
   return new ImageResponse(
