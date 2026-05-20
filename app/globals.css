@@ -115,7 +115,7 @@ html {
 
 body {
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, sans-serif;
+  font-family: "Yu Gothic", "YuGothic", "游ゴシック", -apple-system, BlinkMacSystemFont, sans-serif;
   min-height: 100dvh;
   margin: 0;
 }
