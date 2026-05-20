@@ -55,13 +55,13 @@ export const metadata: Metadata = {
     siteName: "vtracker",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: [{ url: "https://vtracker.dev/opengraph-image", width: 1200, height: 630 }],
+    images: [{ url: "https://vtracker.dev/icon-512.png", width: 512, height: 512 }],
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: ["https://vtracker.dev/opengraph-image"],
+    images: ["https://vtracker.dev/icon-512.png"],
   },
   robots: { index: true, follow: true },
   verification: {
