@@ -980,6 +980,20 @@ export default function AdminPage() {
               )}
             </div>
             <div className="flex flex-col gap-3">
+              {/* 親グループ: 先頭に配置 */}
+              <div className="rounded-lg border border-violet-100 bg-white px-3 py-2.5">
+                <label className="mb-1 block text-xs font-medium text-violet-700">サブグループにする場合：親グループを選択</label>
+                <select
+                  value={newGroupParentId}
+                  onChange={(e) => setNewGroupParentId(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-violet-500 focus:outline-none"
+                >
+                  <option value="">なし（トップレベルグループ）</option>
+                  {groups.filter(g => !g.parent_group_id).map(g => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="mb-1 block text-xs text-gray-500">グループ名 <span className="text-red-400">*</span></label>
                 <input
@@ -1056,20 +1070,6 @@ export default function AdminPage() {
                     </label>
                   </div>
                 </div>
-              </div>
-              {/* 親グループ: 最後に配置（オプション項目） */}
-              <div className="rounded-lg border border-violet-100 bg-white px-3 py-2.5">
-                <label className="mb-1 block text-xs font-medium text-violet-700">サブグループにする場合：親グループを選択</label>
-                <select
-                  value={newGroupParentId}
-                  onChange={(e) => setNewGroupParentId(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-violet-500 focus:outline-none"
-                >
-                  <option value="">なし（トップレベルグループ）</option>
-                  {groups.filter(g => !g.parent_group_id).map(g => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
               </div>
               <div className="flex items-center gap-3">
                 <button
