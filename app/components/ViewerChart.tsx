@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ReferenceDot, ResponsiveContainer,
@@ -216,6 +216,8 @@ export default function ViewerChart({ data, streams }: Props) {
   const [legendExpanded, setLegendExpanded] = useState(false);
   const [iconMode, setIconMode] = useState(false);
   const [isMobile, setIsMobile] = useState(true);
+  const [tooltipVisible, setTooltipVisible] = useState(true);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIconMode(localStorage.getItem("legendIconMode") === "true");
@@ -224,6 +226,17 @@ export default function ViewerChart({ data, streams }: Props) {
     const handler = (e: MediaQueryListEvent) => setIsMobile(!e.matches);
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (chartContainerRef.current && !chartContainerRef.current.contains(e.target as Node)) {
+        setTooltipVisible(false);
+        setTimeout(() => setTooltipVisible(true), 100);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   function toggleIconMode() {
@@ -468,6 +481,7 @@ export default function ViewerChart({ data, streams }: Props) {
         </div>
       </div>
 
+      <div ref={chartContainerRef} className="relative overflow-hidden">
       <ResponsiveContainer width="100%" height={400}>
         <LineChart
           data={chartData}
@@ -492,7 +506,7 @@ export default function ViewerChart({ data, streams }: Props) {
             domain={[yMin ?? 0, yMax ?? "auto"]}
             allowDataOverflow
           />
-          {!isMobile && (
+          {!isMobile && tooltipVisible && (
             <Tooltip
               content={(props) => {
                 const p = props as unknown as {
@@ -546,6 +560,7 @@ export default function ViewerChart({ data, streams }: Props) {
           ))}
         </LineChart>
       </ResponsiveContainer>
+      </div>
 
       {visibleStreams.length > 0 && <PeakRanking streams={visibleStreams} animRev={filterAnimRev} />}
     </div>

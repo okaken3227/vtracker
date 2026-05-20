@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -133,6 +133,8 @@ export default function CombinedLiveGraph({
   const [legendExpanded, setLegendExpanded] = useState(false);
   const [iconMode, setIconMode] = useState(false);
   const [isMobile, setIsMobile] = useState(true);
+  const [tooltipVisible, setTooltipVisible] = useState(true);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIconMode(localStorage.getItem("legendIconMode") === "true");
@@ -141,6 +143,17 @@ export default function CombinedLiveGraph({
     const handler = (e: MediaQueryListEvent) => setIsMobile(!e.matches);
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (chartContainerRef.current && !chartContainerRef.current.contains(e.target as Node)) {
+        setTooltipVisible(false);
+        setTimeout(() => setTooltipVisible(true), 100);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   function toggleIconMode() {
@@ -245,6 +258,7 @@ export default function CombinedLiveGraph({
       </div>
 
       {/* ── チャート ── */}
+      <div ref={chartContainerRef} className="relative overflow-hidden">
       <ResponsiveContainer width="100%" height={graphHeight}>
         <ComposedChart data={chartData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
           <defs>
@@ -272,7 +286,7 @@ export default function CombinedLiveGraph({
             domain={[yMin ?? 0, yMax ?? "auto"]}
             allowDataOverflow
           />
-          {!isMobile && (
+          {!isMobile && tooltipVisible && (
             <Tooltip
               content={(props) => (
                 <CustomTooltip
@@ -315,6 +329,7 @@ export default function CombinedLiveGraph({
           ))}
         </ComposedChart>
       </ResponsiveContainer>
+      </div>
 
       {/* ── 凡例（視聴者数付き・クリックでトグル） ── */}
       <div className="mt-2 border-t border-gray-100 pt-2.5">
