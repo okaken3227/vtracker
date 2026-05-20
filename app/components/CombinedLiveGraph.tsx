@@ -134,10 +134,6 @@ export default function CombinedLiveGraph({
   const [iconMode, setIconMode] = useState(false);
   const [isMobile, setIsMobile] = useState(true);
   const [tooltipVisible, setTooltipVisible] = useState(true);
-  const [mobilePanelData, setMobilePanelData] = useState<{
-    label: string;
-    entries: { key: string; value: number; color: string }[];
-  } | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -154,7 +150,6 @@ export default function CombinedLiveGraph({
       if (chartContainerRef.current && !chartContainerRef.current.contains(e.target as Node)) {
         setTooltipVisible(false);
         setTimeout(() => setTooltipVisible(true), 100);
-        setMobilePanelData(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -268,25 +263,6 @@ export default function CombinedLiveGraph({
         <ComposedChart
           data={chartData}
           margin={{ top: 4, right: 16, bottom: 4, left: 0 }}
-          onMouseMove={(state) => {
-            if (!isMobile) return;
-            const s = state as unknown as {
-              activeLabel?: string;
-              activePayload?: { dataKey: string; value: number; color: string }[];
-            };
-            if (!s.activePayload?.length) return;
-            const seen = new Set<string>();
-            const entries = s.activePayload
-              .filter((p) => {
-                if (p.value == null || !visibleLines.some((l) => l.key === p.dataKey)) return false;
-                if (seen.has(p.dataKey)) return false;
-                seen.add(p.dataKey);
-                return true;
-              })
-              .sort((a, b) => b.value - a.value)
-              .map((p) => ({ key: p.dataKey, value: p.value, color: p.color }));
-            if (entries.length > 0) setMobilePanelData({ label: s.activeLabel ?? "", entries });
-          }}
         >
           <defs>
             {lines.map(({ key, color }) => (
@@ -313,7 +289,7 @@ export default function CombinedLiveGraph({
             domain={[yMin ?? 0, yMax ?? "auto"]}
             allowDataOverflow
           />
-          {!isMobile && tooltipVisible && (
+          {tooltipVisible && (
             <Tooltip
               content={(props) => (
                 <CustomTooltip
@@ -357,40 +333,6 @@ export default function CombinedLiveGraph({
         </ComposedChart>
       </ResponsiveContainer>
       </div>
-
-      {/* ── モバイル用データパネル ── */}
-      {isMobile && mobilePanelData && mobilePanelData.entries.length > 0 && (
-        <div className="mt-2 rounded-xl bg-gray-900 px-3 py-2.5">
-          <p className="mb-1.5 text-[10px] text-gray-500">{mobilePanelData.label}</p>
-          <div className="flex max-h-28 flex-col gap-1 overflow-y-auto">
-            {mobilePanelData.entries.map((entry) => {
-              const line = lines.find((l) => l.key === entry.key);
-              return (
-                <div key={entry.key} className="flex items-center gap-2">
-                  {line?.iconUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={line.iconUrl} alt="" className="h-4 w-4 flex-shrink-0 rounded-full object-cover" />
-                  ) : (
-                    <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: entry.color }} />
-                  )}
-                  <span className="min-w-0 flex-1 truncate text-xs text-gray-300">{line?.channelName ?? entry.key}</span>
-                  <span className="flex-shrink-0 font-mono text-xs font-bold" style={{ color: entry.color }}>
-                    {entry.value.toLocaleString()}人
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          {mobilePanelData.entries.length > 1 && (
-            <div className="mt-1.5 flex items-center justify-between border-t border-gray-800 pt-1.5">
-              <span className="text-[10px] text-gray-500">合計</span>
-              <span className="font-mono text-xs font-bold text-white">
-                {mobilePanelData.entries.reduce((s, e) => s + e.value, 0).toLocaleString()}人
-              </span>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ── 凡例（視聴者数付き・クリックでトグル） ── */}
       <div className="mt-2 border-t border-gray-100 pt-2.5">
