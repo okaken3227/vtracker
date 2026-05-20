@@ -217,6 +217,10 @@ export default function ViewerChart({ data, streams }: Props) {
   const [iconMode, setIconMode] = useState(false);
   const [isMobile, setIsMobile] = useState(true);
   const [tooltipVisible, setTooltipVisible] = useState(true);
+  const [mobilePanelData, setMobilePanelData] = useState<{
+    label: number;
+    entries: { key: string; value: number; color: string }[];
+  } | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -233,6 +237,7 @@ export default function ViewerChart({ data, streams }: Props) {
       if (chartContainerRef.current && !chartContainerRef.current.contains(e.target as Node)) {
         setTooltipVisible(false);
         setTimeout(() => setTooltipVisible(true), 100);
+        setMobilePanelData(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -488,6 +493,19 @@ export default function ViewerChart({ data, streams }: Props) {
           onClick={handleChartClick}
           style={{ cursor: "pointer" }}
           margin={{ top: 20, right: 24, bottom: 8, left: 8 }}
+          onMouseMove={(state) => {
+            if (!isMobile) return;
+            const s = state as unknown as {
+              activeLabel?: number;
+              activePayload?: { dataKey: string; value: number; color: string }[];
+            };
+            if (!s.activePayload?.length) return;
+            const entries = s.activePayload
+              .filter((p) => p.value != null && visibleStreams.some((st) => st.videoId === p.dataKey))
+              .sort((a, b) => b.value - a.value)
+              .map((p) => ({ key: p.dataKey, value: p.value, color: p.color }));
+            if (entries.length > 0) setMobilePanelData({ label: s.activeLabel ?? 0, entries });
+          }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
           <XAxis
@@ -561,6 +579,41 @@ export default function ViewerChart({ data, streams }: Props) {
         </LineChart>
       </ResponsiveContainer>
       </div>
+
+      {/* ── モバイル用データパネル ── */}
+      {isMobile && mobilePanelData && mobilePanelData.entries.length > 0 && (
+        <div className="mt-2 rounded-xl bg-gray-900 px-3 py-2.5">
+          <p className="mb-1.5 text-[10px] text-gray-500">{tToHHMM(mobilePanelData.label)}</p>
+          <div className="flex max-h-28 flex-col gap-1 overflow-y-auto">
+            {mobilePanelData.entries.map((entry) => {
+              const s = visibleStreams.find((st) => st.videoId === entry.key);
+              return (
+                <div key={entry.key} className="flex items-center gap-2">
+                  {s?.iconUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={s.iconUrl} alt="" className="h-4 w-4 flex-shrink-0 rounded-full object-cover" />
+                  ) : (
+                    <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: entry.color }} />
+                  )}
+                  <span className="min-w-0 flex-1 truncate text-xs text-gray-300">{s?.channelName ?? entry.key}</span>
+                  {s?.peakT === mobilePanelData.label && <span className="text-xs">👑</span>}
+                  <span className="flex-shrink-0 font-mono text-xs font-bold" style={{ color: entry.color }}>
+                    {entry.value.toLocaleString()}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          {mobilePanelData.entries.length > 1 && (
+            <div className="mt-1.5 flex items-center justify-between border-t border-gray-800 pt-1.5">
+              <span className="text-[10px] text-gray-500">合計</span>
+              <span className="font-mono text-xs font-bold text-white">
+                {mobilePanelData.entries.reduce((s, e) => s + e.value, 0).toLocaleString()}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {visibleStreams.length > 0 && <PeakRanking streams={visibleStreams} animRev={filterAnimRev} />}
     </div>
