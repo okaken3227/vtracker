@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 
 const BASE_URL = "https://www.googleapis.com/youtube/v3";
-// 既知のチャンネルID（YouTube公式）で最小コストの疎通確認
 const TEST_CHANNEL_ID = "UCBR8-60-B28hp2BmDPdntcQ";
 
 async function testKey(key: string, label: string): Promise<{ label: string; ok: boolean; error?: string }> {
@@ -27,17 +26,21 @@ async function testKey(key: string, label: string): Promise<{ label: string; ok:
 export async function GET(req: NextRequest) {
   const authError = requireAdmin(req);
   if (authError) return authError;
-  const keyEnvs = [
+
+  const keyEnvs: { env: string | undefined; label: string }[] = [
     { env: process.env.YOUTUBE_API_KEY, label: "KEY_1 (YOUTUBE_API_KEY)" },
-    { env: process.env.YOUTUBE_API_KEY_2, label: "KEY_2 (YOUTUBE_API_KEY_2)" },
-    { env: process.env.YOUTUBE_API_KEY_3, label: "KEY_3 (YOUTUBE_API_KEY_3)" },
-    { env: process.env.YOUTUBE_API_KEY_4, label: "KEY_4 (YOUTUBE_API_KEY_4)" },
-    { env: process.env.YOUTUBE_API_KEY_5, label: "KEY_5 (YOUTUBE_API_KEY_5)" },
-    { env: process.env.YOUTUBE_API_KEY_6, label: "KEY_6 (YOUTUBE_API_KEY_6)" },
   ];
+  for (let i = 2; i <= 30; i++) {
+    keyEnvs.push({
+      env: process.env[`YOUTUBE_API_KEY_${i}`],
+      label: `KEY_${i} (YOUTUBE_API_KEY_${i})`,
+    });
+  }
+
+  const activeKeys = keyEnvs.filter(({ env }) => env);
 
   const results = await Promise.all(
-    keyEnvs.map(({ env, label }) =>
+    activeKeys.map(({ env, label }) =>
       env ? testKey(env, label) : Promise.resolve({ label, ok: false, error: "未設定" })
     )
   );

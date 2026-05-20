@@ -1,35 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
 import { requireAdmin } from "@/lib/admin-auth";
+import { getYouTubeApiKeys } from "@/lib/youtube/client";
 
 export async function GET(req: NextRequest) {
   const authError = requireAdmin(req);
   if (authError) return authError;
+
   const date = new Date().toISOString().split("T")[0];
   const { data } = await supabase
     .from("api_usage_daily")
-    .select("units_used, units_used_key2, units_used_key3, units_used_key4, units_used_key5, units_used_key6, calls_count, twitch_calls_count, quota_exceeded_key1, quota_exceeded_key2, quota_exceeded_key3, quota_exceeded_key4, quota_exceeded_key5, quota_exceeded_key6")
+    .select("key_units, quota_exceeded_keys, calls_count, twitch_calls_count")
     .eq("date", date)
     .maybeSingle();
 
-  const keyCount = [
-    process.env.YOUTUBE_API_KEY,
-    process.env.YOUTUBE_API_KEY_2,
-    process.env.YOUTUBE_API_KEY_3,
-    process.env.YOUTUBE_API_KEY_4,
-    process.env.YOUTUBE_API_KEY_5,
-    process.env.YOUTUBE_API_KEY_6,
-  ].filter(Boolean).length;
+  const keyCount = getYouTubeApiKeys().length;
+  const keyUnits = (data?.key_units ?? {}) as Record<string, number>;
+  const quotaExceededKeys = (data?.quota_exceeded_keys ?? {}) as Record<string, boolean>;
 
-  const perKeyUnits = [
-    data?.units_used ?? 0,
-    data?.units_used_key2 ?? 0,
-    data?.units_used_key3 ?? 0,
-    data?.units_used_key4 ?? 0,
-    data?.units_used_key5 ?? 0,
-    data?.units_used_key6 ?? 0,
-  ];
-  const totalUsed = perKeyUnits.slice(0, keyCount).reduce((s, v) => s + v, 0);
+  const perKeyUnits = Array.from({ length: keyCount }, (_, i) => keyUnits[String(i + 1)] ?? 0);
+  const totalUsed = perKeyUnits.reduce((s, v) => s + v, 0);
 
   return NextResponse.json({
     date,
@@ -39,13 +29,6 @@ export async function GET(req: NextRequest) {
     twitchCallsCount: data?.twitch_calls_count ?? 0,
     keyCount,
     perKeyUnits,
-    quotaExceededKeys: [
-      data?.quota_exceeded_key1 ?? false,
-      data?.quota_exceeded_key2 ?? false,
-      data?.quota_exceeded_key3 ?? false,
-      data?.quota_exceeded_key4 ?? false,
-      data?.quota_exceeded_key5 ?? false,
-      data?.quota_exceeded_key6 ?? false,
-    ],
+    quotaExceededKeys: Array.from({ length: keyCount }, (_, i) => quotaExceededKeys[String(i + 1)] ?? false),
   });
 }

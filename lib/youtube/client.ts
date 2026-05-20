@@ -30,7 +30,7 @@ async function ytFetch<T>(
   apiKey: string,
   endpoint: string,
   params: Record<string, string>,
-  keyIndex: 1 | 2 | 3 | 4 | 5 | 6 = 1,
+  keyIndex: number = 1,
 ): Promise<T> {
   const url = new URL(`${BASE_URL}/${endpoint}`);
   url.searchParams.set("key", apiKey);
@@ -47,16 +47,16 @@ async function ytFetch<T>(
   return res.json() as Promise<T>;
 }
 
-/** 環境変数から利用可能な全APIキーを取得する */
+/** 環境変数から利用可能な全APIキーを取得する（YOUTUBE_API_KEY, YOUTUBE_API_KEY_2 〜 YOUTUBE_API_KEY_30） */
 export function getYouTubeApiKeys(): string[] {
-  return [
-    process.env.YOUTUBE_API_KEY,
-    process.env.YOUTUBE_API_KEY_2,
-    process.env.YOUTUBE_API_KEY_3,
-    process.env.YOUTUBE_API_KEY_4,
-    process.env.YOUTUBE_API_KEY_5,
-    process.env.YOUTUBE_API_KEY_6,
-  ].filter((k): k is string => Boolean(k));
+  const keys: string[] = [];
+  const first = process.env.YOUTUBE_API_KEY;
+  if (first) keys.push(first);
+  for (let i = 2; i <= 30; i++) {
+    const k = process.env[`YOUTUBE_API_KEY_${i}`];
+    if (k) keys.push(k);
+  }
+  return keys;
 }
 
 export class YouTubeClient {
@@ -73,10 +73,10 @@ export class YouTubeClient {
     for (let idx = 0; idx < this.keys.length; idx++) {
       const key = this.keys[idx];
       try {
-        return await ytFetch<T>(key, endpoint, params, (idx + 1) as 1 | 2 | 3 | 4 | 5 | 6);
+        return await ytFetch<T>(key, endpoint, params, idx + 1);
       } catch (err) {
         if (isQuotaExceeded(err)) {
-          const keyNum = (idx + 1) as 1 | 2 | 3 | 4 | 5 | 6;
+          const keyNum = idx + 1;
           console.warn(`[YouTubeClient] quota exceeded on key #${keyNum}, trying next`);
           trackQuotaExceeded(keyNum).catch(() => {});
           lastError = err;
