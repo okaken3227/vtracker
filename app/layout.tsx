@@ -93,10 +93,10 @@ export default async function RootLayout({
       <body className="text-gray-900">
         <GroupsProvider groups={groups}>
           <SidebarProvider>
-            <div className="sticky top-0 z-30 shrink-0">
+            <div className="fixed inset-x-0 top-0 z-30">
               <Header />
             </div>
-            <div className="flex">
+            <div className="flex pt-14">
               <DesktopSidebar />
               <main id="main-scroll" className="flex-1 min-w-0 px-4 py-8">
                 {children}
