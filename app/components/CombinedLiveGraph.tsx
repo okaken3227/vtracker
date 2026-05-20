@@ -100,7 +100,7 @@ function CustomTooltip({
   );
 }
 
-const LEGEND_LIMIT = 12;
+const LEGEND_LIMIT = 8;
 
 const Y_MAX_PRESETS: { label: string; value: number }[] = [
   { label: "1K", value: 1000 },

@@ -191,7 +191,7 @@ function PeakRanking({ streams, animRev: outerRev = 0 }: { streams: StreamInfo[]
   );
 }
 
-const LEGEND_LIMIT = 12;
+const LEGEND_LIMIT = 8;
 
 export default function ViewerChart({ data, streams }: Props) {
   const [filterGroup, setFilterGroup] = useState<string | null>(null);
