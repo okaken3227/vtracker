@@ -234,13 +234,33 @@ export default function ViewerChart({ data, streams }: Props) {
 
   const legendLimit = isMobile ? 8 : 12;
 
+  // 親グループ → { name, color }、サブグループ → { name, color, parentName }
   const groupEntries = Array.from(
     new Map(
       streams
         .filter((s) => s.groupName)
-        .map((s) => [s.groupName!, { name: s.groupName!, color: s.groupColor ?? "#6b7280" }])
+        .map((s) => [
+          s.groupName!,
+          {
+            name: s.groupName!,
+            color: s.groupColor ?? "#6b7280",
+            parentName: s.parentGroupName ?? null,
+            parentColor: s.parentGroupColor ?? null,
+          },
+        ])
     ).values()
-  ).sort((a, b) => a.name.localeCompare(b.name, "ja"));
+  );
+
+  // 親グループ（独立 or 子を持つ）を先に、その後に子グループをその親の直後に並べる
+  const topGroupEntries = groupEntries.filter((g) => !g.parentName);
+  const subGroupEntries = groupEntries.filter((g) => g.parentName);
+  const sortedGroupEntries = [
+    ...topGroupEntries.sort((a, b) => a.name.localeCompare(b.name, "ja")),
+    ...subGroupEntries.sort((a, b) => {
+      const pc = (a.parentName ?? "").localeCompare(b.parentName ?? "", "ja");
+      return pc !== 0 ? pc : a.name.localeCompare(b.name, "ja");
+    }),
+  ];
 
   function applyGroupFilter(group: string | null) {
     setFilterGroup(group);
@@ -255,8 +275,9 @@ export default function ViewerChart({ data, streams }: Props) {
     });
   }
 
+  // 親グループを選ぶと直属チャンネル + 全サブグループのチャンネルを含む
   const groupFiltered = filterGroup
-    ? streams.filter((s) => s.groupName === filterGroup)
+    ? streams.filter((s) => s.groupName === filterGroup || s.parentGroupName === filterGroup)
     : streams;
 
   const visibleStreams = groupFiltered.filter((s) => !hiddenIds.has(s.videoId));
@@ -275,7 +296,7 @@ export default function ViewerChart({ data, streams }: Props) {
   return (
     <div>
       {/* グループフィルター */}
-      {groupEntries.length > 1 && (
+      {sortedGroupEntries.length > 1 && (
         <div className="mb-3 flex flex-wrap items-center gap-1">
           <button
             onClick={() => applyGroupFilter(null)}
@@ -287,20 +308,30 @@ export default function ViewerChart({ data, streams }: Props) {
           >
             すべて
           </button>
-          {groupEntries.map((g) => (
-            <button
-              key={g.name}
-              onClick={() => applyGroupFilter(filterGroup === g.name ? null : g.name)}
-              style={filterGroup === g.name ? { backgroundColor: g.color, borderColor: g.color } : {}}
-              className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                filterGroup === g.name
-                  ? "text-white"
-                  : "border-gray-200 bg-white text-gray-500 hover:border-gray-400"
-              }`}
-            >
-              {g.name}
-            </button>
-          ))}
+          {sortedGroupEntries.map((g) => {
+            const isActive = filterGroup === g.name;
+            const isSub = !!g.parentName;
+            return (
+              <button
+                key={g.name}
+                onClick={() => applyGroupFilter(isActive ? null : g.name)}
+                style={isActive ? { backgroundColor: g.color, borderColor: g.color } : {}}
+                className={`rounded-full border transition-colors font-medium ${
+                  isSub
+                    ? "px-2 py-0.5 text-[10px]"
+                    : "px-2.5 py-1 text-xs"
+                } ${
+                  isActive
+                    ? "text-white"
+                    : isSub
+                    ? "border-dashed border-gray-300 bg-gray-50 text-gray-400 hover:border-gray-400 hover:text-gray-600"
+                    : "border-gray-200 bg-white text-gray-500 hover:border-gray-400"
+                }`}
+              >
+                {isSub ? `└ ${g.name}` : g.name}
+              </button>
+            );
+          })}
         </div>
       )}
 

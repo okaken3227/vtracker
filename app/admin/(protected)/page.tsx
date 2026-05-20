@@ -111,6 +111,7 @@ export default function AdminPage() {
   const [editKeywords, setEditKeywords] = useState("");
   const [editGroupIconUrl, setEditGroupIconUrl] = useState("");
   const [editGroupColor, setEditGroupColor] = useState("");
+  const [editGroupParentId, setEditGroupParentId] = useState("");
   const [keywordSaving, setKeywordSaving] = useState(false);
 
   // チャンネル追加 - 単件
@@ -253,6 +254,7 @@ export default function AdminPage() {
         keywords: editKeywords.trim() || null,
         icon_url: editGroupIconUrl.trim() || null,
         color: editGroupColor || null,
+        parent_group_id: editGroupParentId || null,
       }),
     });
     setKeywordSaving(false);
@@ -1121,7 +1123,7 @@ export default function AdminPage() {
                   <span className="text-xs text-gray-400">{g.category ? CATEGORY_LABELS[g.category] : ""}</span>
                   {editingGroupId !== g.id && (
                     <button
-                      onClick={() => { setEditingGroupId(g.id); setEditKeywords(g.keywords ?? ""); setEditGroupIconUrl(g.icon_url ?? ""); setEditGroupColor(g.color ?? ""); }}
+                      onClick={() => { setEditingGroupId(g.id); setEditKeywords(g.keywords ?? ""); setEditGroupIconUrl(g.icon_url ?? ""); setEditGroupColor(g.color ?? ""); setEditGroupParentId(g.parent_group_id ?? ""); }}
                       className="text-xs text-violet-500 hover:underline"
                     >
                       編集
@@ -1178,6 +1180,19 @@ export default function AdminPage() {
                         placeholder="キーワード1,キーワード2,略称"
                         className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:border-violet-500 focus:outline-none"
                       />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="shrink-0 text-[10px] text-gray-400">親グループ</label>
+                      <select
+                        value={editGroupParentId}
+                        onChange={(e) => setEditGroupParentId(e.target.value)}
+                        className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 focus:border-violet-500 focus:outline-none"
+                      >
+                        <option value="">なし</option>
+                        {groups.filter(pg => !pg.parent_group_id && pg.id !== g.id).map(pg => (
+                          <option key={pg.id} value={pg.id}>{pg.name}</option>
+                        ))}
+                      </select>
                       <button
                         onClick={() => handleSaveKeywords(g.id)}
                         disabled={keywordSaving}
