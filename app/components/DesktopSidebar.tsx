@@ -68,7 +68,7 @@ export default function DesktopSidebar() {
 
   return (
     <aside
-      className={`hidden lg:flex sticky top-14 self-start h-[calc(100vh-56px)] shrink-0 flex-col overflow-hidden bg-white/20 backdrop-blur-xl transition-[width] duration-200 ${
+      className={`hidden lg:flex h-full shrink-0 flex-col overflow-hidden bg-white/20 backdrop-blur-xl transition-[width] duration-200 ${
         open ? "w-48" : "w-14"
       }`}
     >

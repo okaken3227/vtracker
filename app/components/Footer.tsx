@@ -6,16 +6,14 @@ export default function Footer() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    const el = document.getElementById("main-scroll");
+    if (!el) return;
     const check = () => {
-      const scrollTop = window.scrollY;
-      const scrollHeight = document.documentElement.scrollHeight;
-      const clientHeight = window.innerHeight;
-      setVisible(scrollHeight - scrollTop - clientHeight < 80);
+      setVisible(el.scrollHeight - el.scrollTop - el.clientHeight < 80);
     };
-
-    window.addEventListener("scroll", check, { passive: true });
+    el.addEventListener("scroll", check, { passive: true });
     check();
-    return () => window.removeEventListener("scroll", check);
+    return () => el.removeEventListener("scroll", check);
   }, []);
 
   return (

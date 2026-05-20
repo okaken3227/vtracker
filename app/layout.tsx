@@ -96,15 +96,15 @@ export default async function RootLayout({
             <div className="fixed inset-x-0 top-0 z-30">
               <Header />
             </div>
-            <div className="flex pt-14">
+            <div className="fixed inset-x-0 top-14 bottom-0 flex overflow-hidden">
               <DesktopSidebar />
-              <main id="main-scroll" className="flex-1 min-w-0 px-4 py-8">
+              <main id="main-scroll" className="flex-1 min-w-0 overflow-y-auto px-4 py-8">
                 {children}
+                <Footer />
               </main>
             </div>
           </SidebarProvider>
         </GroupsProvider>
-        <Footer />
       </body>
     </html>
   );
