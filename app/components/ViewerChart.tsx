@@ -102,9 +102,12 @@ const PEAK_SORT_LABELS: Record<PeakSortKey, string> = {
   sc: "スパチャ",
 };
 
+const RANKING_LIMIT = 8;
+
 function PeakRanking({ streams, animRev: outerRev = 0 }: { streams: StreamInfo[]; animRev?: number }) {
   const [sort, setSort] = useState<PeakSortKey>("peak");
   const [animRev, setAnimRev] = useState(0);
+  const [listExpanded, setListExpanded] = useState(false);
 
   const hasSC = streams.some((s) => (s.totalSCJPY ?? 0) > 0);
 
@@ -119,6 +122,9 @@ function PeakRanking({ streams, animRev: outerRev = 0 }: { streams: StreamInfo[]
     if (sort === "time") return a.peakT - b.peakT;
     return b.peakViewers - a.peakViewers;
   });
+
+  const visible = listExpanded ? sorted : sorted.slice(0, RANKING_LIMIT);
+  const hiddenCount = sorted.length - RANKING_LIMIT;
 
   return (
     <div className="mt-6">
@@ -143,7 +149,7 @@ function PeakRanking({ streams, animRev: outerRev = 0 }: { streams: StreamInfo[]
         </div>
       </div>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {sorted.map((s, i) => (
+        {visible.map((s, i) => (
           <div
             key={`${s.videoId}-${animRev}-${outerRev}`}
             style={{
@@ -187,6 +193,14 @@ function PeakRanking({ streams, animRev: outerRev = 0 }: { streams: StreamInfo[]
           </div>
         ))}
       </div>
+      {hiddenCount > 0 && (
+        <button
+          onClick={() => setListExpanded((v) => !v)}
+          className="mt-2 w-full rounded-xl border border-gray-100 py-2 text-xs text-gray-400 hover:text-violet-600 transition-colors"
+        >
+          {listExpanded ? "▲ 折りたたむ" : `▼ さらに${hiddenCount}件`}
+        </button>
+      )}
     </div>
   );
 }

@@ -41,11 +41,37 @@ const NAV = [
   },
 ];
 
+const GROUP_LIMIT = 8;
+
 export default function NavDrawer() {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const groups = useGroups();
+
+  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
+  const [groupsExpanded, setGroupsExpanded] = useState(false);
+
+  const topLevelGroups = groups.filter((g) => !g.parent_group_id);
+  const childrenByParent = new Map<string, typeof groups>();
+  for (const g of groups) {
+    if (g.parent_group_id) {
+      const arr = childrenByParent.get(g.parent_group_id) ?? [];
+      arr.push(g);
+      childrenByParent.set(g.parent_group_id, arr);
+    }
+  }
+
+  const visibleTopLevel = groupsExpanded ? topLevelGroups : topLevelGroups.slice(0, GROUP_LIMIT);
+  const hiddenCount = topLevelGroups.length - GROUP_LIMIT;
+
+  function toggleParent(id: string) {
+    setExpandedParents((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { setOpen(false); }, [pathname]);
@@ -162,37 +188,86 @@ export default function NavDrawer() {
                 グループ
               </p>
               <div className="space-y-0.5">
-                {groups.map((g) => {
+                {visibleTopLevel.map((g) => {
+                  const children = childrenByParent.get(g.id) ?? [];
+                  const hasChildren = children.length > 0;
+                  const isExpanded = expandedParents.has(g.id);
                   const active = pathname === `/group/${g.id}`;
-                  return (
-                    <Link
-                      key={g.id}
-                      href={`/group/${g.id}`}
-                      className={`group flex items-center gap-3 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-150 ${
-                        active ? "bg-violet-50 text-violet-700" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
-                      }`}
+                  const anyChildActive = children.some((c) => pathname === `/group/${c.id}`);
+
+                  const icon = g.icon_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={g.icon_url} alt={g.name} className="h-6 w-6 flex-shrink-0 rounded-full object-cover" />
+                  ) : (
+                    <span
+                      className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                      style={{ backgroundColor: g.color }}
                     >
-                      {g.icon_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={g.icon_url}
-                          alt={g.name}
-                          className="h-6 w-6 flex-shrink-0 rounded-full object-cover"
-                        />
-                      ) : (
-                        <span
-                          className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                          style={{ backgroundColor: g.color }}
+                      {g.name[0]}
+                    </span>
+                  );
+
+                  return (
+                    <div key={g.id}>
+                      {hasChildren ? (
+                        <button
+                          onClick={() => toggleParent(g.id)}
+                          className={`group flex w-full items-center gap-3 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-150 ${
+                            active || anyChildActive ? "bg-violet-50 text-violet-700" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                          }`}
                         >
-                          {g.name[0]}
-                        </span>
+                          {icon}
+                          <span className="flex-1 text-left text-xs">{g.name}</span>
+                          <span className="shrink-0 text-[9px] text-gray-400">{isExpanded ? "▼" : "▶"}</span>
+                        </button>
+                      ) : (
+                        <Link
+                          href={`/group/${g.id}`}
+                          className={`group flex items-center gap-3 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-150 ${
+                            active ? "bg-violet-50 text-violet-700" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                          }`}
+                        >
+                          {icon}
+                          <span className="text-xs">{g.name}</span>
+                          {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-violet-500" />}
+                        </Link>
                       )}
-                      <span className="text-xs">{g.name}</span>
-                      {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-violet-500" />}
-                    </Link>
+
+                      {/* 子グループ */}
+                      {hasChildren && isExpanded && (
+                        <div className="ml-4 mt-0.5 space-y-0.5 border-l-2 border-gray-100 pl-3">
+                          {children.map((child) => {
+                            const childActive = pathname === `/group/${child.id}`;
+                            return (
+                              <Link
+                                key={child.id}
+                                href={`/group/${child.id}`}
+                                className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                                  childActive ? "bg-violet-50 text-violet-700" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                                }`}
+                              >
+                                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: child.color }} />
+                                <span className="truncate">{child.name}</span>
+                                {childActive && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500" />}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
+
+              {/* もっと見る / 折りたたむ */}
+              {hiddenCount > 0 && (
+                <button
+                  onClick={() => setGroupsExpanded((v) => !v)}
+                  className="mt-1 w-full rounded-lg px-4 py-1.5 text-left text-xs text-gray-400 hover:text-violet-600 transition-colors"
+                >
+                  {groupsExpanded ? "▲ 折りたたむ" : `▼ さらに${hiddenCount}件`}
+                </button>
+              )}
             </div>
           )}
         </nav>

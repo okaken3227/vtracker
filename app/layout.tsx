@@ -58,7 +58,7 @@ const fetchLayoutGroups = unstable_cache(
   async () => {
     const { data } = await supabase
       .from("groups")
-      .select("id, name, color, icon_url, sort_order")
+      .select("id, name, color, icon_url, sort_order, parent_group_id")
       .order("sort_order", { ascending: true, nullsFirst: false })
       .order("name");
     return data ?? [];
