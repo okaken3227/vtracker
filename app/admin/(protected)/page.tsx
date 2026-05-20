@@ -103,6 +103,7 @@ export default function AdminPage() {
   const [newGroupKeywords, setNewGroupKeywords] = useState("");
   const [newGroupCategory, setNewGroupCategory] = useState<GroupCategory>("vtuber");
   const [newGroupColor, setNewGroupColor] = useState(GROUP_COLORS[0]);
+  const [newGroupParentId, setNewGroupParentId] = useState("");
   const [newGroupStatus, setNewGroupStatus] = useState("");
 
   // グループキーワード・アイコン編集
@@ -211,6 +212,7 @@ export default function AdminPage() {
         keywords: newGroupKeywords.trim() || undefined,
         category: newGroupCategory,
         color: newGroupColor,
+        parent_group_id: newGroupParentId || null,
       }),
     });
     const data = await res.json();
@@ -221,6 +223,7 @@ export default function AdminPage() {
       setNewGroupKeywords("");
       setNewGroupCategory("vtuber");
       setNewGroupColor(GROUP_COLORS[0]);
+      setNewGroupParentId("");
       setShowNewGroup(false);
 
       const gRes = await fetch("/api/admin/groups").then((r) => r.json());
@@ -258,19 +261,25 @@ export default function AdminPage() {
   }
 
   async function handleMoveGroup(groupId: string, direction: "up" | "down") {
-    const idx = groups.findIndex((g) => g.id === groupId);
+    const moving = groups.find((g) => g.id === groupId);
+    if (!moving) return;
+
+    // 同じ階層（同じ親）のグループのみを対象にする
+    const sameLevel = groups.filter((g) => (g.parent_group_id ?? null) === (moving.parent_group_id ?? null));
+    const idx = sameLevel.findIndex((g) => g.id === groupId);
     if (direction === "up" && idx === 0) return;
-    if (direction === "down" && idx === groups.length - 1) return;
+    if (direction === "down" && idx === sameLevel.length - 1) return;
     const swapIdx = direction === "up" ? idx - 1 : idx + 1;
 
-    // まず全グループを連番に正規化してから入れ替える（sort_order の重複・null による不具合を防ぐ）
-    const normalized = groups.map((g, i) => ({ ...g, sort_order: i + 1 }));
+    // 同階層を連番に正規化してから入れ替える
+    const normalized = sameLevel.map((g, i) => ({ ...g, sort_order: i + 1 }));
     const next = [...normalized];
     [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
     next[idx] = { ...next[idx], sort_order: idx + 1 };
     next[swapIdx] = { ...next[swapIdx], sort_order: swapIdx + 1 };
 
-    setGroups(next);
+    const patchMap = new Map(next.map((g) => [g.id, g]));
+    setGroups(groups.map((g) => patchMap.get(g.id) ?? g));
 
     await Promise.all([
       fetch("/api/admin/groups", {
@@ -956,15 +965,46 @@ export default function AdminPage() {
 
         {showNewGroup && (
           <form onSubmit={handleCreateGroup} className="mb-5 rounded-xl border border-violet-200 bg-violet-50 p-4">
-            <p className="mb-3 text-xs font-semibold text-violet-700">新しいグループ</p>
+            {(() => {
+              const parentGroup = newGroupParentId ? groups.find(g => g.id === newGroupParentId) : null;
+              return (
+                <div className="mb-3 flex items-center gap-2">
+                  {parentGroup ? (
+                    <>
+                      <span className="rounded-full bg-violet-200 px-2 py-0.5 text-[11px] font-bold text-violet-700">サブグループ</span>
+                      <span className="text-xs text-violet-700 font-medium">
+                        {parentGroup.name}
+                        <span className="mx-1 text-violet-400">›</span>
+                        {newGroupName || <span className="text-violet-400">（グループ名）</span>}
+                      </span>
+                    </>
+                  ) : (
+                    <p className="text-xs font-semibold text-violet-700">新しいグループ</p>
+                  )}
+                </div>
+              );
+            })()}
             <div className="flex flex-col gap-3">
+              <div>
+                <label className="mb-1 block text-xs text-gray-500">親グループ（サブグループにする場合のみ）</label>
+                <select
+                  value={newGroupParentId}
+                  onChange={(e) => setNewGroupParentId(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-violet-500 focus:outline-none"
+                >
+                  <option value="">なし（トップレベルグループ）</option>
+                  {groups.filter(g => !g.parent_group_id).map(g => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="mb-1 block text-xs text-gray-500">グループ名 <span className="text-red-400">*</span></label>
                 <input
                   type="text"
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
-                  placeholder="Crazy Raccoon"
+                  placeholder={newGroupParentId ? "1期生" : "Crazy Raccoon"}
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-violet-500 focus:outline-none"
                   required
                 />
@@ -1050,25 +1090,38 @@ export default function AdminPage() {
 
         {groups.length === 0 ? (
           <p className="text-sm text-gray-400">グループがありません。「+ 新規作成」で追加してください。</p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {groups.map((g) => (
-              <div key={g.id} className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+        ) : (() => {
+          const topLevelGroups = groups.filter(g => !g.parent_group_id);
+          const childrenByParent = new Map<string, Group[]>();
+          for (const g of groups) {
+            if (g.parent_group_id) {
+              const arr = childrenByParent.get(g.parent_group_id) ?? [];
+              arr.push(g);
+              childrenByParent.set(g.parent_group_id, arr);
+            }
+          }
+
+          function GroupRow({ g, siblings, isChild }: { g: Group; siblings: Group[]; isChild: boolean }) {
+            const idx = siblings.indexOf(g);
+            return (
+              <div className={`rounded-lg border px-4 py-3 ${isChild ? "border-violet-100 bg-violet-50/50" : "border-gray-200 bg-gray-50"}`}>
                 <div className="flex items-center gap-3">
                   <div className="flex flex-col gap-0.5">
                     <button
                       onClick={() => handleMoveGroup(g.id, "up")}
-                      disabled={groups.indexOf(g) === 0}
+                      disabled={idx === 0}
                       className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none"
                     >▲</button>
                     <button
                       onClick={() => handleMoveGroup(g.id, "down")}
-                      disabled={groups.indexOf(g) === groups.length - 1}
+                      disabled={idx === siblings.length - 1}
                       className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none"
                     >▼</button>
                   </div>
+                  {isChild && <span className="text-gray-300 text-xs">└</span>}
                   <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: g.color }} />
                   <span className="flex-1 text-sm font-medium text-gray-900">{g.name}</span>
+                  {isChild && <span className="rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-500">サブ</span>}
                   <span className="text-xs text-gray-400">{g.category ? CATEGORY_LABELS[g.category] : ""}</span>
                   {editingGroupId !== g.id && (
                     <button
@@ -1154,9 +1207,29 @@ export default function AdminPage() {
                   </div>
                 )}
               </div>
-            ))}
-          </div>
-        )}
+            );
+          }
+
+          return (
+            <div className="flex flex-col gap-2">
+              {topLevelGroups.map((g) => {
+                const children = childrenByParent.get(g.id) ?? [];
+                return (
+                  <div key={g.id}>
+                    <GroupRow g={g} siblings={topLevelGroups} isChild={false} />
+                    {children.length > 0 && (
+                      <div className="ml-6 mt-1 flex flex-col gap-1 border-l-2 border-violet-100 pl-3">
+                        {children.map((child) => (
+                          <GroupRow key={child.id} g={child} siblings={children} isChild={true} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </section>
 
       {/* チャンネル追加 */}
@@ -1277,9 +1350,16 @@ export default function AdminPage() {
                     className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-violet-500 focus:outline-none"
                   >
                     <option value="">未分類</option>
-                    {groups.map((g) => (
-                      <option key={g.id} value={g.id}>{g.name}</option>
-                    ))}
+                    {groups.filter(g => !g.parent_group_id).map((pg) => {
+                      const children = groups.filter(g => g.parent_group_id === pg.id);
+                      return children.length > 0 ? (
+                        <optgroup key={pg.id} label={pg.name}>
+                          {children.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                        </optgroup>
+                      ) : (
+                        <option key={pg.id} value={pg.id}>{pg.name}</option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div className="mb-4">
@@ -1373,7 +1453,16 @@ export default function AdminPage() {
                               className="flex-shrink-0 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-xs text-gray-700 focus:border-violet-400 focus:outline-none"
                             >
                               <option value="">未分類</option>
-                              {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                              {groups.filter(g => !g.parent_group_id).map((pg) => {
+                                const children = groups.filter(g => g.parent_group_id === pg.id);
+                                return children.length > 0 ? (
+                                  <optgroup key={pg.id} label={pg.name}>
+                                    {children.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                                  </optgroup>
+                                ) : (
+                                  <option key={pg.id} value={pg.id}>{pg.name}</option>
+                                );
+                              })}
                             </select>
                             {row.addStatus === "adding" && <span className="text-xs text-gray-400">登録中...</span>}
                             {row.addStatus === "added" && <span className="text-xs text-green-600">✓</span>}
@@ -1514,7 +1603,16 @@ export default function AdminPage() {
                       className="basis-full sm:basis-auto flex-shrink-0 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-xs text-gray-700 focus:border-violet-400 focus:outline-none"
                     >
                       <option value="">未分類</option>
-                      {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                      {groups.filter(g => !g.parent_group_id).map((pg) => {
+                        const children = groups.filter(g => g.parent_group_id === pg.id);
+                        return children.length > 0 ? (
+                          <optgroup key={pg.id} label={pg.name}>
+                            {children.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                          </optgroup>
+                        ) : (
+                          <option key={pg.id} value={pg.id}>{pg.name}</option>
+                        );
+                      })}
                     </select>
 
                     {/* 編集・削除 */}
