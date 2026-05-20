@@ -98,9 +98,11 @@ export default function SearchBar({
       e.preventDefault();
       setActiveIdx((i) => Math.max(i - 1, -1));
     } else if (e.key === "Enter") {
-      e.preventDefault();
-      const target = activeIdx >= 0 ? suggestions[activeIdx] : suggestions[0];
-      if (target) navigate(target.channel_id);
+      if (activeIdx >= 0 && suggestions[activeIdx]) {
+        e.preventDefault();
+        navigate(suggestions[activeIdx].channel_id);
+      }
+      // activeIdx === -1 のとき（矢印キー未使用）はEnterを通常動作させてフォーム送信などを妨げない
     } else if (e.key === "Escape") {
       setOpen(false);
       setActiveIdx(-1);
