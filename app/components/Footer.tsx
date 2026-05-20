@@ -18,7 +18,7 @@ export default function Footer() {
 
   return (
     <footer
-      className={`shrink-0 overflow-hidden border-t border-gray-200 bg-white transition-all duration-300 ${
+      className={`fixed bottom-0 inset-x-0 z-20 overflow-hidden border-t border-gray-200 bg-white transition-all duration-300 ${
         visible ? "max-h-20 py-6" : "max-h-0 py-0"
       }`}
     >

@@ -100,9 +100,9 @@ export default async function RootLayout({
               <DesktopSidebar />
               <main id="main-scroll" className="flex-1 min-w-0 overflow-y-auto px-4 py-8">
                 {children}
-                <Footer />
               </main>
             </div>
+            <Footer />
           </SidebarProvider>
         </GroupsProvider>
       </body>
