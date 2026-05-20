@@ -192,7 +192,8 @@ function PeakRanking({ streams, animRev: outerRev = 0 }: { streams: StreamInfo[]
 }
 
 export default function ViewerChart({ data, streams }: Props) {
-  const [filterGroup, setFilterGroup] = useState<string | null>(null);
+  const [filterParent, setFilterParent] = useState<string | null>(null);
+  const [filterSub, setFilterSub] = useState<string | null>(null);
   const [filterAnimRev, setFilterAnimRev] = useState(0);
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [yMax, setYMax] = useState<number | null>(null);
@@ -220,16 +221,40 @@ export default function ViewerChart({ data, streams }: Props) {
 
   const legendLimit = isMobile ? 8 : 12;
 
-  const groupEntries = Array.from(
+  // Top-level entries: parent groups + standalone groups (deduplicated)
+  const topLevelEntries = Array.from(
     new Map(
-      streams
-        .filter((s) => s.groupName)
-        .map((s) => [s.groupName!, { name: s.groupName!, color: s.groupColor ?? "#6b7280" }])
+      streams.map((s) => {
+        if (s.parentGroupName) {
+          return [s.parentGroupName, { name: s.parentGroupName, color: s.parentGroupColor ?? "#6b7280", isParent: true }];
+        }
+        if (s.groupName) {
+          return [s.groupName, { name: s.groupName, color: s.groupColor ?? "#6b7280", isParent: false }];
+        }
+        return null;
+      }).filter((e): e is [string, { name: string; color: string; isParent: boolean }] => e !== null)
     ).values()
   ).sort((a, b) => a.name.localeCompare(b.name, "ja"));
 
-  function applyGroupFilter(group: string | null) {
-    setFilterGroup(group);
+  // Sub-group entries when a parent is selected
+  const subGroupEntries = filterParent
+    ? Array.from(
+        new Map(
+          streams
+            .filter((s) => s.parentGroupName === filterParent && s.groupName)
+            .map((s) => [s.groupName!, { name: s.groupName!, color: s.groupColor ?? "#6b7280" }])
+        ).values()
+      ).sort((a, b) => a.name.localeCompare(b.name, "ja"))
+    : [];
+
+  function applyTopFilter(name: string | null) {
+    setFilterParent(name);
+    setFilterSub(null);
+    setFilterAnimRev((r) => r + 1);
+  }
+
+  function applySubFilter(name: string | null) {
+    setFilterSub(name);
     setFilterAnimRev((r) => r + 1);
   }
 
@@ -241,9 +266,13 @@ export default function ViewerChart({ data, streams }: Props) {
     });
   }
 
-  const groupFiltered = filterGroup
-    ? streams.filter((s) => s.groupName === filterGroup)
-    : streams;
+  const groupFiltered = streams.filter((s) => {
+    if (!filterParent) return true;
+    const matchesTop = s.groupName === filterParent || s.parentGroupName === filterParent;
+    if (!matchesTop) return false;
+    if (!filterSub) return true;
+    return s.groupName === filterSub;
+  });
 
   const visibleStreams = groupFiltered.filter((s) => !hiddenIds.has(s.videoId));
 
@@ -261,32 +290,64 @@ export default function ViewerChart({ data, streams }: Props) {
   return (
     <div>
       {/* グループフィルター */}
-      {groupEntries.length > 1 && (
-        <div className="mb-3 flex flex-wrap items-center gap-1">
-          <button
-            onClick={() => applyGroupFilter(null)}
-            className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-              filterGroup === null
-                ? "bg-gray-800 text-white"
-                : "border border-gray-200 bg-white text-gray-500 hover:border-gray-400"
-            }`}
-          >
-            すべて
-          </button>
-          {groupEntries.map((g) => (
+      {topLevelEntries.length > 1 && (
+        <div className="mb-3 space-y-1">
+          {/* Row 1: すべて + top-level buttons */}
+          <div className="flex flex-wrap items-center gap-1">
             <button
-              key={g.name}
-              onClick={() => applyGroupFilter(filterGroup === g.name ? null : g.name)}
-              style={filterGroup === g.name ? { backgroundColor: g.color, borderColor: g.color } : {}}
-              className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                filterGroup === g.name
-                  ? "text-white"
-                  : "border-gray-200 bg-white text-gray-500 hover:border-gray-400"
+              onClick={() => applyTopFilter(null)}
+              className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                filterParent === null
+                  ? "bg-gray-800 text-white"
+                  : "border border-gray-200 bg-white text-gray-500 hover:border-gray-400"
               }`}
             >
-              {g.name}
+              すべて
             </button>
-          ))}
+            {topLevelEntries.map((g) => (
+              <button
+                key={g.name}
+                onClick={() => applyTopFilter(filterParent === g.name ? null : g.name)}
+                style={filterParent === g.name ? { backgroundColor: g.color, borderColor: g.color } : {}}
+                className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                  filterParent === g.name
+                    ? "text-white"
+                    : "border-gray-200 bg-white text-gray-500 hover:border-gray-400"
+                }`}
+              >
+                {g.name}
+              </button>
+            ))}
+          </div>
+          {/* Row 2: sub-group buttons (only when parent is selected and has sub-groups) */}
+          {filterParent !== null && subGroupEntries.length > 1 && (
+            <div className="flex flex-wrap items-center gap-1 ml-2">
+              <button
+                onClick={() => applySubFilter(null)}
+                className={`rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                  filterSub === null
+                    ? "bg-gray-600 text-white"
+                    : "border border-gray-200 bg-white text-gray-500 hover:border-gray-400"
+                }`}
+              >
+                すべて
+              </button>
+              {subGroupEntries.map((g) => (
+                <button
+                  key={g.name}
+                  onClick={() => applySubFilter(filterSub === g.name ? null : g.name)}
+                  style={filterSub === g.name ? { backgroundColor: g.color, borderColor: g.color } : {}}
+                  className={`rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                    filterSub === g.name
+                      ? "text-white"
+                      : "border-gray-200 bg-white text-gray-500 hover:border-gray-400"
+                  }`}
+                >
+                  {g.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "./SidebarProvider";
@@ -40,10 +41,46 @@ const NAV = [
   },
 ];
 
+function GroupIcon({ g }: { g: { name: string; color: string; icon_url?: string | null } }) {
+  if (g.icon_url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={g.icon_url}
+        alt={g.name}
+        className="h-6 w-6 shrink-0 rounded-full object-cover"
+      />
+    );
+  }
+  return (
+    <span
+      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+      style={{ backgroundColor: g.color }}
+    >
+      {g.name[0]}
+    </span>
+  );
+}
+
 export default function DesktopSidebar() {
   const pathname = usePathname();
   const { open } = useSidebar();
   const groups = useGroups();
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  function toggleExpanded(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  // Separate groups into parents, children, and standalone
+  const childIds = new Set(groups.filter((g) => g.parent_group_id).map((g) => g.id));
+  const parentIds = new Set(groups.filter((g) => !g.parent_group_id && groups.some((c) => c.parent_group_id === g.id)).map((g) => g.id));
+
+  const topLevelGroups = groups.filter((g) => !g.parent_group_id);
 
   return (
     <aside
@@ -159,7 +196,99 @@ export default function DesktopSidebar() {
             )}
             {!open && <div className="mb-1 mx-auto h-px w-6 bg-gray-200" />}
             <div className="space-y-0.5">
-              {groups.map((g) => {
+              {topLevelGroups.map((g) => {
+                const isParent = parentIds.has(g.id);
+                const isExpanded = expandedIds.has(g.id);
+                const children = groups.filter((c) => c.parent_group_id === g.id);
+                const active = pathname === `/group/${g.id}`;
+
+                if (isParent) {
+                  // Parent group: clicking toggles expansion, no navigation
+                  return (
+                    <div key={g.id}>
+                      <button
+                        onClick={() => toggleExpanded(g.id)}
+                        title={open ? undefined : g.name}
+                        className={`group flex items-center rounded-xl text-sm font-medium transition-all duration-150 w-full ${
+                          active
+                            ? "bg-violet-50 text-violet-700"
+                            : "text-gray-500 hover:bg-gray-100/70 hover:text-gray-800"
+                        } ${
+                          open
+                            ? "gap-3 px-2.5 py-2"
+                            : "mx-auto h-9 w-9 justify-center"
+                        }`}
+                      >
+                        <GroupIcon g={g} />
+                        {open && (
+                          <>
+                            <span className="overflow-hidden whitespace-nowrap text-xs flex-1 text-left">
+                              {g.name}
+                            </span>
+                            <span className="ml-auto shrink-0 text-[10px] text-gray-400">
+                              {isExpanded ? "▼" : "▶"}
+                            </span>
+                          </>
+                        )}
+                      </button>
+                      {/* Children: only visible when expanded and sidebar is open */}
+                      {open && isExpanded && children.map((child) => {
+                        const childActive = pathname === `/group/${child.id}`;
+                        return (
+                          <Link
+                            key={child.id}
+                            href={`/group/${child.id}`}
+                            className={`group flex items-center rounded-xl text-sm font-medium transition-all duration-150 pl-3 border-l-2 ml-3 ${
+                              childActive
+                                ? "bg-violet-50 text-violet-700 border-violet-300"
+                                : "text-gray-500 hover:bg-gray-100/70 hover:text-gray-800 border-gray-200"
+                            } gap-2 px-2.5 py-1.5`}
+                          >
+                            <GroupIcon g={child} />
+                            <span className="overflow-hidden whitespace-nowrap text-xs flex-1">
+                              {child.name}
+                            </span>
+                            {childActive && (
+                              <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500" />
+                            )}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  );
+                }
+
+                // Standalone group: link to /group/:id
+                return (
+                  <Link
+                    key={g.id}
+                    href={`/group/${g.id}`}
+                    title={open ? undefined : g.name}
+                    className={`group flex items-center rounded-xl text-sm font-medium transition-all duration-150 ${
+                      active
+                        ? "bg-violet-50 text-violet-700"
+                        : "text-gray-500 hover:bg-gray-100/70 hover:text-gray-800"
+                    } ${
+                      open
+                        ? "w-full gap-3 px-2.5 py-2"
+                        : "mx-auto h-9 w-9 justify-center"
+                    }`}
+                  >
+                    <GroupIcon g={g} />
+                    <span
+                      className="overflow-hidden whitespace-nowrap transition-[opacity] duration-150 text-xs"
+                      style={{ opacity: open ? 1 : 0, width: open ? "auto" : 0 }}
+                    >
+                      {g.name}
+                    </span>
+                    {open && active && (
+                      <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500" />
+                    )}
+                  </Link>
+                );
+              })}
+              {/* Child-only groups that are not under any visible parent (edge case) */}
+              {groups.filter((g) => g.parent_group_id && !groups.some((p) => p.id === g.parent_group_id)).map((g) => {
                 const active = pathname === `/group/${g.id}`;
                 return (
                   <Link
@@ -176,22 +305,7 @@ export default function DesktopSidebar() {
                         : "mx-auto h-9 w-9 justify-center"
                     }`}
                   >
-                    {/* グループアイコン */}
-                    {g.icon_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={g.icon_url}
-                        alt={g.name}
-                        className="h-6 w-6 shrink-0 rounded-full object-cover"
-                      />
-                    ) : (
-                      <span
-                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                        style={{ backgroundColor: g.color }}
-                      >
-                        {g.name[0]}
-                      </span>
-                    )}
+                    <GroupIcon g={g} />
                     <span
                       className="overflow-hidden whitespace-nowrap transition-[opacity] duration-150 text-xs"
                       style={{ opacity: open ? 1 : 0, width: open ? "auto" : 0 }}

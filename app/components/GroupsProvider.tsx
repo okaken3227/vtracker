@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from "react";
 
-export type SidebarGroup = { id: string; name: string; color: string; icon_url?: string | null };
+export type SidebarGroup = { id: string; name: string; color: string; icon_url?: string | null; parent_group_id?: string | null };
 
 const GroupsContext = createContext<SidebarGroup[]>([]);
 

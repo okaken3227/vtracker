@@ -12,6 +12,9 @@ export type StreamInfo = {
   iconUrl: string;
   groupName: string | null;
   groupColor: string | null;
+  parentGroupId: string | null;
+  parentGroupName: string | null;
+  parentGroupColor: string | null;
   totalSCJPY?: number;
 };
 
@@ -70,6 +73,7 @@ export function buildChart(
 
     const ch = channelMap.get(v.channel_id);
     const group = ch?.group_id ? groupMap.get(ch.group_id) : undefined;
+    const parentGroup = group?.parent_group_id ? groupMap.get(group.parent_group_id) : undefined;
     streams.push({
       videoId: v.video_id,
       channelId: v.channel_id,
@@ -81,6 +85,9 @@ export function buildChart(
       iconUrl: ch?.icon_url ?? "",
       groupName: group?.name ?? null,
       groupColor: group?.color ?? null,
+      parentGroupId: parentGroup?.id ?? null,
+      parentGroupName: parentGroup?.name ?? null,
+      parentGroupColor: parentGroup?.color ?? null,
       totalSCJPY: scByVideo.get(v.video_id) ?? 0,
     });
   }

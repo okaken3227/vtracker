@@ -41,14 +41,48 @@ const NAV = [
   },
 ];
 
+function GroupIcon({ g }: { g: { name: string; color: string; icon_url?: string | null } }) {
+  if (g.icon_url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={g.icon_url}
+        alt={g.name}
+        className="h-6 w-6 flex-shrink-0 rounded-full object-cover"
+      />
+    );
+  }
+  return (
+    <span
+      className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+      style={{ backgroundColor: g.color }}
+    >
+      {g.name[0]}
+    </span>
+  );
+}
+
 export default function NavDrawer() {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const groups = useGroups();
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { setOpen(false); }, [pathname]);
+
+  function toggleExpanded(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  // Separate groups into parents, children, and standalone
+  const parentIds = new Set(groups.filter((g) => !g.parent_group_id && groups.some((c) => c.parent_group_id === g.id)).map((g) => g.id));
+  const topLevelGroups = groups.filter((g) => !g.parent_group_id);
 
   const drawer = (
     <>
@@ -162,7 +196,64 @@ export default function NavDrawer() {
                 グループ
               </p>
               <div className="space-y-0.5">
-                {groups.map((g) => {
+                {topLevelGroups.map((g) => {
+                  const isParent = parentIds.has(g.id);
+                  const isExpanded = expandedIds.has(g.id);
+                  const children = groups.filter((c) => c.parent_group_id === g.id);
+                  const active = pathname === `/group/${g.id}`;
+
+                  if (isParent) {
+                    return (
+                      <div key={g.id}>
+                        <button
+                          onClick={() => toggleExpanded(g.id)}
+                          className={`group flex w-full items-center gap-3 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-150 ${
+                            active ? "bg-violet-50 text-violet-700" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                          }`}
+                        >
+                          <GroupIcon g={g} />
+                          <span className="flex-1 text-left text-xs">{g.name}</span>
+                          <span className="ml-auto text-[10px] text-gray-400">
+                            {isExpanded ? "▼" : "▶"}
+                          </span>
+                        </button>
+                        {isExpanded && children.map((child) => {
+                          const childActive = pathname === `/group/${child.id}`;
+                          return (
+                            <Link
+                              key={child.id}
+                              href={`/group/${child.id}`}
+                              className={`group flex items-center gap-3 rounded-xl pl-6 pr-4 py-2 text-sm font-medium transition-all duration-150 ${
+                                childActive ? "bg-violet-50 text-violet-700" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                              }`}
+                            >
+                              <GroupIcon g={child} />
+                              <span className="text-xs">{child.name}</span>
+                              {childActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-violet-500" />}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    );
+                  }
+
+                  // Standalone group
+                  return (
+                    <Link
+                      key={g.id}
+                      href={`/group/${g.id}`}
+                      className={`group flex items-center gap-3 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-150 ${
+                        active ? "bg-violet-50 text-violet-700" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                      }`}
+                    >
+                      <GroupIcon g={g} />
+                      <span className="text-xs">{g.name}</span>
+                      {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-violet-500" />}
+                    </Link>
+                  );
+                })}
+                {/* Child-only groups that are not under any visible parent (edge case) */}
+                {groups.filter((g) => g.parent_group_id && !groups.some((p) => p.id === g.parent_group_id)).map((g) => {
                   const active = pathname === `/group/${g.id}`;
                   return (
                     <Link
@@ -172,21 +263,7 @@ export default function NavDrawer() {
                         active ? "bg-violet-50 text-violet-700" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
                       }`}
                     >
-                      {g.icon_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={g.icon_url}
-                          alt={g.name}
-                          className="h-6 w-6 flex-shrink-0 rounded-full object-cover"
-                        />
-                      ) : (
-                        <span
-                          className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                          style={{ backgroundColor: g.color }}
-                        >
-                          {g.name[0]}
-                        </span>
-                      )}
+                      <GroupIcon g={g} />
                       <span className="text-xs">{g.name}</span>
                       {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-violet-500" />}
                     </Link>

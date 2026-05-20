@@ -104,12 +104,14 @@ export default function AdminPage() {
   const [newGroupCategory, setNewGroupCategory] = useState<GroupCategory>("vtuber");
   const [newGroupColor, setNewGroupColor] = useState(GROUP_COLORS[0]);
   const [newGroupStatus, setNewGroupStatus] = useState("");
+  const [newGroupParentId, setNewGroupParentId] = useState("");
 
   // グループキーワード・アイコン編集
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editKeywords, setEditKeywords] = useState("");
   const [editGroupIconUrl, setEditGroupIconUrl] = useState("");
   const [editGroupColor, setEditGroupColor] = useState("");
+  const [editGroupParentId, setEditGroupParentId] = useState("");
   const [keywordSaving, setKeywordSaving] = useState(false);
 
   // チャンネル追加 - 単件
@@ -211,6 +213,7 @@ export default function AdminPage() {
         keywords: newGroupKeywords.trim() || undefined,
         category: newGroupCategory,
         color: newGroupColor,
+        parent_group_id: newGroupParentId || undefined,
       }),
     });
     const data = await res.json();
@@ -221,6 +224,7 @@ export default function AdminPage() {
       setNewGroupKeywords("");
       setNewGroupCategory("vtuber");
       setNewGroupColor(GROUP_COLORS[0]);
+      setNewGroupParentId("");
       setShowNewGroup(false);
 
       const gRes = await fetch("/api/admin/groups").then((r) => r.json());
@@ -250,6 +254,7 @@ export default function AdminPage() {
         keywords: editKeywords.trim() || null,
         icon_url: editGroupIconUrl.trim() || null,
         color: editGroupColor || null,
+        parent_group_id: editGroupParentId || null,
       }),
     });
     setKeywordSaving(false);
@@ -258,19 +263,29 @@ export default function AdminPage() {
   }
 
   async function handleMoveGroup(groupId: string, direction: "up" | "down") {
-    const idx = groups.findIndex((g) => g.id === groupId);
+    const group = groups.find((g) => g.id === groupId);
+    if (!group) return;
+    // Only consider groups at the same level (same parent_group_id)
+    const sameLevel = groups.filter((g) => g.parent_group_id === group.parent_group_id);
+    const idx = sameLevel.findIndex((g) => g.id === groupId);
     if (direction === "up" && idx === 0) return;
-    if (direction === "down" && idx === groups.length - 1) return;
+    if (direction === "down" && idx === sameLevel.length - 1) return;
     const swapIdx = direction === "up" ? idx - 1 : idx + 1;
 
-    // まず全グループを連番に正規化してから入れ替える（sort_order の重複・null による不具合を防ぐ）
-    const normalized = groups.map((g, i) => ({ ...g, sort_order: i + 1 }));
+    // Normalize sort_order within the same level then swap
+    const normalized = sameLevel.map((g, i) => ({ ...g, sort_order: i + 1 }));
     const next = [...normalized];
     [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
     next[idx] = { ...next[idx], sort_order: idx + 1 };
     next[swapIdx] = { ...next[swapIdx], sort_order: swapIdx + 1 };
 
-    setGroups(next);
+    // Apply changes to the full groups list
+    setGroups((prev) =>
+      prev.map((g) => {
+        const updated = next.find((n) => n.id === g.id);
+        return updated ? updated : g;
+      })
+    );
 
     await Promise.all([
       fetch("/api/admin/groups", {
@@ -995,6 +1010,19 @@ export default function AdminPage() {
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-violet-500 focus:outline-none"
                 />
               </div>
+              <div>
+                <label className="mb-1 block text-xs text-gray-500">親グループ（任意）</label>
+                <select
+                  value={newGroupParentId}
+                  onChange={(e) => setNewGroupParentId(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-violet-500 focus:outline-none"
+                >
+                  <option value="">なし（トップレベル）</option>
+                  {groups.filter((g) => !g.parent_group_id).map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-xs text-gray-500">カテゴリ</label>
@@ -1052,109 +1080,165 @@ export default function AdminPage() {
           <p className="text-sm text-gray-400">グループがありません。「+ 新規作成」で追加してください。</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {groups.map((g) => (
-              <div key={g.id} className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex flex-col gap-0.5">
-                    <button
-                      onClick={() => handleMoveGroup(g.id, "up")}
-                      disabled={groups.indexOf(g) === 0}
-                      className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none"
-                    >▲</button>
-                    <button
-                      onClick={() => handleMoveGroup(g.id, "down")}
-                      disabled={groups.indexOf(g) === groups.length - 1}
-                      className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none"
-                    >▼</button>
-                  </div>
-                  <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: g.color }} />
-                  <span className="flex-1 text-sm font-medium text-gray-900">{g.name}</span>
-                  <span className="text-xs text-gray-400">{g.category ? CATEGORY_LABELS[g.category] : ""}</span>
-                  {editingGroupId !== g.id && (
-                    <button
-                      onClick={() => { setEditingGroupId(g.id); setEditKeywords(g.keywords ?? ""); setEditGroupIconUrl(g.icon_url ?? ""); setEditGroupColor(g.color ?? ""); }}
-                      className="text-xs text-violet-500 hover:underline"
-                    >
-                      編集
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleDeleteGroup(g.id, g.name)}
-                    className="text-xs text-gray-300 hover:text-red-500"
-                  >
-                    ✕
-                  </button>
-                </div>
-                {editingGroupId === g.id ? (
-                  <div className="mt-2 space-y-2">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {GROUP_COLORS.map((c) => (
+            {(() => {
+              const topLevelGs = groups.filter((g) => !g.parent_group_id);
+              return topLevelGs.map((g) => {
+                const children = groups.filter((c) => c.parent_group_id === g.id);
+                const topIdx = topLevelGs.indexOf(g);
+
+                function GroupRow({ gr, isChild }: { gr: Group; isChild: boolean }) {
+                  const sameLevelGroups = isChild
+                    ? groups.filter((x) => x.parent_group_id === gr.parent_group_id)
+                    : topLevelGs;
+                  const grIdx = sameLevelGroups.findIndex((x) => x.id === gr.id);
+                  return (
+                    <div className={`rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 ${isChild ? "ml-4 border-l border-gray-200 pl-3" : ""}`}>
+                      <div className="flex items-center gap-3">
+                        {!isChild && (
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              onClick={() => handleMoveGroup(gr.id, "up")}
+                              disabled={topIdx === 0}
+                              className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none"
+                            >▲</button>
+                            <button
+                              onClick={() => handleMoveGroup(gr.id, "down")}
+                              disabled={topIdx === topLevelGs.length - 1}
+                              className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none"
+                            >▼</button>
+                          </div>
+                        )}
+                        {isChild && (
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              onClick={() => handleMoveGroup(gr.id, "up")}
+                              disabled={grIdx === 0}
+                              className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none"
+                            >▲</button>
+                            <button
+                              onClick={() => handleMoveGroup(gr.id, "down")}
+                              disabled={grIdx === sameLevelGroups.length - 1}
+                              className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none"
+                            >▼</button>
+                          </div>
+                        )}
+                        <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: gr.color }} />
+                        <span className="flex-1 text-sm font-medium text-gray-900">{gr.name}</span>
+                        <span className="text-xs text-gray-400">{gr.category ? CATEGORY_LABELS[gr.category] : ""}</span>
+                        {editingGroupId !== gr.id && (
+                          <button
+                            onClick={() => { setEditingGroupId(gr.id); setEditKeywords(gr.keywords ?? ""); setEditGroupIconUrl(gr.icon_url ?? ""); setEditGroupColor(gr.color ?? ""); setEditGroupParentId(gr.parent_group_id ?? ""); }}
+                            className="text-xs text-violet-500 hover:underline"
+                          >
+                            編集
+                          </button>
+                        )}
                         <button
-                          key={c}
-                          type="button"
-                          onClick={() => setEditGroupColor(c)}
-                          className={`h-6 w-6 rounded-full transition-transform ${editGroupColor === c ? "scale-125 ring-2 ring-offset-1 ring-gray-400" : ""}`}
-                          style={{ backgroundColor: c }}
-                        />
-                      ))}
-                      <label className="flex cursor-pointer items-center gap-1 rounded border border-gray-200 px-1.5 py-0.5 text-[10px] text-gray-500 hover:border-gray-400">
-                        <input
-                          type="color"
-                          value={editGroupColor || "#8b5cf6"}
-                          onChange={(e) => setEditGroupColor(e.target.value)}
-                          className="h-4 w-4 cursor-pointer rounded border-0 bg-transparent p-0"
-                        />
-                        自由
-                      </label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {editGroupIconUrl && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={editGroupIconUrl} alt="" className="h-7 w-7 flex-shrink-0 rounded-full object-cover" />
+                          onClick={() => handleDeleteGroup(gr.id, gr.name)}
+                          className="text-xs text-gray-300 hover:text-red-500"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {editingGroupId === gr.id ? (
+                        <div className="mt-2 space-y-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {GROUP_COLORS.map((c) => (
+                              <button
+                                key={c}
+                                type="button"
+                                onClick={() => setEditGroupColor(c)}
+                                className={`h-6 w-6 rounded-full transition-transform ${editGroupColor === c ? "scale-125 ring-2 ring-offset-1 ring-gray-400" : ""}`}
+                                style={{ backgroundColor: c }}
+                              />
+                            ))}
+                            <label className="flex cursor-pointer items-center gap-1 rounded border border-gray-200 px-1.5 py-0.5 text-[10px] text-gray-500 hover:border-gray-400">
+                              <input
+                                type="color"
+                                value={editGroupColor || "#8b5cf6"}
+                                onChange={(e) => setEditGroupColor(e.target.value)}
+                                className="h-4 w-4 cursor-pointer rounded border-0 bg-transparent p-0"
+                              />
+                              自由
+                            </label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {editGroupIconUrl && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={editGroupIconUrl} alt="" className="h-7 w-7 flex-shrink-0 rounded-full object-cover" />
+                            )}
+                            <input
+                              type="url"
+                              value={editGroupIconUrl}
+                              onChange={(e) => setEditGroupIconUrl(e.target.value)}
+                              placeholder="アイコン画像URL"
+                              className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:border-violet-500 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs text-gray-500">親グループ</label>
+                            <select
+                              value={editGroupParentId}
+                              onChange={(e) => setEditGroupParentId(e.target.value)}
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 focus:border-violet-500 focus:outline-none"
+                            >
+                              <option value="">なし（トップレベル）</option>
+                              {groups.filter((pg) => !pg.parent_group_id && pg.id !== gr.id).map((pg) => (
+                                <option key={pg.id} value={pg.id}>{pg.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              autoFocus
+                              type="text"
+                              value={editKeywords}
+                              onChange={(e) => setEditKeywords(e.target.value)}
+                              placeholder="キーワード1,キーワード2,略称"
+                              className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:border-violet-500 focus:outline-none"
+                            />
+                            <button
+                              onClick={() => handleSaveKeywords(gr.id)}
+                              disabled={keywordSaving}
+                              className="flex-shrink-0 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-500 disabled:opacity-40"
+                            >
+                              {keywordSaving ? "保存中..." : "保存"}
+                            </button>
+                            <button
+                              onClick={() => setEditingGroupId(null)}
+                              className="flex-shrink-0 text-xs text-gray-400 hover:text-gray-600"
+                            >
+                              キャンセル
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-1 pl-5 flex items-center gap-2">
+                          {gr.icon_url && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={gr.icon_url} alt="" className="h-4 w-4 rounded-full object-cover" />
+                          )}
+                          {gr.keywords && <p className="text-xs text-gray-400">{gr.keywords}</p>}
+                        </div>
                       )}
-                      <input
-                        type="url"
-                        value={editGroupIconUrl}
-                        onChange={(e) => setEditGroupIconUrl(e.target.value)}
-                        placeholder="アイコン画像URL"
-                        className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:border-violet-500 focus:outline-none"
-                      />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        autoFocus
-                        type="text"
-                        value={editKeywords}
-                        onChange={(e) => setEditKeywords(e.target.value)}
-                        placeholder="キーワード1,キーワード2,略称"
-                        className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:border-violet-500 focus:outline-none"
-                      />
-                      <button
-                        onClick={() => handleSaveKeywords(g.id)}
-                        disabled={keywordSaving}
-                        className="flex-shrink-0 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-500 disabled:opacity-40"
-                      >
-                        {keywordSaving ? "保存中..." : "保存"}
-                      </button>
-                      <button
-                        onClick={() => setEditingGroupId(null)}
-                        className="flex-shrink-0 text-xs text-gray-400 hover:text-gray-600"
-                      >
-                        キャンセル
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-1 pl-5 flex items-center gap-2">
-                    {g.icon_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={g.icon_url} alt="" className="h-4 w-4 rounded-full object-cover" />
+                  );
+                }
+
+                return (
+                  <div key={g.id}>
+                    <GroupRow gr={g} isChild={false} />
+                    {children.length > 0 && (
+                      <div className="ml-4 border-l border-gray-200 pl-3 mt-1 flex flex-col gap-1">
+                        {children.map((child) => (
+                          <GroupRow key={child.id} gr={child} isChild={true} />
+                        ))}
+                      </div>
                     )}
-                    {g.keywords && <p className="text-xs text-gray-400">{g.keywords}</p>}
                   </div>
-                )}
-              </div>
-            ))}
+                );
+              });
+            })()}
           </div>
         )}
       </section>
