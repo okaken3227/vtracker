@@ -12,8 +12,10 @@ export type StreamInfo = {
   iconUrl: string;
   groupName: string | null;
   groupColor: string | null;
+  groupSortOrder: number | null;
   parentGroupName: string | null;
   parentGroupColor: string | null;
+  parentGroupSortOrder: number | null;
   totalSCJPY?: number;
 };
 
@@ -84,8 +86,10 @@ export function buildChart(
       iconUrl: ch?.icon_url ?? "",
       groupName: group?.name ?? null,
       groupColor: group?.color ?? null,
+      groupSortOrder: group?.sort_order ?? null,
       parentGroupName: parentGroup?.name ?? null,
       parentGroupColor: parentGroup?.color ?? null,
+      parentGroupSortOrder: parentGroup?.sort_order ?? null,
       totalSCJPY: scByVideo.get(v.video_id) ?? 0,
     });
   }

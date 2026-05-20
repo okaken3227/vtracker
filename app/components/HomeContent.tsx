@@ -191,16 +191,17 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
     }
   }
 
-  // グループ順（サイドバーと同じ）→ライブ優先→登録者数
+  // ライブ優先（live→upcoming→none）→グループ順→登録者数
   const liveChannelIds = new Set(liveVideos.map((v) => v.channel_id));
   const groupOrderMap = new Map(groups.map((g, i) => [g.id, i]));
+  const statusRank = (s?: string) => s === "live" ? 0 : s === "upcoming" ? 1 : 2;
   const sortedChannels = [...filteredChannels].sort((a, b) => {
+    const aRank = statusRank(latestByChannel[a.channel_id]?.status);
+    const bRank = statusRank(latestByChannel[b.channel_id]?.status);
+    if (aRank !== bRank) return aRank - bRank;
     const aGroupOrder = a.group_id != null ? (groupOrderMap.get(a.group_id) ?? 999) : 999;
     const bGroupOrder = b.group_id != null ? (groupOrderMap.get(b.group_id) ?? 999) : 999;
     if (aGroupOrder !== bGroupOrder) return aGroupOrder - bGroupOrder;
-    const aLive = liveChannelIds.has(a.channel_id) ? 0 : 1;
-    const bLive = liveChannelIds.has(b.channel_id) ? 0 : 1;
-    if (aLive !== bLive) return aLive - bLive;
     return b.subscriber_count - a.subscriber_count;
   });
 

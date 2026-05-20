@@ -36,14 +36,25 @@ function CustomTooltip({
 }) {
   if (!active || !payload?.length) return null;
   const streamMap = Object.fromEntries(streams.map((s) => [s.videoId, s]));
+
+  const W = 156; // fixed tooltip width (px), matches w-39 below
+  const off = 10;
   const cx = coordinate?.x ?? 0;
-  const cw = (viewBox?.width ?? 0) + (viewBox?.x ?? 0);
-  const flipLeft = cw > 0 && cx > cw * 0.62;
+  // viewBox.x = left margin, viewBox.width = plot area width, +24 = right margin
+  const containerW = (viewBox?.x ?? 0) + (viewBox?.width ?? 0) + 24;
+  let dx: number;
+  if (cx + off + W <= containerW) {
+    dx = off; // fits on the right
+  } else if (cx - off - W >= 0) {
+    dx = -(W + off); // fits on the left
+  } else {
+    dx = Math.max(-cx, containerW - cx - W); // clamp to whichever side loses less
+  }
 
   return (
     <div
-      style={{ transform: flipLeft ? "translateX(calc(-100% - 16px))" : "translateX(16px)" }}
-      className="min-w-[160px] max-w-[220px] rounded-xl border border-gray-100 bg-white/95 p-2 text-sm shadow-xl backdrop-blur-sm"
+      style={{ transform: `translateX(${dx}px)`, width: W }}
+      className="rounded-xl border border-gray-100 bg-white/95 p-2 text-sm shadow-xl backdrop-blur-sm"
     >
       <p className="mb-1 text-[10px] font-medium text-gray-400">{tToHHMM(label ?? 0)}</p>
       <div className="max-h-[200px] overflow-y-auto">
@@ -217,10 +228,6 @@ export default function ViewerChart({ data, streams }: Props) {
   const [iconMode, setIconMode] = useState(false);
   const [isMobile, setIsMobile] = useState(true);
   const [tooltipVisible, setTooltipVisible] = useState(true);
-  const [mobilePanelData, setMobilePanelData] = useState<{
-    label: number;
-    entries: { key: string; value: number; color: string }[];
-  } | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -237,7 +244,6 @@ export default function ViewerChart({ data, streams }: Props) {
       if (chartContainerRef.current && !chartContainerRef.current.contains(e.target as Node)) {
         setTooltipVisible(false);
         setTimeout(() => setTooltipVisible(true), 100);
-        setMobilePanelData(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -264,21 +270,29 @@ export default function ViewerChart({ data, streams }: Props) {
           {
             name: s.groupName!,
             color: s.groupColor ?? "#6b7280",
+            sortOrder: s.groupSortOrder,
             parentName: s.parentGroupName ?? null,
             parentColor: s.parentGroupColor ?? null,
+            parentSortOrder: s.parentGroupSortOrder,
           },
         ])
     ).values()
   );
 
-  // 親グループ（独立 or 子を持つ）を先に、その後に子グループをその親の直後に並べる
+  const sortByOrder = (a: number | null | undefined, b: number | null | undefined, fallback: () => number) => {
+    if (a != null && b != null) return a - b;
+    if (a != null) return -1;
+    if (b != null) return 1;
+    return fallback();
+  };
+
   const topGroupEntries = groupEntries.filter((g) => !g.parentName);
   const subGroupEntries = groupEntries.filter((g) => g.parentName);
   const sortedGroupEntries = [
-    ...topGroupEntries.sort((a, b) => a.name.localeCompare(b.name, "ja")),
+    ...topGroupEntries.sort((a, b) => sortByOrder(a.sortOrder, b.sortOrder, () => a.name.localeCompare(b.name, "ja"))),
     ...subGroupEntries.sort((a, b) => {
-      const pc = (a.parentName ?? "").localeCompare(b.parentName ?? "", "ja");
-      return pc !== 0 ? pc : a.name.localeCompare(b.name, "ja");
+      const pc = sortByOrder(a.parentSortOrder, b.parentSortOrder, () => (a.parentName ?? "").localeCompare(b.parentName ?? "", "ja"));
+      return pc !== 0 ? pc : sortByOrder(a.sortOrder, b.sortOrder, () => a.name.localeCompare(b.name, "ja"));
     }),
   ];
 
@@ -493,19 +507,6 @@ export default function ViewerChart({ data, streams }: Props) {
           onClick={handleChartClick}
           style={{ cursor: "pointer" }}
           margin={{ top: 20, right: 24, bottom: 8, left: 8 }}
-          onMouseMove={(state) => {
-            if (!isMobile) return;
-            const s = state as unknown as {
-              activeLabel?: number;
-              activePayload?: { dataKey: string; value: number; color: string }[];
-            };
-            if (!s.activePayload?.length) return;
-            const entries = s.activePayload
-              .filter((p) => p.value != null && visibleStreams.some((st) => st.videoId === p.dataKey))
-              .sort((a, b) => b.value - a.value)
-              .map((p) => ({ key: p.dataKey, value: p.value, color: p.color }));
-            if (entries.length > 0) setMobilePanelData({ label: s.activeLabel ?? 0, entries });
-          }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
           <XAxis
@@ -524,7 +525,7 @@ export default function ViewerChart({ data, streams }: Props) {
             domain={[yMin ?? 0, yMax ?? "auto"]}
             allowDataOverflow
           />
-          {!isMobile && tooltipVisible && (
+          {tooltipVisible && (
             <Tooltip
               content={(props) => {
                 const p = props as unknown as {
@@ -580,42 +581,7 @@ export default function ViewerChart({ data, streams }: Props) {
       </ResponsiveContainer>
       </div>
 
-      {/* ── モバイル用データパネル ── */}
-      {isMobile && mobilePanelData && mobilePanelData.entries.length > 0 && (
-        <div className="mt-2 rounded-xl bg-gray-900 px-3 py-2.5">
-          <p className="mb-1.5 text-[10px] text-gray-500">{tToHHMM(mobilePanelData.label)}</p>
-          <div className="flex max-h-28 flex-col gap-1 overflow-y-auto">
-            {mobilePanelData.entries.map((entry) => {
-              const s = visibleStreams.find((st) => st.videoId === entry.key);
-              return (
-                <div key={entry.key} className="flex items-center gap-2">
-                  {s?.iconUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={s.iconUrl} alt="" className="h-4 w-4 flex-shrink-0 rounded-full object-cover" />
-                  ) : (
-                    <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: entry.color }} />
-                  )}
-                  <span className="min-w-0 flex-1 truncate text-xs text-gray-300">{s?.channelName ?? entry.key}</span>
-                  {s?.peakT === mobilePanelData.label && <span className="text-xs">👑</span>}
-                  <span className="flex-shrink-0 font-mono text-xs font-bold" style={{ color: entry.color }}>
-                    {entry.value.toLocaleString()}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          {mobilePanelData.entries.length > 1 && (
-            <div className="mt-1.5 flex items-center justify-between border-t border-gray-800 pt-1.5">
-              <span className="text-[10px] text-gray-500">合計</span>
-              <span className="font-mono text-xs font-bold text-white">
-                {mobilePanelData.entries.reduce((s, e) => s + e.value, 0).toLocaleString()}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {visibleStreams.length > 0 && <PeakRanking streams={visibleStreams} animRev={filterAnimRev} />}
+{visibleStreams.length > 0 && <PeakRanking streams={visibleStreams} animRev={filterAnimRev} />}
     </div>
   );
 }
