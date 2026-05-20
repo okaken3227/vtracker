@@ -24,28 +24,37 @@ const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ??
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
+const SITE_TITLE = "vtracker | VTuber同接グラフ・視聴者数・スパチャ統計をリアルタイム追跡";
+const SITE_DESCRIPTION =
+  "VTuberの同時接続数グラフ・視聴者数ランキング・スパチャ（スーパーチャット）統計・配信履歴をリアルタイムで追跡。にじさんじ・ホロライブ・ぶいすぽっ！など人気VTuberのチャンネル登録者数・同接ピークを無料で確認できるVTuber統計サイト。";
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "vtracker | VTuberリアルタイム視聴者数・スパチャ追跡",
+    default: SITE_TITLE,
     template: "%s | vtracker",
   },
-  description:
-    "VTuberのリアルタイム視聴者数・スパチャ（スーパーチャット）・配信履歴を追跡するサービスです。にじさんじ・ホロライブなど人気事務所の全チャンネルを一覧でチェック。",
-  keywords: ["VTuber", "視聴者数", "スパチャ", "スーパーチャット", "ライブ追跡", "配信", "にじさんじ", "ホロライブ", "YouTube", "Twitch"],
+  description: SITE_DESCRIPTION,
+  keywords: [
+    "VTuber", "VTuber統計", "VTuberグラフ", "VTuberランキング",
+    "視聴者数", "同時接続数", "同接", "同接グラフ", "同接ランキング",
+    "スパチャ", "スーパーチャット", "スパチャ統計", "スパチャランキング",
+    "リアルタイム", "ライブ追跡", "配信", "配信統計",
+    "チャンネル登録者数", "登録者数ランキング",
+    "にじさんじ", "ホロライブ", "ぶいすぽっ！", "ぶいすぽ", "個人勢",
+    "YouTube", "Twitch", "VTuber配信",
+  ],
   openGraph: {
     type: "website",
     locale: "ja_JP",
     siteName: "vtracker",
-    title: "vtracker | VTuberリアルタイム視聴者数・スパチャ追跡",
-    description:
-      "VTuberのリアルタイム視聴者数・スパチャ・配信履歴を追跡するサービスです。",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
   twitter: {
     card: "summary_large_image",
-    title: "vtracker | VTuberリアルタイム視聴者数・スパチャ追跡",
-    description:
-      "VTuberのリアルタイム視聴者数・スパチャ・配信履歴を追跡するサービスです。",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
   robots: { index: true, follow: true },
   other: {
@@ -84,6 +93,22 @@ export default async function RootLayout({
       lang="ja"
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            "name": "vtracker",
+            "url": SITE_URL,
+            "description": SITE_DESCRIPTION,
+            "applicationCategory": "EntertainmentApplication",
+            "inLanguage": "ja",
+            "keywords": "VTuber,同接グラフ,視聴者数,スパチャ統計,VTuber統計,にじさんじ,ホロライブ,ぶいすぽっ！",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "JPY" },
+          }),
+        }}
+      />
       <Script
         async
         src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6560735293239350"

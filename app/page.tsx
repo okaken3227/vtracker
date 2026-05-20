@@ -7,9 +7,9 @@ import HomeContent from "./components/HomeContent";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "vtracker | VTuberリアルタイム視聴者数・スパチャ追跡",
+  title: "vtracker | VTuber同接グラフ・視聴者数・スパチャ統計をリアルタイム追跡",
   description:
-    "VTuberのリアルタイム視聴者数・スパチャ（スーパーチャット）・配信履歴を追跡するサービスです。にじさんじ・ホロライブなど人気事務所の全チャンネルを一覧でチェック。",
+    "VTuberの同時接続数グラフ・視聴者数ランキング・スパチャ統計・配信履歴をリアルタイムで追跡。にじさんじ・ホロライブ・ぶいすぽっ！など人気VTuberのチャンネル登録者数・同接ピークを無料で確認できるVTuber統計サイト。",
   alternates: { canonical: "/" },
 };
 
