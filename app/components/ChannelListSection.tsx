@@ -42,7 +42,11 @@ export default function ChannelListSection({
   const deduped = channels.filter((c) => !shownAsLinked.has(c.channel_id));
 
   const filteredChannels = selectedGroup
-    ? deduped.filter((c) => c.group_id === selectedGroup)
+    ? deduped.filter((c) => {
+        if (c.group_id === selectedGroup) return true;
+        const cGroup = groupMap.get(c.group_id ?? "");
+        return cGroup?.parent_group_id === selectedGroup;
+      })
     : deduped;
 
   const liveChannelIds = new Set(
@@ -73,6 +77,7 @@ export default function ChannelListSection({
           {sortedChannels.map((ch) => {
             const group = ch.group_id ? groupMap.get(ch.group_id) : undefined;
             const parentGroup = group?.parent_group_id ? groupMap.get(group.parent_group_id) : undefined;
+            const displayGroup = parentGroup ?? group;
             const latest = latestByChannel[ch.channel_id];
             return (
               <ChannelCard
@@ -85,10 +90,10 @@ export default function ChannelListSection({
                 totalSuperchat={scByChannel[ch.channel_id] ?? 0}
                 latestVideoStatus={latest?.status ?? "none"}
                 latestVideoStartTime={latest?.startTime ?? null}
-                groupId={ch.group_id}
-                groupName={group?.name}
-                groupColor={group?.color}
-                groupIconUrl={parentGroup?.icon_url ?? group?.icon_url}
+                groupId={displayGroup?.id}
+                groupName={displayGroup?.name}
+                groupColor={displayGroup?.color}
+                groupIconUrl={displayGroup?.icon_url}
                 onGroupFilter={setSelectedGroup}
               />
             );
