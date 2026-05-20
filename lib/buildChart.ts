@@ -1,4 +1,4 @@
-import type { Video, Channel, Group, LiveGraphPoint } from "./types";
+import type { Video, Channel, Group } from "./types";
 import { GRAPH_COLORS, GRAPH_BUCKET_MS } from "./chartConfig";
 
 export type StreamInfo = {
@@ -17,12 +17,19 @@ export type StreamInfo = {
 
 export type ChartPoint = { t: number } & Record<string, number>;
 
+// get_chart_data RPC から返ってくる行の型
+export type GraphPoint = {
+  video_id: string;
+  bucket: string;       // 5分バケットのタイムスタンプ (ISO string)
+  avg_viewers: number;  // DBで平均済み
+};
+
 const STREAM_COLORS = GRAPH_COLORS;
 const BUCKET_MS = GRAPH_BUCKET_MS;
 
 export function buildChart(
   allVideos: Video[],
-  graphPoints: LiveGraphPoint[],
+  graphPoints: GraphPoint[],
   channels: Channel[],
   groups: Group[],
   jstMidnightMs: number,
@@ -36,36 +43,30 @@ export function buildChart(
   const videoIds = [...new Set(graphPoints.map((p) => p.video_id))];
   const videos = videoIds.map((id) => videoMap.get(id)).filter((v): v is Video => v != null);
 
-  // O(n+m): group points by video_id first, then iterate per video
+  // O(n+m): video_id でグループ化してからイテレート
   const pointsByVideo = new Map<string, { t: number; viewers: number }[]>();
   for (const p of graphPoints) {
-    const ms = new Date(p.recorded_at).getTime() - jstMidnightMs;
+    const ms = new Date(p.bucket).getTime() - jstMidnightMs;
     const t = Math.max(0, Math.floor(ms / BUCKET_MS) * 5);
     if (!pointsByVideo.has(p.video_id)) pointsByVideo.set(p.video_id, []);
-    pointsByVideo.get(p.video_id)!.push({ t, viewers: p.concurrent_viewers });
+    pointsByVideo.get(p.video_id)!.push({ t, viewers: p.avg_viewers });
   }
 
   const streams: StreamInfo[] = [];
   const allTs = new Set<number>();
-  const videoSeries = new Map<string, Map<number, number[]>>();
+  const videoSeries = new Map<string, Map<number, number>>();
 
   for (const v of videos) {
     const pts = pointsByVideo.get(v.video_id);
     if (!pts || pts.length === 0) continue;
-    const buckets = new Map<number, number[]>();
-    for (const { t, viewers } of pts) {
-      if (!buckets.has(t)) buckets.set(t, []);
-      buckets.get(t)!.push(viewers);
-    }
-    if (buckets.size === 0) continue;
-    videoSeries.set(v.video_id, buckets);
-    buckets.forEach((_, t) => allTs.add(t));
-
+    const buckets = new Map<number, number>();
     let peakT = 0, peakViewers = 0;
-    buckets.forEach((vs, t) => {
-      const avg = Math.round(vs.reduce((s, x) => s + x, 0) / vs.length);
-      if (avg > peakViewers) { peakViewers = avg; peakT = t; }
-    });
+    for (const { t, viewers } of pts) {
+      buckets.set(t, viewers); // DBで平均済みなので上書きでOK
+      allTs.add(t);
+      if (viewers > peakViewers) { peakViewers = viewers; peakT = t; }
+    }
+    videoSeries.set(v.video_id, buckets);
 
     const ch = channelMap.get(v.channel_id);
     const group = ch?.group_id ? groupMap.get(ch.group_id) : undefined;
@@ -88,8 +89,8 @@ export function buildChart(
   const data: ChartPoint[] = sortedTs.map((t) => {
     const pt: ChartPoint = { t };
     for (const v of videos) {
-      const vs = videoSeries.get(v.video_id)?.get(t);
-      if (vs && vs.length > 0) pt[v.video_id] = Math.round(vs.reduce((s, x) => s + x, 0) / vs.length);
+      const val = videoSeries.get(v.video_id)?.get(t);
+      if (val !== undefined) pt[v.video_id] = val;
     }
     return pt;
   });

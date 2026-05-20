@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase/client";
-import type { Channel, Video, LiveGraphPoint, Group, Superchat } from "@/lib/types";
-import { buildChart } from "@/lib/buildChart";
+import type { Channel, Video, Group, Superchat } from "@/lib/types";
+import { buildChart, type GraphPoint } from "@/lib/buildChart";
 import { fetchRatesToJPY } from "@/lib/exchange";
 import { JST_OFFSET_MS, getJstMidnightMs, offsetDate, getTodayJST } from "@/lib/jst";
 import ViewerChart from "@/app/components/ViewerChart";
@@ -18,26 +18,23 @@ export const metadata: Metadata = {
 export default async function TodayPage() {
   const jstMidnightMs = getJstMidnightMs();
   const todayIso = new Date(jstMidnightMs).toISOString();
+  const tomorrowIso = new Date(jstMidnightMs + 86400000).toISOString();
 
   const [chRes, gpRes, grRes, scRes] = await Promise.all([
     supabase.from("channels").select("*"),
-    supabase
-      .from("live_graph_points")
-      .select("video_id, concurrent_viewers, recorded_at")
-      .gte("recorded_at", todayIso)
-      .order("recorded_at", { ascending: true })
-      .limit(500000),
+    supabase.rpc("get_chart_data", { from_ts: todayIso, to_ts: tomorrowIso }),
     supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
     supabase
       .from("superchats")
       .select("video_id, amount, currency, amount_jpy")
-      .gte("published_at", todayIso),
+      .gte("published_at", todayIso)
+      .limit(50000),
   ]);
 
   const channels = (chRes.data ?? []) as Channel[];
-  const graphPoints = (gpRes.data ?? []) as LiveGraphPoint[];
+  const graphPoints = (gpRes.data ?? []) as GraphPoint[];
 
-  // グラフデータに登場する video_id だけを直接クエリ（全件取得→フィルタより確実）
+  // グラフデータに登場する video_id だけを直接クエリ
   const videoIds = [...new Set(graphPoints.map((p) => p.video_id))];
   const vRes = videoIds.length > 0
     ? await supabase.from("videos").select("*").in("video_id", videoIds)

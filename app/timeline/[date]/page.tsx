@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase/client";
-import type { Channel, Video, LiveGraphPoint, Group, Superchat } from "@/lib/types";
-import { buildChart } from "@/lib/buildChart";
+import type { Channel, Video, Group, Superchat } from "@/lib/types";
+import { buildChart, type GraphPoint } from "@/lib/buildChart";
 import { fetchRatesToJPY } from "@/lib/exchange";
 import { JST_OFFSET_MS, getJstMidnightForDate, getTodayJST, offsetDate } from "@/lib/jst";
 import ViewerChart from "@/app/components/ViewerChart";
@@ -34,13 +34,7 @@ export default async function TimelinePage({
 
   const [chRes, gpRes, grRes, scRes] = await Promise.all([
     supabase.from("channels").select("*"),
-    supabase
-      .from("live_graph_points")
-      .select("video_id, concurrent_viewers, recorded_at")
-      .gte("recorded_at", fromIso)
-      .lt("recorded_at", toIso)
-      .order("recorded_at", { ascending: true })
-      .limit(500000),
+    supabase.rpc("get_chart_data", { from_ts: fromIso, to_ts: toIso }),
     supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
     supabase
       .from("superchats")
@@ -51,7 +45,7 @@ export default async function TimelinePage({
   ]);
 
   const channels = (chRes.data ?? []) as Channel[];
-  const graphPoints = (gpRes.data ?? []) as LiveGraphPoint[];
+  const graphPoints = (gpRes.data ?? []) as GraphPoint[];
 
   // グラフデータに登場する video_id だけを直接クエリ
   const videoIds = [...new Set(graphPoints.map((p) => p.video_id))];
