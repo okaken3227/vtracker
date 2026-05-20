@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ReferenceDot, ResponsiveContainer,
@@ -191,8 +191,6 @@ function PeakRanking({ streams, animRev: outerRev = 0 }: { streams: StreamInfo[]
   );
 }
 
-const LEGEND_LIMIT = 8;
-
 export default function ViewerChart({ data, streams }: Props) {
   const [filterGroup, setFilterGroup] = useState<string | null>(null);
   const [filterAnimRev, setFilterAnimRev] = useState(0);
@@ -201,6 +199,26 @@ export default function ViewerChart({ data, streams }: Props) {
   const [yMin, setYMin] = useState<number | null>(null);
   const [legendExpanded, setLegendExpanded] = useState(false);
   const [iconMode, setIconMode] = useState(false);
+  const [isMobile, setIsMobile] = useState(true);
+
+  useEffect(() => {
+    setIconMode(localStorage.getItem("legendIconMode") === "true");
+    const mq = window.matchMedia("(min-width: 640px)");
+    setIsMobile(!mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(!e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  function toggleIconMode() {
+    setIconMode((v) => {
+      const next = !v;
+      localStorage.setItem("legendIconMode", String(next));
+      return next;
+    });
+  }
+
+  const legendLimit = isMobile ? 8 : 12;
 
   const groupEntries = Array.from(
     new Map(
@@ -278,7 +296,7 @@ export default function ViewerChart({ data, streams }: Props) {
           <div className="mb-1 flex items-center justify-between">
             <span className="text-[10px] text-gray-400">配信者 · タップで表示切替</span>
             <button
-              onClick={() => setIconMode((v) => !v)}
+              onClick={toggleIconMode}
               className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors ${
                 iconMode
                   ? "bg-violet-600 text-white"
@@ -317,8 +335,8 @@ export default function ViewerChart({ data, streams }: Props) {
             </div>
           ) : (
             <>
-              <div className="flex flex-wrap gap-x-1 gap-y-1">
-                {(legendExpanded ? groupFiltered : groupFiltered.slice(0, LEGEND_LIMIT)).map((s) => {
+              <div className="flex flex-col gap-y-1 sm:flex-row sm:flex-wrap sm:gap-x-1">
+                {(legendExpanded ? groupFiltered : groupFiltered.slice(0, legendLimit)).map((s) => {
                   const hidden = hiddenIds.has(s.videoId);
                   return (
                     <button
@@ -340,12 +358,12 @@ export default function ViewerChart({ data, streams }: Props) {
                   );
                 })}
               </div>
-              {groupFiltered.length > LEGEND_LIMIT && (
+              {groupFiltered.length > legendLimit && (
                 <button
                   onClick={() => setLegendExpanded((v) => !v)}
                   className="mt-1 text-xs text-gray-400 hover:text-violet-600 transition-colors"
                 >
-                  {legendExpanded ? "▲ 折りたたむ" : `▼ さらに${groupFiltered.length - LEGEND_LIMIT}件`}
+                  {legendExpanded ? "▲ 折りたたむ" : `▼ さらに${groupFiltered.length - legendLimit}件`}
                 </button>
               )}
             </>

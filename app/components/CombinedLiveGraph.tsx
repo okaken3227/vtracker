@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -100,8 +100,6 @@ function CustomTooltip({
   );
 }
 
-const LEGEND_LIMIT = 8;
-
 const Y_MAX_PRESETS: { label: string; value: number }[] = [
   { label: "1K", value: 1000 },
   { label: "5K", value: 5000 },
@@ -132,6 +130,26 @@ export default function CombinedLiveGraph({
   const [yMin, setYMin] = useState<number | null>(null);
   const [legendExpanded, setLegendExpanded] = useState(false);
   const [iconMode, setIconMode] = useState(false);
+  const [isMobile, setIsMobile] = useState(true);
+
+  useEffect(() => {
+    setIconMode(localStorage.getItem("legendIconMode") === "true");
+    const mq = window.matchMedia("(min-width: 640px)");
+    setIsMobile(!mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(!e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  function toggleIconMode() {
+    setIconMode((v) => {
+      const next = !v;
+      localStorage.setItem("legendIconMode", String(next));
+      return next;
+    });
+  }
+
+  const legendLimit = isMobile ? 8 : 12;
 
   function toggleKey(key: string) {
     setHiddenKeys((prev) => {
@@ -299,7 +317,7 @@ export default function CombinedLiveGraph({
         <div className="mb-1.5 flex items-center justify-between">
           <span className="text-[10px] text-gray-400">配信者 · タップで表示切替</span>
           <button
-            onClick={() => setIconMode((v) => !v)}
+            onClick={toggleIconMode}
             className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors ${
               iconMode
                 ? "bg-violet-600 text-white"
@@ -338,8 +356,8 @@ export default function CombinedLiveGraph({
           </div>
         ) : (
           <>
-            <div className="flex flex-wrap gap-x-3 gap-y-1.5">
-              {(legendExpanded ? lines : lines.slice(0, LEGEND_LIMIT)).map(({ key, channelName, color, iconUrl }) => {
+            <div className="flex flex-col gap-y-1.5 sm:flex-row sm:flex-wrap sm:gap-x-3">
+              {(legendExpanded ? lines : lines.slice(0, legendLimit)).map(({ key, channelName, color, iconUrl }) => {
                 const hidden = hiddenKeys.has(key);
                 const current = currentByKey[key];
                 return (
@@ -367,12 +385,12 @@ export default function CombinedLiveGraph({
                 );
               })}
             </div>
-            {lines.length > LEGEND_LIMIT && (
+            {lines.length > legendLimit && (
               <button
                 onClick={() => setLegendExpanded((v) => !v)}
                 className="mt-1.5 text-xs text-gray-400 hover:text-violet-600 transition-colors"
               >
-                {legendExpanded ? "▲ 折りたたむ" : `▼ さらに${lines.length - LEGEND_LIMIT}件`}
+                {legendExpanded ? "▲ 折りたたむ" : `▼ さらに${lines.length - legendLimit}件`}
               </button>
             )}
           </>
