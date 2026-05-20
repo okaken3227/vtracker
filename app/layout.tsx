@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ??
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://vtracker.dev");
 
 const SITE_TITLE = "vtracker | VTuber同接グラフ・視聴者数・スパチャ統計をリアルタイム追跡";
 const SITE_DESCRIPTION =
@@ -63,7 +63,7 @@ export const metadata: Metadata = {
   },
   robots: { index: true, follow: true },
   verification: {
-    google: ["ehi0pSwjZgA6mYI8d1lwtCuQnuhAAsgXnRVqCHh0Ch0", "iNvU2SopDrUC7e9sApyPQZvO9L8I6jv-4mqZHxIz92w"],
+    google: "iNvU2SopDrUC7e9sApyPQZvO9L8I6jv-4mqZHxIz92w",
   },
   other: {
     "google-adsense-account": "ca-pub-6560735293239350",
