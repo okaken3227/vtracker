@@ -98,7 +98,7 @@ export default async function RootLayout({
             </div>
             <div className="fixed inset-x-0 top-14 bottom-0 flex overflow-hidden">
               <DesktopSidebar />
-              <main id="main-scroll" className="flex-1 min-w-0 overflow-y-auto px-4 py-8">
+              <main id="main-scroll" className="flex-1 min-w-0 overflow-y-auto px-4 pt-8 pb-24">
                 {children}
               </main>
             </div>
