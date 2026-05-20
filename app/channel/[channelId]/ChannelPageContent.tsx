@@ -125,8 +125,8 @@ function ChannelView({ d }: { d: ChData }) {
   const isYt = !channel.platform || channel.platform === "youtube";
   const externalUrl = isYt
     ? (channel.custom_url
-        ? `https://www.youtube.com/${channel.custom_url}`
-        : `https://www.youtube.com/channel/${channel.channel_id}`)
+        ? `https://www.youtube.com/${channel.custom_url}?sub_confirmation=1`
+        : `https://www.youtube.com/channel/${channel.channel_id}?sub_confirmation=1`)
     : `https://www.twitch.tv/${channel.custom_url}`;
 
   const fallbackBg = videos.find((v) => v.thumbnail_url)?.thumbnail_url;
