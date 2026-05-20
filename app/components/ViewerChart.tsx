@@ -43,31 +43,33 @@ function CustomTooltip({
   return (
     <div
       style={{ transform: flipLeft ? "translateX(calc(-100% - 16px))" : "translateX(16px)" }}
-      className="min-w-[200px] rounded-xl border border-gray-100 bg-white/95 p-3 text-sm shadow-xl backdrop-blur-sm"
+      className="min-w-[160px] max-w-[220px] rounded-xl border border-gray-100 bg-white/95 p-2 text-sm shadow-xl backdrop-blur-sm"
     >
-      <p className="mb-2 text-xs font-medium text-gray-400">{tToHHMM(label ?? 0)}</p>
-      {payload
-        .filter((p) => p.value !== undefined)
-        .sort((a, b) => b.value - a.value)
-        .map((entry) => {
-          const s = streamMap[entry.dataKey];
-          const isPeak = s?.peakT === label;
-          return (
-            <div key={entry.dataKey} className="flex items-center gap-2 py-0.5">
-              {s?.iconUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={s.iconUrl} alt={s.channelName} className="h-5 w-5 flex-shrink-0 rounded-full object-cover" />
-              ) : (
-                <span style={{ backgroundColor: entry.color }} className="h-2 w-2 flex-shrink-0 rounded-full" />
-              )}
-              <span className="min-w-0 flex-1 truncate text-xs text-gray-600">{s?.channelName ?? entry.dataKey}</span>
-              {isPeak && <span className="text-xs">👑</span>}
-              <span className="flex-shrink-0 font-mono text-xs font-bold" style={{ color: entry.color }}>
-                {entry.value.toLocaleString()}
-              </span>
-            </div>
-          );
-        })}
+      <p className="mb-1 text-[10px] font-medium text-gray-400">{tToHHMM(label ?? 0)}</p>
+      <div className="max-h-[200px] overflow-y-auto">
+        {payload
+          .filter((p) => p.value !== undefined)
+          .sort((a, b) => b.value - a.value)
+          .map((entry) => {
+            const s = streamMap[entry.dataKey];
+            const isPeak = s?.peakT === label;
+            return (
+              <div key={entry.dataKey} className="flex items-center gap-1.5 py-0.5">
+                {s?.iconUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.iconUrl} alt={s.channelName} className="h-4 w-4 flex-shrink-0 rounded-full object-cover" />
+                ) : (
+                  <span style={{ backgroundColor: entry.color }} className="h-1.5 w-1.5 flex-shrink-0 rounded-full" />
+                )}
+                <span className="min-w-0 flex-1 truncate text-[10px] text-gray-600">{s?.channelName ?? entry.dataKey}</span>
+                {isPeak && <span className="text-[10px]">👑</span>}
+                <span className="flex-shrink-0 font-mono text-[10px] font-bold" style={{ color: entry.color }}>
+                  {entry.value.toLocaleString()}
+                </span>
+              </div>
+            );
+          })}
+      </div>
     </div>
   );
 }
@@ -490,31 +492,33 @@ export default function ViewerChart({ data, streams }: Props) {
             domain={[yMin ?? 0, yMax ?? "auto"]}
             allowDataOverflow
           />
-          <Tooltip
-            content={(props) => {
-              const p = props as unknown as {
-                active?: boolean;
-                payload?: { dataKey: string; value: number; color: string }[];
-                label?: number;
-                coordinate?: { x: number; y: number };
-                viewBox?: { x: number; y: number; width: number; height: number };
-              };
-              if (p.active && p.payload?.[0]?.dataKey) {
-                lastHoveredVideoId.current = p.payload[0].dataKey;
-              }
-              return (
-                <CustomTooltip
-                  active={p.active}
-                  payload={p.payload}
-                  label={p.label}
-                  streams={visibleStreams}
-                  coordinate={p.coordinate}
-                  viewBox={p.viewBox}
-                />
-              );
-            }}
-            isAnimationActive={false}
-          />
+          {!isMobile && (
+            <Tooltip
+              content={(props) => {
+                const p = props as unknown as {
+                  active?: boolean;
+                  payload?: { dataKey: string; value: number; color: string }[];
+                  label?: number;
+                  coordinate?: { x: number; y: number };
+                  viewBox?: { x: number; y: number; width: number; height: number };
+                };
+                if (p.active && p.payload?.[0]?.dataKey) {
+                  lastHoveredVideoId.current = p.payload[0].dataKey;
+                }
+                return (
+                  <CustomTooltip
+                    active={p.active}
+                    payload={p.payload}
+                    label={p.label}
+                    streams={visibleStreams}
+                    coordinate={p.coordinate}
+                    viewBox={p.viewBox}
+                  />
+                );
+              }}
+              isAnimationActive={false}
+            />
+          )}
 
           {visibleStreams.map((s) => (
             <Line

@@ -70,30 +70,32 @@ function CustomTooltip({
   const total = deduped.reduce((s, p) => s + p.value, 0);
 
   return (
-    <div className="min-w-[160px] rounded-xl border border-gray-200 bg-white p-3 shadow-lg" style={{ fontSize: 12 }}>
-      <p className="mb-2 text-[11px] text-gray-400">{label}</p>
-      {deduped.map((entry) => {
-        const line = lines.find((l) => l.key === entry.dataKey);
-        const color = line?.color ?? entry.color;
-        return (
-          <div key={entry.dataKey} className="flex items-center gap-2 py-0.5">
-            {line?.iconUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={line.iconUrl} alt={line.channelName} className="h-5 w-5 flex-shrink-0 rounded-full object-cover" />
-            ) : (
-              <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: color }} />
-            )}
-            <span className="min-w-0 flex-1 truncate text-gray-600">{line?.channelName ?? entry.dataKey}</span>
-            <span className="flex-shrink-0 font-mono font-bold" style={{ color }}>
-              {entry.value.toLocaleString()}人
-            </span>
-          </div>
-        );
-      })}
+    <div className="min-w-[150px] max-w-[210px] rounded-xl border border-gray-200 bg-white p-2 shadow-lg" style={{ fontSize: 11 }}>
+      <p className="mb-1 text-[10px] text-gray-400">{label}</p>
+      <div className="max-h-[200px] overflow-y-auto">
+        {deduped.map((entry) => {
+          const line = lines.find((l) => l.key === entry.dataKey);
+          const color = line?.color ?? entry.color;
+          return (
+            <div key={entry.dataKey} className="flex items-center gap-1.5 py-0.5">
+              {line?.iconUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={line.iconUrl} alt={line.channelName} className="h-4 w-4 flex-shrink-0 rounded-full object-cover" />
+              ) : (
+                <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ backgroundColor: color }} />
+              )}
+              <span className="min-w-0 flex-1 truncate text-[10px] text-gray-600">{line?.channelName ?? entry.dataKey}</span>
+              <span className="flex-shrink-0 font-mono text-[10px] font-bold" style={{ color }}>
+                {entry.value.toLocaleString()}人
+              </span>
+            </div>
+          );
+        })}
+      </div>
       {deduped.length > 1 && (
-        <div className="mt-1.5 flex items-center justify-between border-t border-gray-100 pt-1.5">
-          <span className="text-[11px] text-gray-400">合計</span>
-          <span className="font-mono text-[11px] font-bold text-gray-700">{total.toLocaleString()}人</span>
+        <div className="mt-1 flex items-center justify-between border-t border-gray-100 pt-1">
+          <span className="text-[10px] text-gray-400">合計</span>
+          <span className="font-mono text-[10px] font-bold text-gray-700">{total.toLocaleString()}人</span>
         </div>
       )}
     </div>
@@ -270,17 +272,19 @@ export default function CombinedLiveGraph({
             domain={[yMin ?? 0, yMax ?? "auto"]}
             allowDataOverflow
           />
-          <Tooltip
-            content={(props) => (
-              <CustomTooltip
-                active={(props as unknown as { active?: boolean }).active}
-                payload={(props as unknown as { payload?: TooltipPayload[] }).payload}
-                label={(props as unknown as { label?: string }).label}
-                lines={lines}
-              />
-            )}
-            isAnimationActive={false}
-          />
+          {!isMobile && (
+            <Tooltip
+              content={(props) => (
+                <CustomTooltip
+                  active={(props as unknown as { active?: boolean }).active}
+                  payload={(props as unknown as { payload?: TooltipPayload[] }).payload}
+                  label={(props as unknown as { label?: string }).label}
+                  lines={lines}
+                />
+              )}
+              isAnimationActive={false}
+            />
+          )}
 
           {/* グラデーション塗り（ライン背面） */}
           {visibleLines.map(({ key }) => (
