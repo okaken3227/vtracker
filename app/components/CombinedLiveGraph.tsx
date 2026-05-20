@@ -100,6 +100,8 @@ function CustomTooltip({
   );
 }
 
+const LEGEND_LIMIT = 12;
+
 const Y_MAX_PRESETS: { label: string; value: number }[] = [
   { label: "1K", value: 1000 },
   { label: "5K", value: 5000 },
@@ -128,6 +130,7 @@ export default function CombinedLiveGraph({
   const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
   const [yMax, setYMax] = useState<number | null>(null);
   const [yMin, setYMin] = useState<number | null>(null);
+  const [legendExpanded, setLegendExpanded] = useState(false);
 
   function toggleKey(key: string) {
     setHiddenKeys((prev) => {
@@ -291,34 +294,44 @@ export default function CombinedLiveGraph({
       </ResponsiveContainer>
 
       {/* ── 凡例（視聴者数付き・クリックでトグル） ── */}
-      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5 border-t border-gray-100 pt-2.5">
-        {lines.map(({ key, channelName, color, iconUrl }) => {
-          const hidden = hiddenKeys.has(key);
-          const current = currentByKey[key];
-          return (
-            <div key={key} className="flex items-center gap-0.5">
-              <button
-                onClick={() => toggleKey(key)}
-                title={hidden ? "表示する" : "非表示にする"}
-                className={`flex items-center gap-1.5 rounded-md px-1.5 py-0.5 transition-all hover:bg-gray-50 ${hidden ? "opacity-30" : ""}`}
-              >
-                {iconUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={iconUrl} alt={channelName} className={`h-4 w-4 flex-shrink-0 rounded-full object-cover ${hidden ? "grayscale" : ""}`} />
-                ) : (
-                  <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: hidden ? "#d1d5db" : color }} />
+      <div className="mt-2 border-t border-gray-100 pt-2.5">
+        <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+          {(legendExpanded ? lines : lines.slice(0, LEGEND_LIMIT)).map(({ key, channelName, color, iconUrl }) => {
+            const hidden = hiddenKeys.has(key);
+            const current = currentByKey[key];
+            return (
+              <div key={key} className="flex items-center gap-0.5">
+                <button
+                  onClick={() => toggleKey(key)}
+                  title={hidden ? "表示する" : "非表示にする"}
+                  className={`flex items-center gap-1.5 rounded-md px-1.5 py-0.5 transition-all hover:bg-gray-50 ${hidden ? "opacity-30" : ""}`}
+                >
+                  {iconUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={iconUrl} alt={channelName} className={`h-4 w-4 flex-shrink-0 rounded-full object-cover ${hidden ? "grayscale" : ""}`} />
+                  ) : (
+                    <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: hidden ? "#d1d5db" : color }} />
+                  )}
+                  <span className={`whitespace-nowrap text-xs ${hidden ? "text-gray-400 line-through" : "text-gray-600"}`}>{channelName}</span>
+                  {!hidden && current != null && (
+                    <span className="font-mono text-xs font-bold" style={{ color }}>{current.toLocaleString()}</span>
+                  )}
+                </button>
+                {!hidden && (
+                  <a href={`/live/${key}`} title="詳細を見る" className="text-gray-300 transition-colors hover:text-gray-500 text-xs leading-none">↗</a>
                 )}
-                <span className={`whitespace-nowrap text-xs ${hidden ? "text-gray-400 line-through" : "text-gray-600"}`}>{channelName}</span>
-                {!hidden && current != null && (
-                  <span className="font-mono text-xs font-bold" style={{ color }}>{current.toLocaleString()}</span>
-                )}
-              </button>
-              {!hidden && (
-                <a href={`/live/${key}`} title="詳細を見る" className="text-gray-300 transition-colors hover:text-gray-500 text-xs leading-none">↗</a>
-              )}
-            </div>
-          );
-        })}
+              </div>
+            );
+          })}
+        </div>
+        {lines.length > LEGEND_LIMIT && (
+          <button
+            onClick={() => setLegendExpanded((v) => !v)}
+            className="mt-1.5 text-xs text-gray-400 hover:text-violet-600 transition-colors"
+          >
+            {legendExpanded ? "▲ 折りたたむ" : `▼ さらに${lines.length - LEGEND_LIMIT}件`}
+          </button>
+        )}
       </div>
 
     </div>
