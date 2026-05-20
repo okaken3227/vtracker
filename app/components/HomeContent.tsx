@@ -141,12 +141,20 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
   }
   const deduped = channels.filter((c) => !shownAsLinked.has(c.channel_id));
   const filteredChannels = selectedGroup
-    ? deduped.filter((c) => c.group_id === selectedGroup)
+    ? deduped.filter((c) => {
+        if (c.group_id === selectedGroup) return true;
+        const cGroup = groupMap.get(c.group_id ?? "");
+        return cGroup?.parent_group_id === selectedGroup;
+      })
     : deduped;
 
   // ライブ動画のグループフィルタはリンク先含む全チャンネルで判定
   const allFiltered = selectedGroup
-    ? channels.filter((c) => c.group_id === selectedGroup)
+    ? channels.filter((c) => {
+        if (c.group_id === selectedGroup) return true;
+        const cGroup = groupMap.get(c.group_id ?? "");
+        return cGroup?.parent_group_id === selectedGroup;
+      })
     : channels;
   const filteredChannelIds = new Set(allFiltered.map((c) => c.channel_id));
 
@@ -423,6 +431,8 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
             {sortedChannels.map((ch) => {
               const latest = latestByChannel[ch.channel_id];
               const group = ch.group_id ? groupMap.get(ch.group_id) : undefined;
+              const parentGroup = group?.parent_group_id ? groupMap.get(group.parent_group_id) : undefined;
+              const displayGroup = parentGroup ?? group;
               const linked = ch.linked_channel_id ? channelMap.get(ch.linked_channel_id) : undefined;
               return (
                 <ChannelCard
@@ -435,10 +445,10 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
                   totalSuperchat={scByChannel[ch.channel_id] ?? 0}
                   latestVideoStatus={latest?.status ?? "none"}
                   latestVideoStartTime={latest?.startTime ?? null}
-                  groupId={ch.group_id}
-                  groupName={group?.name}
-                  groupColor={group?.color}
-                  groupIconUrl={group?.icon_url}
+                  groupId={displayGroup?.id}
+                  groupName={displayGroup?.name}
+                  groupColor={displayGroup?.color}
+                  groupIconUrl={displayGroup?.icon_url}
                   linkedPlatform={linked?.platform ?? null}
                   onGroupFilter={setSelectedGroup}
                 />
