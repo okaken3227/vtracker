@@ -55,7 +55,7 @@ export const metadata: Metadata = {
     siteName: "vtracker",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: [{ url: "https://vtracker.dev/tab-icon.png" }],
+    images: [{ url: "https://vtracker.dev/opengraph-image", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary",
