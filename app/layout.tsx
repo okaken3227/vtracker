@@ -63,7 +63,7 @@ export const metadata: Metadata = {
   },
   robots: { index: true, follow: true },
   verification: {
-    google: "ehi0pSwjZgA6mYI8d1lwtCuQnuhAAsgXnRVqCHh0Ch0",
+    google: ["ehi0pSwjZgA6mYI8d1lwtCuQnuhAAsgXnRVqCHh0Ch0", "iNvU2SopDrUC7e9sApyPQZvO9L8I6jv-4mqZHxIz92w"],
   },
   other: {
     "google-adsense-account": "ca-pub-6560735293239350",
