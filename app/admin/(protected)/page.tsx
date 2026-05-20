@@ -965,39 +965,21 @@ export default function AdminPage() {
 
         {showNewGroup && (
           <form onSubmit={handleCreateGroup} className="mb-5 rounded-xl border border-violet-200 bg-violet-50 p-4">
-            {(() => {
-              const parentGroup = newGroupParentId ? groups.find(g => g.id === newGroupParentId) : null;
-              return (
-                <div className="mb-3 flex items-center gap-2">
-                  {parentGroup ? (
-                    <>
-                      <span className="rounded-full bg-violet-200 px-2 py-0.5 text-[11px] font-bold text-violet-700">サブグループ</span>
-                      <span className="text-xs text-violet-700 font-medium">
-                        {parentGroup.name}
-                        <span className="mx-1 text-violet-400">›</span>
-                        {newGroupName || <span className="text-violet-400">（グループ名）</span>}
-                      </span>
-                    </>
-                  ) : (
-                    <p className="text-xs font-semibold text-violet-700">新しいグループ</p>
-                  )}
-                </div>
-              );
-            })()}
+            <div className="mb-3 flex items-center gap-2">
+              {newGroupParentId ? (
+                <>
+                  <span className="rounded-full bg-violet-200 px-2 py-0.5 text-[11px] font-bold text-violet-700">サブグループ</span>
+                  <span className="text-xs text-violet-700 font-medium">
+                    {groups.find(g => g.id === newGroupParentId)?.name ?? ""}
+                    <span className="mx-1 text-violet-400">›</span>
+                    {newGroupName || <span className="text-violet-400">（グループ名）</span>}
+                  </span>
+                </>
+              ) : (
+                <p className="text-xs font-semibold text-violet-700">新しいグループ</p>
+              )}
+            </div>
             <div className="flex flex-col gap-3">
-              <div>
-                <label className="mb-1 block text-xs text-gray-500">親グループ（サブグループにする場合のみ）</label>
-                <select
-                  value={newGroupParentId}
-                  onChange={(e) => setNewGroupParentId(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-violet-500 focus:outline-none"
-                >
-                  <option value="">なし（トップレベルグループ）</option>
-                  {groups.filter(g => !g.parent_group_id).map(g => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
-              </div>
               <div>
                 <label className="mb-1 block text-xs text-gray-500">グループ名 <span className="text-red-400">*</span></label>
                 <input
@@ -1074,6 +1056,20 @@ export default function AdminPage() {
                     </label>
                   </div>
                 </div>
+              </div>
+              {/* 親グループ: 最後に配置（オプション項目） */}
+              <div className="rounded-lg border border-violet-100 bg-white px-3 py-2.5">
+                <label className="mb-1 block text-xs font-medium text-violet-700">サブグループにする場合：親グループを選択</label>
+                <select
+                  value={newGroupParentId}
+                  onChange={(e) => setNewGroupParentId(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-violet-500 focus:outline-none"
+                >
+                  <option value="">なし（トップレベルグループ）</option>
+                  {groups.filter(g => !g.parent_group_id).map(g => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="flex items-center gap-3">
                 <button
@@ -1216,11 +1212,13 @@ export default function AdminPage() {
                 const children = childrenByParent.get(g.id) ?? [];
                 return (
                   <div key={g.id}>
-                    <GroupRow g={g} siblings={topLevelGroups} isChild={false} />
+                    {GroupRow({ g, siblings: topLevelGroups, isChild: false })}
                     {children.length > 0 && (
                       <div className="ml-6 mt-1 flex flex-col gap-1 border-l-2 border-violet-100 pl-3">
                         {children.map((child) => (
-                          <GroupRow key={child.id} g={child} siblings={children} isChild={true} />
+                          <div key={child.id}>
+                            {GroupRow({ g: child, siblings: children, isChild: true })}
+                          </div>
                         ))}
                       </div>
                     )}
