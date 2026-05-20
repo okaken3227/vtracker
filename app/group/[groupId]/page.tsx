@@ -227,14 +227,14 @@ export default async function GroupPage({
       </div>
 
       <div className="mb-8 flex items-center gap-4">
-        {group.icon_url ? (
+        {!group.parent_group_id && (group.icon_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={group.icon_url} alt={group.name} className="h-14 w-14 flex-shrink-0 rounded-full object-cover" />
         ) : (
           <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full text-white text-xl font-bold" style={{ backgroundColor: group.color }}>
             {group.name[0]}
           </div>
-        )}
+        ))}
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
