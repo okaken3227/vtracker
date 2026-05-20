@@ -36,17 +36,18 @@ export default async function TimelinePage({
     supabase.from("channels").select("*"),
     supabase
       .from("live_graph_points")
-      .select("*")
+      .select("video_id, concurrent_viewers, recorded_at")
       .gte("recorded_at", fromIso)
       .lt("recorded_at", toIso)
       .order("recorded_at", { ascending: true })
-      .limit(100000),
+      .limit(500000),
     supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
     supabase
       .from("superchats")
       .select("video_id, amount, currency, amount_jpy")
       .gte("published_at", fromIso)
-      .lt("published_at", toIso),
+      .lt("published_at", toIso)
+      .limit(50000),
   ]);
 
   const channels = (chRes.data ?? []) as Channel[];

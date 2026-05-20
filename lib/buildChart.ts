@@ -36,18 +36,26 @@ export function buildChart(
   const videoIds = [...new Set(graphPoints.map((p) => p.video_id))];
   const videos = videoIds.map((id) => videoMap.get(id)).filter((v): v is Video => v != null);
 
+  // O(n+m): group points by video_id first, then iterate per video
+  const pointsByVideo = new Map<string, { t: number; viewers: number }[]>();
+  for (const p of graphPoints) {
+    const ms = new Date(p.recorded_at).getTime() - jstMidnightMs;
+    const t = Math.max(0, Math.floor(ms / BUCKET_MS) * 5);
+    if (!pointsByVideo.has(p.video_id)) pointsByVideo.set(p.video_id, []);
+    pointsByVideo.get(p.video_id)!.push({ t, viewers: p.concurrent_viewers });
+  }
+
   const streams: StreamInfo[] = [];
   const allTs = new Set<number>();
   const videoSeries = new Map<string, Map<number, number[]>>();
 
   for (const v of videos) {
+    const pts = pointsByVideo.get(v.video_id);
+    if (!pts || pts.length === 0) continue;
     const buckets = new Map<number, number[]>();
-    for (const p of graphPoints) {
-      if (p.video_id !== v.video_id) continue;
-      const ms = new Date(p.recorded_at).getTime() - jstMidnightMs;
-      const t = Math.max(0, Math.floor(ms / BUCKET_MS) * 5);
+    for (const { t, viewers } of pts) {
       if (!buckets.has(t)) buckets.set(t, []);
-      buckets.get(t)!.push(p.concurrent_viewers);
+      buckets.get(t)!.push(viewers);
     }
     if (buckets.size === 0) continue;
     videoSeries.set(v.video_id, buckets);

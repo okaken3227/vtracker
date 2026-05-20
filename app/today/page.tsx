@@ -23,10 +23,10 @@ export default async function TodayPage() {
     supabase.from("channels").select("*"),
     supabase
       .from("live_graph_points")
-      .select("*")
+      .select("video_id, concurrent_viewers, recorded_at")
       .gte("recorded_at", todayIso)
       .order("recorded_at", { ascending: true })
-      .limit(100000),
+      .limit(500000),
     supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
     supabase
       .from("superchats")
