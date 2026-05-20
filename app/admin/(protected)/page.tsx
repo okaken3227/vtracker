@@ -273,26 +273,26 @@ export default function AdminPage() {
     if (direction === "down" && idx === sameLevel.length - 1) return;
     const swapIdx = direction === "up" ? idx - 1 : idx + 1;
 
-    // 同階層を連番に正規化してから入れ替える
-    const normalized = sameLevel.map((g, i) => ({ ...g, sort_order: i + 1 }));
-    const next = [...normalized];
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-    next[idx] = { ...next[idx], sort_order: idx + 1 };
-    next[swapIdx] = { ...next[swapIdx], sort_order: swapIdx + 1 };
-
-    const patchMap = new Map(next.map((g) => [g.id, g]));
-    setGroups(groups.map((g) => patchMap.get(g.id) ?? g));
+    // 同階層内で配列上の実際の位置を特定してswap（画面に即反映）
+    const groupsCopy = [...groups];
+    const globalIdx = groupsCopy.findIndex((g) => g.id === sameLevel[idx].id);
+    const globalSwapIdx = groupsCopy.findIndex((g) => g.id === sameLevel[swapIdx].id);
+    [groupsCopy[globalIdx], groupsCopy[globalSwapIdx]] = [groupsCopy[globalSwapIdx], groupsCopy[globalIdx]];
+    // sort_order も正規化して更新
+    groupsCopy[globalIdx] = { ...groupsCopy[globalIdx], sort_order: idx + 1 };
+    groupsCopy[globalSwapIdx] = { ...groupsCopy[globalSwapIdx], sort_order: swapIdx + 1 };
+    setGroups(groupsCopy);
 
     await Promise.all([
       fetch("/api/admin/groups", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: next[idx].id, sort_order: idx + 1 }),
+        body: JSON.stringify({ id: groupsCopy[globalIdx].id, sort_order: idx + 1 }),
       }),
       fetch("/api/admin/groups", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: next[swapIdx].id, sort_order: swapIdx + 1 }),
+        body: JSON.stringify({ id: groupsCopy[globalSwapIdx].id, sort_order: swapIdx + 1 }),
       }),
     ]);
   }
