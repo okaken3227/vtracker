@@ -114,27 +114,26 @@ function GraphDialog({ point, onClose }: { point: SelectedPoint; onClose: () => 
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-        <div className="relative w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={onClose}
-            aria-label="閉じる"
-            className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/20 text-gray-700 transition-colors hover:bg-black/30"
-          >
-            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M3 3l10 10M13 3L3 13" />
-            </svg>
-          </button>
+      {/* モバイル: ボトムシート / PC: 中央モーダル */}
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
+        <div
+          className="relative w-full sm:max-w-sm overflow-hidden rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* ドラッグハンドル（モバイルのみ） */}
+          <div className="flex justify-center pt-3 pb-1 sm:hidden">
+            <div className="h-1 w-10 rounded-full bg-gray-300" />
+          </div>
 
-          {point.thumbnailUrl && (
-            <div className="aspect-video w-full overflow-hidden bg-gray-100">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={point.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+          <div className="flex items-center gap-3 px-4 py-3">
+            {point.thumbnailUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={point.thumbnailUrl} alt="" className="h-14 w-24 flex-shrink-0 rounded-lg object-cover" />
+            )}
+            <div className="min-w-0">
+              <p className="text-xs text-gray-400 truncate">{point.label}</p>
+              <p className="text-xl font-bold text-violet-700">{point.viewers.toLocaleString()}人</p>
             </div>
-          )}
-          <div className="p-5">
-            <p className="text-xs text-gray-400 mb-1">{point.label}</p>
-            <p className="text-2xl font-bold text-violet-700">{point.viewers.toLocaleString()}人</p>
           </div>
 
           <div className="flex gap-2 px-4 pb-4">
