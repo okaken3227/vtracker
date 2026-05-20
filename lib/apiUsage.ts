@@ -12,25 +12,11 @@ export async function trackApiCall(endpoint: string, keyIndex: number = 1): Prom
   const units = ENDPOINT_UNITS[endpoint] ?? 1;
   const date = new Date().toISOString().split("T")[0];
   try {
-    const { data } = await supabase
-      .from("api_usage_daily")
-      .select("key_units, calls_count")
-      .eq("date", date)
-      .maybeSingle();
-
-    const keyUnits = (data?.key_units ?? {}) as Record<string, number>;
-    keyUnits[String(keyIndex)] = (keyUnits[String(keyIndex)] ?? 0) + units;
-
-    if (data) {
-      await supabase
-        .from("api_usage_daily")
-        .update({ key_units: keyUnits, calls_count: (data.calls_count ?? 0) + 1 })
-        .eq("date", date);
-    } else {
-      await supabase
-        .from("api_usage_daily")
-        .insert({ date, units_used: 0, calls_count: 1, key_units: keyUnits });
-    }
+    await supabase.rpc("increment_api_usage", {
+      p_date: date,
+      p_key_index: keyIndex,
+      p_units: units,
+    });
   } catch {
     // tracking failure must not break the main flow
   }
@@ -39,25 +25,10 @@ export async function trackApiCall(endpoint: string, keyIndex: number = 1): Prom
 export async function trackQuotaExceeded(keyIndex: number): Promise<void> {
   const date = new Date().toISOString().split("T")[0];
   try {
-    const { data } = await supabase
-      .from("api_usage_daily")
-      .select("quota_exceeded_keys")
-      .eq("date", date)
-      .maybeSingle();
-
-    const exceeded = (data?.quota_exceeded_keys ?? {}) as Record<string, boolean>;
-    exceeded[String(keyIndex)] = true;
-
-    if (data) {
-      await supabase
-        .from("api_usage_daily")
-        .update({ quota_exceeded_keys: exceeded })
-        .eq("date", date);
-    } else {
-      await supabase
-        .from("api_usage_daily")
-        .insert({ date, units_used: 0, calls_count: 0, quota_exceeded_keys: exceeded });
-    }
+    await supabase.rpc("mark_quota_exceeded", {
+      p_date: date,
+      p_key_index: keyIndex,
+    });
   } catch {
     // tracking failure must not break the main flow
   }

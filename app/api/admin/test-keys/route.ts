@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
+import { trackApiCall, trackQuotaExceeded } from "@/lib/apiUsage";
 
 const BASE_URL = "https://www.googleapis.com/youtube/v3";
 const TEST_CHANNEL_ID = "UCBR8-60-B28hp2BmDPdntcQ";
 
-async function testKey(key: string, label: string): Promise<{ label: string; ok: boolean; error?: string }> {
+async function testKey(
+  key: string,
+  label: string,
+  keyIndex: number,
+): Promise<{ label: string; ok: boolean; error?: string }> {
   try {
     const url = new URL(`${BASE_URL}/channels`);
     url.searchParams.set("key", key);
@@ -15,8 +20,10 @@ async function testKey(key: string, label: string): Promise<{ label: string; ok:
     if (!res.ok) {
       const body = await res.text().catch(() => "");
       const isQuota = body.includes("quotaExceeded") || body.includes("dailyLimitExceeded");
+      if (isQuota) trackQuotaExceeded(keyIndex).catch(() => {});
       return { label, ok: false, error: isQuota ? "クォータ超過" : `HTTP ${res.status}` };
     }
+    trackApiCall("channels", keyIndex).catch(() => {});
     return { label, ok: true };
   } catch (e) {
     return { label, ok: false, error: String(e) };
@@ -27,21 +34,22 @@ export async function GET(req: NextRequest) {
   const authError = requireAdmin(req);
   if (authError) return authError;
 
-  const keyEnvs: { env: string | undefined; label: string }[] = [
-    { env: process.env.YOUTUBE_API_KEY, label: "KEY_1 (YOUTUBE_API_KEY)" },
+  const keyEnvs: { env: string | undefined; label: string; index: number }[] = [
+    { env: process.env.YOUTUBE_API_KEY, label: "KEY_1 (YOUTUBE_API_KEY)", index: 1 },
   ];
   for (let i = 2; i <= 50; i++) {
     keyEnvs.push({
       env: process.env[`YOUTUBE_API_KEY_${i}`],
       label: `KEY_${i} (YOUTUBE_API_KEY_${i})`,
+      index: i,
     });
   }
 
   const activeKeys = keyEnvs.filter(({ env }) => env);
 
   const results = await Promise.all(
-    activeKeys.map(({ env, label }) =>
-      env ? testKey(env, label) : Promise.resolve({ label, ok: false, error: "未設定" })
+    activeKeys.map(({ env, label, index }) =>
+      env ? testKey(env, label, index) : Promise.resolve({ label, ok: false, error: "未設定" })
     )
   );
 
