@@ -131,6 +131,7 @@ export default function CombinedLiveGraph({
   const [yMax, setYMax] = useState<number | null>(null);
   const [yMin, setYMin] = useState<number | null>(null);
   const [legendExpanded, setLegendExpanded] = useState(false);
+  const [iconMode, setIconMode] = useState(false);
 
   function toggleKey(key: string) {
     setHiddenKeys((prev) => {
@@ -295,42 +296,86 @@ export default function CombinedLiveGraph({
 
       {/* ── 凡例（視聴者数付き・クリックでトグル） ── */}
       <div className="mt-2 border-t border-gray-100 pt-2.5">
-        <div className="flex flex-wrap gap-x-3 gap-y-1.5">
-          {(legendExpanded ? lines : lines.slice(0, LEGEND_LIMIT)).map(({ key, channelName, color, iconUrl }) => {
-            const hidden = hiddenKeys.has(key);
-            const current = currentByKey[key];
-            return (
-              <div key={key} className="flex items-center gap-0.5">
+        <div className="mb-1.5 flex items-center justify-between">
+          <span className="text-[10px] text-gray-400">配信者 · タップで表示切替</span>
+          <button
+            onClick={() => setIconMode((v) => !v)}
+            className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors ${
+              iconMode
+                ? "bg-violet-600 text-white"
+                : "border border-gray-200 text-gray-400 hover:border-violet-300 hover:text-violet-600"
+            }`}
+          >
+            アイコン
+          </button>
+        </div>
+
+        {iconMode ? (
+          <div className="flex flex-wrap gap-1.5">
+            {lines.map(({ key, channelName, color, iconUrl }) => {
+              const hidden = hiddenKeys.has(key);
+              return (
                 <button
+                  key={key}
                   onClick={() => toggleKey(key)}
-                  title={hidden ? "表示する" : "非表示にする"}
-                  className={`flex items-center gap-1.5 rounded-md px-1.5 py-0.5 transition-all hover:bg-gray-50 ${hidden ? "opacity-30" : ""}`}
+                  title={channelName}
+                  className={`rounded-full transition-all ${hidden ? "opacity-30 grayscale" : ""}`}
                 >
                   {iconUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={iconUrl} alt={channelName} className={`h-4 w-4 flex-shrink-0 rounded-full object-cover ${hidden ? "grayscale" : ""}`} />
+                    <img src={iconUrl} alt={channelName} className="h-7 w-7 rounded-full object-cover" />
                   ) : (
-                    <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: hidden ? "#d1d5db" : color }} />
-                  )}
-                  <span className={`whitespace-nowrap text-xs ${hidden ? "text-gray-400 line-through" : "text-gray-600"}`}>{channelName}</span>
-                  {!hidden && current != null && (
-                    <span className="font-mono text-xs font-bold" style={{ color }}>{current.toLocaleString()}</span>
+                    <span
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                      style={{ backgroundColor: hidden ? "#d1d5db" : color }}
+                    >
+                      {channelName.charAt(0)}
+                    </span>
                   )}
                 </button>
-                {!hidden && (
-                  <a href={`/live/${key}`} title="詳細を見る" className="text-gray-300 transition-colors hover:text-gray-500 text-xs leading-none">↗</a>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        {lines.length > LEGEND_LIMIT && (
-          <button
-            onClick={() => setLegendExpanded((v) => !v)}
-            className="mt-1.5 text-xs text-gray-400 hover:text-violet-600 transition-colors"
-          >
-            {legendExpanded ? "▲ 折りたたむ" : `▼ さらに${lines.length - LEGEND_LIMIT}件`}
-          </button>
+              );
+            })}
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+              {(legendExpanded ? lines : lines.slice(0, LEGEND_LIMIT)).map(({ key, channelName, color, iconUrl }) => {
+                const hidden = hiddenKeys.has(key);
+                const current = currentByKey[key];
+                return (
+                  <div key={key} className="flex items-center gap-0.5">
+                    <button
+                      onClick={() => toggleKey(key)}
+                      title={hidden ? "表示する" : "非表示にする"}
+                      className={`flex items-center gap-1.5 rounded-md px-1.5 py-0.5 transition-all hover:bg-gray-50 ${hidden ? "opacity-30" : ""}`}
+                    >
+                      {iconUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={iconUrl} alt={channelName} className={`h-4 w-4 flex-shrink-0 rounded-full object-cover ${hidden ? "grayscale" : ""}`} />
+                      ) : (
+                        <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: hidden ? "#d1d5db" : color }} />
+                      )}
+                      <span className={`whitespace-nowrap text-xs ${hidden ? "text-gray-400 line-through" : "text-gray-600"}`}>{channelName}</span>
+                      {!hidden && current != null && (
+                        <span className="font-mono text-xs font-bold" style={{ color }}>{current.toLocaleString()}</span>
+                      )}
+                    </button>
+                    {!hidden && (
+                      <a href={`/live/${key}`} title="詳細を見る" className="text-gray-300 transition-colors hover:text-gray-500 text-xs leading-none">↗</a>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {lines.length > LEGEND_LIMIT && (
+              <button
+                onClick={() => setLegendExpanded((v) => !v)}
+                className="mt-1.5 text-xs text-gray-400 hover:text-violet-600 transition-colors"
+              >
+                {legendExpanded ? "▲ 折りたたむ" : `▼ さらに${lines.length - LEGEND_LIMIT}件`}
+              </button>
+            )}
+          </>
         )}
       </div>
 

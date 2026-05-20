@@ -200,6 +200,7 @@ export default function ViewerChart({ data, streams }: Props) {
   const [yMax, setYMax] = useState<number | null>(null);
   const [yMin, setYMin] = useState<number | null>(null);
   const [legendExpanded, setLegendExpanded] = useState(false);
+  const [iconMode, setIconMode] = useState(false);
 
   const groupEntries = Array.from(
     new Map(
@@ -274,36 +275,80 @@ export default function ViewerChart({ data, streams }: Props) {
       {/* チャンネルトグル凡例 */}
       {groupFiltered.length > 1 && (
         <div className="mb-3">
-          <div className="flex flex-wrap gap-x-1 gap-y-1">
-            {(legendExpanded ? groupFiltered : groupFiltered.slice(0, LEGEND_LIMIT)).map((s) => {
-              const hidden = hiddenIds.has(s.videoId);
-              return (
-                <button
-                  key={s.videoId}
-                  onClick={() => toggleId(s.videoId)}
-                  title={hidden ? "表示する" : "非表示にする"}
-                  className={`flex items-center gap-1.5 rounded-md px-2 py-1 transition-all hover:bg-gray-50 ${hidden ? "opacity-30" : ""}`}
-                >
-                  {s.iconUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={s.iconUrl} alt={s.channelName} className={`h-4 w-4 flex-shrink-0 rounded-full object-cover ${hidden ? "grayscale" : ""}`} />
-                  ) : (
-                    <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: hidden ? "#d1d5db" : s.color }} />
-                  )}
-                  <span className={`whitespace-nowrap text-xs ${hidden ? "text-gray-400 line-through" : "text-gray-600"}`}>
-                    {s.channelName}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          {groupFiltered.length > LEGEND_LIMIT && (
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-[10px] text-gray-400">配信者 · タップで表示切替</span>
             <button
-              onClick={() => setLegendExpanded((v) => !v)}
-              className="mt-1 text-xs text-gray-400 hover:text-violet-600 transition-colors"
+              onClick={() => setIconMode((v) => !v)}
+              className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors ${
+                iconMode
+                  ? "bg-violet-600 text-white"
+                  : "border border-gray-200 text-gray-400 hover:border-violet-300 hover:text-violet-600"
+              }`}
             >
-              {legendExpanded ? "▲ 折りたたむ" : `▼ さらに${groupFiltered.length - LEGEND_LIMIT}件`}
+              アイコン
             </button>
+          </div>
+
+          {iconMode ? (
+            <div className="flex flex-wrap gap-1.5">
+              {groupFiltered.map((s) => {
+                const hidden = hiddenIds.has(s.videoId);
+                return (
+                  <button
+                    key={s.videoId}
+                    onClick={() => toggleId(s.videoId)}
+                    title={s.channelName}
+                    className={`rounded-full transition-all ${hidden ? "opacity-30 grayscale" : ""}`}
+                  >
+                    {s.iconUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={s.iconUrl} alt={s.channelName} className="h-7 w-7 rounded-full object-cover" />
+                    ) : (
+                      <span
+                        className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                        style={{ backgroundColor: hidden ? "#d1d5db" : s.color }}
+                      >
+                        {s.channelName.charAt(0)}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-x-1 gap-y-1">
+                {(legendExpanded ? groupFiltered : groupFiltered.slice(0, LEGEND_LIMIT)).map((s) => {
+                  const hidden = hiddenIds.has(s.videoId);
+                  return (
+                    <button
+                      key={s.videoId}
+                      onClick={() => toggleId(s.videoId)}
+                      title={hidden ? "表示する" : "非表示にする"}
+                      className={`flex items-center gap-1.5 rounded-md px-2 py-1 transition-all hover:bg-gray-50 ${hidden ? "opacity-30" : ""}`}
+                    >
+                      {s.iconUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={s.iconUrl} alt={s.channelName} className={`h-4 w-4 flex-shrink-0 rounded-full object-cover ${hidden ? "grayscale" : ""}`} />
+                      ) : (
+                        <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: hidden ? "#d1d5db" : s.color }} />
+                      )}
+                      <span className={`whitespace-nowrap text-xs ${hidden ? "text-gray-400 line-through" : "text-gray-600"}`}>
+                        {s.channelName}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {groupFiltered.length > LEGEND_LIMIT && (
+                <button
+                  onClick={() => setLegendExpanded((v) => !v)}
+                  className="mt-1 text-xs text-gray-400 hover:text-violet-600 transition-colors"
+                >
+                  {legendExpanded ? "▲ 折りたたむ" : `▼ さらに${groupFiltered.length - LEGEND_LIMIT}件`}
+                </button>
+              )}
+            </>
           )}
         </div>
       )}
