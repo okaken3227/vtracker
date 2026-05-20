@@ -111,6 +111,7 @@
 html {
   height: 100%;
   background-color: #ffffff;
+  overflow-x: hidden;
 }
 
 body {
@@ -118,6 +119,7 @@ body {
   font-family: "Yu Gothic", "YuGothic", "游ゴシック", -apple-system, BlinkMacSystemFont, sans-serif;
   min-height: 100dvh;
   margin: 0;
+  overflow-x: hidden;
 }
 
 /* モバイル含む全環境で背景を画面全体に固定（iOS Safe Area 対応） */
