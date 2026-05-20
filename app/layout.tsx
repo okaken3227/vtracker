@@ -62,6 +62,9 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
   },
   robots: { index: true, follow: true },
+  verification: {
+    google: "ehi0pSwjZgA6mYI8d1lwtCuQnuhAAsgXnRVqCHh0Ch0",
+  },
   other: {
     "google-adsense-account": "ca-pub-6560735293239350",
   },
