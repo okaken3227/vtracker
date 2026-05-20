@@ -25,7 +25,7 @@ export default function Image() {
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={iconSrc} width={220} height={220} style={{ borderRadius: 48 }} alt="vtracker" />
+        <img src={iconSrc} width={380} height={380} style={{ borderRadius: 80 }} alt="vtracker" />
         <div style={{ display: "flex", alignItems: "baseline" }}>
           <span style={{ fontSize: 96, fontWeight: 900, color: "#a78bfa", lineHeight: 1 }}>v</span>
           <span style={{ fontSize: 96, fontWeight: 900, color: "#ffffff", lineHeight: 1 }}>tracker</span>
