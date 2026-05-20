@@ -26,7 +26,7 @@ const SITE_URL =
 
 const SITE_TITLE = "vtracker | VTuber同接グラフ・視聴者数・スパチャ統計をリアルタイム追跡";
 const SITE_DESCRIPTION =
-  "VTuberの同時接続数グラフ・視聴者数ランキング・スパチャ（スーパーチャット）統計・配信履歴をリアルタイムで追跡。にじさんじ・ホロライブ・ぶいすぽっ！など人気VTuberのチャンネル登録者数・同接ピークを無料で確認できるVTuber統計サイト。";
+  "VTuberの同時接続数グラフ・視聴者数ランキング・スパチャ（スーパーチャット）統計・配信履歴をリアルタイムで追跡。にじさんじ・ホロライブ・ぶいすぽっ！など人気VTuberのチャンネル登録者数・同接ピークを無料で確認できるVTuber統計サイト。Track VTuber live viewers, superchat stats, and subscriber rankings in real time.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -43,6 +43,11 @@ export const metadata: Metadata = {
     "チャンネル登録者数", "登録者数ランキング",
     "にじさんじ", "ホロライブ", "ぶいすぽっ！", "ぶいすぽ", "個人勢",
     "YouTube", "Twitch", "VTuber配信",
+    "VTuber live viewers", "VTuber viewer count", "VTuber stats",
+    "VTuber analytics", "VTuber tracker", "VTuber ranking",
+    "VTuber superchat", "VTuber graph", "VTuber concurrent viewers",
+    "Nijisanji", "Hololive", "VShojo", "Vspo",
+    "live viewer tracker", "superchat ranking", "VTuber real time",
   ],
   openGraph: {
     type: "website",
