@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   const keyEnvs: { env: string | undefined; label: string }[] = [
     { env: process.env.YOUTUBE_API_KEY, label: "KEY_1 (YOUTUBE_API_KEY)" },
   ];
-  for (let i = 2; i <= 30; i++) {
+  for (let i = 2; i <= 50; i++) {
     keyEnvs.push({
       env: process.env[`YOUTUBE_API_KEY_${i}`],
       label: `KEY_${i} (YOUTUBE_API_KEY_${i})`,

@@ -52,7 +52,7 @@ export function getYouTubeApiKeys(): string[] {
   const keys: string[] = [];
   const first = process.env.YOUTUBE_API_KEY;
   if (first) keys.push(first);
-  for (let i = 2; i <= 30; i++) {
+  for (let i = 2; i <= 50; i++) {
     const k = process.env[`YOUTUBE_API_KEY_${i}`];
     if (k) keys.push(k);
   }
