@@ -262,26 +262,26 @@ export default function AdminPage() {
     if (direction === "up" && idx === 0) return;
     if (direction === "down" && idx === groups.length - 1) return;
     const swapIdx = direction === "up" ? idx - 1 : idx + 1;
-    const current = groups[idx];
-    const swapWith = groups[swapIdx];
-    const currentOrder = current.sort_order ?? idx + 1;
-    const swapOrder = swapWith.sort_order ?? swapIdx + 1;
-    setGroups((prev) => {
-      const next = [...prev];
-      next[idx] = { ...current, sort_order: swapOrder };
-      next[swapIdx] = { ...swapWith, sort_order: currentOrder };
-      return next.sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
-    });
+
+    // まず全グループを連番に正規化してから入れ替える（sort_order の重複・null による不具合を防ぐ）
+    const normalized = groups.map((g, i) => ({ ...g, sort_order: i + 1 }));
+    const next = [...normalized];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    next[idx] = { ...next[idx], sort_order: idx + 1 };
+    next[swapIdx] = { ...next[swapIdx], sort_order: swapIdx + 1 };
+
+    setGroups(next);
+
     await Promise.all([
       fetch("/api/admin/groups", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: current.id, sort_order: swapOrder }),
+        body: JSON.stringify({ id: next[idx].id, sort_order: idx + 1 }),
       }),
       fetch("/api/admin/groups", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: swapWith.id, sort_order: currentOrder }),
+        body: JSON.stringify({ id: next[swapIdx].id, sort_order: swapIdx + 1 }),
       }),
     ]);
   }
