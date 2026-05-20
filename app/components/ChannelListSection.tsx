@@ -72,6 +72,7 @@ export default function ChannelListSection({
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {sortedChannels.map((ch) => {
             const group = ch.group_id ? groupMap.get(ch.group_id) : undefined;
+            const parentGroup = group?.parent_group_id ? groupMap.get(group.parent_group_id) : undefined;
             const latest = latestByChannel[ch.channel_id];
             return (
               <ChannelCard
@@ -87,7 +88,7 @@ export default function ChannelListSection({
                 groupId={ch.group_id}
                 groupName={group?.name}
                 groupColor={group?.color}
-                groupIconUrl={group?.icon_url}
+                groupIconUrl={parentGroup?.icon_url ?? group?.icon_url}
                 onGroupFilter={setSelectedGroup}
               />
             );
