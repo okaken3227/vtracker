@@ -41,8 +41,6 @@ const NAV = [
   },
 ];
 
-const GROUP_LIMIT = 8;
-
 export default function NavDrawer() {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -50,7 +48,6 @@ export default function NavDrawer() {
   const groups = useGroups();
 
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
-  const [groupsExpanded, setGroupsExpanded] = useState(false);
 
   const topLevelGroups = groups.filter((g) => !g.parent_group_id);
   const childrenByParent = new Map<string, typeof groups>();
@@ -61,9 +58,6 @@ export default function NavDrawer() {
       childrenByParent.set(g.parent_group_id, arr);
     }
   }
-
-  const visibleTopLevel = groupsExpanded ? topLevelGroups : topLevelGroups.slice(0, GROUP_LIMIT);
-  const hiddenCount = topLevelGroups.length - GROUP_LIMIT;
 
   function toggleParent(id: string) {
     setExpandedParents((prev) => {
@@ -188,7 +182,7 @@ export default function NavDrawer() {
                 グループ
               </p>
               <div className="space-y-0.5">
-                {visibleTopLevel.map((g) => {
+                {topLevelGroups.map((g) => {
                   const children = childrenByParent.get(g.id) ?? [];
                   const hasChildren = children.length > 0;
                   const isExpanded = expandedParents.has(g.id);
@@ -209,29 +203,29 @@ export default function NavDrawer() {
 
                   return (
                     <div key={g.id}>
-                      {hasChildren ? (
-                        <button
-                          onClick={() => toggleParent(g.id)}
-                          className={`group flex w-full items-center gap-3 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-150 ${
-                            active || anyChildActive ? "bg-violet-50 text-violet-700" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
-                          }`}
-                        >
-                          {icon}
-                          <span className="flex-1 text-left text-xs">{g.name}</span>
-                          <span className="shrink-0 text-[9px] text-gray-400">{isExpanded ? "▼" : "▶"}</span>
-                        </button>
-                      ) : (
+                      {/* 親グループ行: リンク + 子がある場合は右端にシェブロンボタン */}
+                      <div className={`flex items-center rounded-xl transition-all duration-150 ${
+                        active || anyChildActive ? "bg-violet-50" : "hover:bg-gray-50"
+                      }`}>
                         <Link
                           href={`/group/${g.id}`}
-                          className={`group flex items-center gap-3 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-150 ${
-                            active ? "bg-violet-50 text-violet-700" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                          className={`flex flex-1 items-center gap-3 px-4 py-2 text-sm font-medium transition-colors ${
+                            active || anyChildActive ? "text-violet-700" : "text-gray-500 hover:text-gray-800"
                           }`}
                         >
                           {icon}
                           <span className="text-xs">{g.name}</span>
-                          {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-violet-500" />}
+                          {!hasChildren && active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-violet-500" />}
                         </Link>
-                      )}
+                        {hasChildren && (
+                          <button
+                            onClick={() => toggleParent(g.id)}
+                            className="shrink-0 px-3 py-2 text-[9px] text-gray-400 hover:text-violet-600 transition-colors"
+                          >
+                            {isExpanded ? "▼" : "▶"}
+                          </button>
+                        )}
+                      </div>
 
                       {/* 子グループ */}
                       {hasChildren && isExpanded && (
@@ -258,16 +252,6 @@ export default function NavDrawer() {
                   );
                 })}
               </div>
-
-              {/* もっと見る / 折りたたむ */}
-              {hiddenCount > 0 && (
-                <button
-                  onClick={() => setGroupsExpanded((v) => !v)}
-                  className="mt-1 w-full rounded-lg px-4 py-1.5 text-left text-xs text-gray-400 hover:text-violet-600 transition-colors"
-                >
-                  {groupsExpanded ? "▲ 折りたたむ" : `▼ さらに${hiddenCount}件`}
-                </button>
-              )}
             </div>
           )}
         </nav>

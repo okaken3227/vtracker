@@ -41,15 +41,12 @@ const NAV = [
   },
 ];
 
-const GROUP_LIMIT = 6;
-
 export default function DesktopSidebar() {
   const pathname = usePathname();
   const { open } = useSidebar();
   const groups = useGroups();
 
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
-  const [groupsExpanded, setGroupsExpanded] = useState(false);
 
   const topLevelGroups = groups.filter((g) => !g.parent_group_id);
   const childrenByParent = new Map<string, typeof groups>();
@@ -60,9 +57,6 @@ export default function DesktopSidebar() {
       childrenByParent.set(g.parent_group_id, arr);
     }
   }
-
-  const visibleTopLevel = groupsExpanded ? topLevelGroups : topLevelGroups.slice(0, GROUP_LIMIT);
-  const hiddenCount = topLevelGroups.length - GROUP_LIMIT;
 
   function toggleParent(id: string) {
     setExpandedParents((prev) => {
@@ -186,7 +180,7 @@ export default function DesktopSidebar() {
             )}
             {!open && <div className="mb-1 mx-auto h-px w-6 bg-gray-200" />}
             <div className="space-y-0.5">
-              {visibleTopLevel.map((g) => {
+              {topLevelGroups.map((g) => {
                 const children = childrenByParent.get(g.id) ?? [];
                 const hasChildren = children.length > 0;
                 const isExpanded = expandedParents.has(g.id);
@@ -207,42 +201,16 @@ export default function DesktopSidebar() {
 
                 return (
                   <div key={g.id}>
-                    {hasChildren ? (
-                      // 子グループを持つ親：アコーディオントグル（サイドバー展開時）またはリンク（折りたたみ時）
-                      open ? (
-                        <button
-                          onClick={() => toggleParent(g.id)}
-                          className={`group flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-medium transition-all duration-150 ${
-                            active || anyChildActive
-                              ? "bg-violet-50 text-violet-700"
-                              : "text-gray-500 hover:bg-gray-100/70 hover:text-gray-800"
-                          }`}
-                        >
-                          {icon}
-                          <span className="overflow-hidden whitespace-nowrap text-xs flex-1 text-left" style={{ opacity: 1 }}>
-                            {g.name}
-                          </span>
-                          <span className="shrink-0 text-[9px] text-gray-400">{isExpanded ? "▼" : "▶"}</span>
-                        </button>
-                      ) : (
-                        <Link
-                          href={`/group/${g.id}`}
-                          title={g.name}
-                          className={`group flex items-center rounded-xl transition-all duration-150 mx-auto h-9 w-9 justify-center ${
-                            active || anyChildActive ? "bg-violet-50 text-violet-700" : "text-gray-500 hover:bg-gray-100/70"
-                          }`}
-                        >
-                          {icon}
-                        </Link>
-                      )
-                    ) : (
-                      // 子グループなし：通常リンク
+                    {/* 親グループ行: リンク + 子がある場合は右端にシェブロンボタン */}
+                    <div className={`flex items-center rounded-xl transition-all duration-150 ${
+                      active || anyChildActive ? "bg-violet-50" : "hover:bg-gray-100/70"
+                    } ${open ? "w-full" : "mx-auto w-9"}`}>
                       <Link
                         href={`/group/${g.id}`}
                         title={open ? undefined : g.name}
-                        className={`group flex items-center rounded-xl text-sm font-medium transition-all duration-150 ${
-                          active ? "bg-violet-50 text-violet-700" : "text-gray-500 hover:bg-gray-100/70 hover:text-gray-800"
-                        } ${open ? "w-full gap-3 px-2.5 py-2" : "mx-auto h-9 w-9 justify-center"}`}
+                        className={`flex flex-1 items-center text-sm font-medium transition-colors ${
+                          active || anyChildActive ? "text-violet-700" : "text-gray-500 hover:text-gray-800"
+                        } ${open ? "gap-3 px-2.5 py-2" : "h-9 justify-center"}`}
                       >
                         {icon}
                         <span
@@ -251,9 +219,20 @@ export default function DesktopSidebar() {
                         >
                           {g.name}
                         </span>
-                        {open && active && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500" />}
+                        {open && !hasChildren && active && (
+                          <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500" />
+                        )}
                       </Link>
-                    )}
+                      {/* 子グループのアコーディオントグル（サイドバー展開中のみ） */}
+                      {open && hasChildren && (
+                        <button
+                          onClick={() => toggleParent(g.id)}
+                          className="shrink-0 px-2 py-2 text-[9px] text-gray-400 hover:text-violet-600 transition-colors"
+                        >
+                          {isExpanded ? "▼" : "▶"}
+                        </button>
+                      )}
+                    </div>
 
                     {/* 子グループ（サイドバー展開中かつ親が開いているとき） */}
                     {open && hasChildren && isExpanded && (
@@ -280,16 +259,6 @@ export default function DesktopSidebar() {
                 );
               })}
             </div>
-
-            {/* もっと見る / 折りたたむ */}
-            {open && hiddenCount > 0 && (
-              <button
-                onClick={() => setGroupsExpanded((v) => !v)}
-                className="mt-1 w-full rounded-lg px-2.5 py-1 text-left text-[11px] text-gray-400 hover:text-violet-600 transition-colors"
-              >
-                {groupsExpanded ? "▲ 折りたたむ" : `▼ さらに${hiddenCount}件`}
-              </button>
-            )}
           </div>
         )}
       </nav>
