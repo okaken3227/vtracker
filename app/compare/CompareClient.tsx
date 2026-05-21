@@ -15,17 +15,11 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { browserSupabase } from "@/lib/supabase/browserClient";
 import type { Channel, Group } from "@/lib/types";
 import { GRAPH_COLORS } from "@/lib/chartConfig";
 
 type Metric = "viewers" | "sc" | "subs";
 type PresetDays = 7 | 30 | 90;
-
-type VideoRow = { video_id: string; channel_id: string };
-type GraphPoint = { video_id: string; bucket: string; avg_viewers: number };
-type SCRow = { video_id: string; amount_jpy: number | null };
-type StatsHistoryRow = { channel_id: string; subscriber_count: number; recorded_at: string };
 
 type ChartDataPoint = Record<string, string | number | null>;
 
@@ -116,135 +110,31 @@ export default function CompareClient({
     setLoading(true);
 
     const { fromIso, toIso } = getDateRange(presetDays, customFrom, customTo);
+    const params = new URLSearchParams({
+      type: metric,
+      channelIds: selectedChannelIds.join(","),
+      from: fromIso,
+      to: toIso,
+    });
 
     try {
+      const res = await fetch(`/api/compare-data?${params}`);
+      const json = await res.json() as { data: unknown[] };
+
       if (metric === "viewers") {
-        // Get videos for selected channels
-        const { data: videosData } = await browserSupabase
-          .from("videos")
-          .select("video_id, channel_id")
-          .in("channel_id", selectedChannelIds);
-
-        const videos = (videosData ?? []) as VideoRow[];
-        const videoIdToChannelId = new Map(videos.map((v) => [v.video_id, v.channel_id]));
-        const videoIds = videos.map((v) => v.video_id);
-
-        if (videoIds.length === 0) {
-          setViewerChartData([]);
-          setLoading(false);
-          return;
-        }
-
-        // Use RPC get_chart_data
-        const { data: gpData } = await browserSupabase
-          .rpc("get_chart_data", { from_ts: fromIso, to_ts: toIso })
-          .limit(200000);
-
-        const allPoints = (gpData ?? []) as GraphPoint[];
-        // Filter to selected videos
-        const points = allPoints.filter((p) => videoIdToChannelId.has(p.video_id));
-
-        // Group by bucket, then by channel
-        const bucketMap = new Map<string, Map<string, number[]>>();
-        for (const p of points) {
-          const channelId = videoIdToChannelId.get(p.video_id);
-          if (!channelId) continue;
-          if (!bucketMap.has(p.bucket)) bucketMap.set(p.bucket, new Map());
-          const cm = bucketMap.get(p.bucket)!;
-          if (!cm.has(channelId)) cm.set(channelId, []);
-          cm.get(channelId)!.push(p.avg_viewers);
-        }
-
-        const buckets = Array.from(bucketMap.keys()).sort();
-        const chartData: ChartDataPoint[] = buckets.map((bucket) => {
-          const cm = bucketMap.get(bucket)!;
-          const row: ChartDataPoint = { t: bucket };
-          for (const channelId of selectedChannelIds) {
-            const vals = cm.get(channelId);
-            row[channelId] = vals
-              ? Math.round(vals.reduce((s, x) => s + x, 0) / vals.length)
-              : null;
-          }
-          return row;
-        });
-
-        setViewerChartData(chartData);
+        setViewerChartData(json.data as ChartDataPoint[]);
       } else if (metric === "sc") {
-        // Get videos for selected channels
-        const { data: videosData } = await browserSupabase
-          .from("videos")
-          .select("video_id, channel_id")
-          .in("channel_id", selectedChannelIds);
-
-        const videos = (videosData ?? []) as VideoRow[];
-        const videoIdToChannelId = new Map(videos.map((v) => [v.video_id, v.channel_id]));
-        const videoIds = videos.map((v) => v.video_id);
-
-        if (videoIds.length === 0) {
-          setScBarData([]);
-          setLoading(false);
-          return;
-        }
-
-        const { data: scData } = await browserSupabase
-          .from("superchats")
-          .select("video_id, amount_jpy")
-          .in("video_id", videoIds)
-          .gte("published_at", fromIso)
-          .lte("published_at", toIso)
-          .not("amount_jpy", "is", null)
-          .limit(200000);
-
-        const scRows = (scData ?? []) as SCRow[];
-
-        const scByChannel = new Map<string, number>();
-        for (const sc of scRows) {
-          const channelId = videoIdToChannelId.get(sc.video_id);
-          if (!channelId) continue;
-          scByChannel.set(channelId, (scByChannel.get(channelId) ?? 0) + (sc.amount_jpy ?? 0));
-        }
-
+        const raw = json.data as { channelId: string; value: number }[];
         const barData = selectedChannelIds
           .map((channelId) => ({
             name: channelMap.get(channelId)?.name ?? channelId,
-            value: scByChannel.get(channelId) ?? 0,
+            value: raw.find((d) => d.channelId === channelId)?.value ?? 0,
             channelId,
           }))
           .sort((a, b) => b.value - a.value);
-
         setScBarData(barData);
       } else {
-        // subs history
-        const { data: histData } = await browserSupabase
-          .from("channel_stats_history")
-          .select("channel_id, subscriber_count, recorded_at")
-          .in("channel_id", selectedChannelIds)
-          .gte("recorded_at", fromIso)
-          .lte("recorded_at", toIso)
-          .order("recorded_at", { ascending: true })
-          .limit(10000);
-
-        const rows = (histData ?? []) as StatsHistoryRow[];
-
-        // Group by date (day)
-        const dateMap = new Map<string, Map<string, number>>();
-        for (const r of rows) {
-          const day = r.recorded_at.slice(0, 10);
-          if (!dateMap.has(day)) dateMap.set(day, new Map());
-          dateMap.get(day)!.set(r.channel_id, r.subscriber_count);
-        }
-
-        const days = Array.from(dateMap.keys()).sort();
-        const chartData: ChartDataPoint[] = days.map((day) => {
-          const cm = dateMap.get(day)!;
-          const row: ChartDataPoint = { t: day };
-          for (const channelId of selectedChannelIds) {
-            row[channelId] = cm.get(channelId) ?? null;
-          }
-          return row;
-        });
-
-        setSubsChartData(chartData);
+        setSubsChartData(json.data as ChartDataPoint[]);
       }
     } catch {
       // silently handle
