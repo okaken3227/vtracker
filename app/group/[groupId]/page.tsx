@@ -3,7 +3,6 @@ import { supabase } from "@/lib/supabase/client";
 import type { Channel, Video, Group, GroupCategory, LiveGraphPoint } from "@/lib/types";
 import { GRAPH_COLORS, GRAPH_BUCKET_MS } from "@/lib/chartConfig";
 import { getJstMidnightMs } from "@/lib/jst";
-import ChannelAvatar from "@/app/components/ChannelAvatar";
 import ChannelCard from "@/app/components/ChannelCard";
 import CombinedLiveGraph from "@/app/components/CombinedLiveGraph";
 import type { LineConfig } from "@/app/components/CombinedLiveGraph";
@@ -12,17 +11,22 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
+// DBにwebsite_urlカラムがない場合のフォールバック
+const KNOWN_WEBSITES: Record<string, string> = {
+  "にじさんじ": "https://www.nijisanji.jp/",
+  "ぶいすぽっ！": "https://vspo.jp/",
+  "Reject": "https://reject.jp/",
+  "あおぎり高校": "https://www.aogirihighschool.com/",
+  "ホロライブ": "https://hololivepro.com/",
+};
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ groupId: string }>;
 }): Promise<Metadata> {
   const { groupId } = await params;
-  const { data } = await supabase
-    .from("groups")
-    .select("name, icon_url")
-    .eq("id", groupId)
-    .single();
+  const { data } = await supabase.from("groups").select("name, icon_url").eq("id", groupId).single();
   if (!data) return {};
   const g = data as { name: string; icon_url: string | null };
   const description = `${g.name}に所属するVTuberの視聴者数・スパチャ・配信状況をまとめて確認。`;
@@ -50,11 +54,9 @@ function buildLiveGraph(
     videoId: v.video_id,
     iconUrl: channelMap.get(v.channel_id)?.icon_url ?? undefined,
   }));
-
   const liveIds = new Set(liveVideos.map((v) => v.video_id));
   const allBuckets = new Set<number>();
   const byVideoAndBucket = new Map<string, Map<number, number[]>>();
-
   for (const p of points) {
     if (!liveIds.has(p.video_id)) continue;
     const bucket = Math.floor(new Date(p.recorded_at).getTime() / BUCKET_MS) * BUCKET_MS;
@@ -64,14 +66,10 @@ function buildLiveGraph(
     if (!vm.has(bucket)) vm.set(bucket, []);
     vm.get(bucket)!.push(p.concurrent_viewers);
   }
-
   if (allBuckets.size < 2) return { merged: [], lines };
-
   const sorted = Array.from(allBuckets).sort((a, b) => a - b);
   const merged = sorted.map((bucket) => {
-    const t = new Date(bucket).toLocaleTimeString("ja-JP", {
-      hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo",
-    });
+    const t = new Date(bucket).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" });
     const row: Record<string, number | string | null> = { t };
     for (const { key } of lines) {
       const vals = byVideoAndBucket.get(key)?.get(bucket);
@@ -79,7 +77,6 @@ function buildLiveGraph(
     }
     return row;
   });
-
   return { merged, lines };
 }
 
@@ -98,27 +95,20 @@ const CATEGORY_STYLE: Record<GroupCategory, string> = {
 };
 
 function formatCount(n: number): string {
+  if (n >= 100000000) return `${(n / 100000000).toFixed(1)}億`;
   if (n >= 10000) return `${(n / 10000).toFixed(0)}万`;
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
   return n.toLocaleString();
 }
 
-export default async function GroupPage({
-  params,
-}: {
-  params: Promise<{ groupId: string }>;
-}) {
+export default async function GroupPage({ params }: { params: Promise<{ groupId: string }> }) {
   const { groupId } = await params;
   const jstMidnightMs = getJstMidnightMs();
 
   const [groupRes, allGroupsRes, channelsRes] = await Promise.all([
     supabase.from("groups").select("*").eq("id", groupId).single(),
     supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
-    supabase
-      .from("channels")
-      .select("*")
-      .eq("group_id", groupId)
-      .order("subscriber_count", { ascending: false }),
+    supabase.from("channels").select("*").eq("group_id", groupId).order("subscriber_count", { ascending: false }),
   ]);
 
   const group = groupRes.data as Group | null;
@@ -126,7 +116,7 @@ export default async function GroupPage({
     return (
       <div className="py-20 text-center text-gray-400">
         <p>グループが見つかりません</p>
-        <Link href="/" className="mt-3 inline-block text-sm text-violet-500 hover:underline">ホームへ戻る</Link>
+        <Link href="/groups" className="mt-3 inline-block text-sm text-violet-500 hover:underline">グループ一覧へ戻る</Link>
       </div>
     );
   }
@@ -136,15 +126,15 @@ export default async function GroupPage({
   const channelIds = channels.map((c) => c.channel_id);
   const channelMap = new Map(channels.map((c) => [c.channel_id, c]));
 
-  const parentGroup = group.parent_group_id ? allGroups.find((g) => g.id === group.parent_group_id) : null;
-  const childGroups = allGroups.filter((g) => g.parent_group_id === groupId);
+  const parentGroup = group.parent_group_id ? allGroups.find((g) => g.id === group.parent_group_id) ?? null : null;
+  const childGroups = allGroups
+    .filter((g) => g.parent_group_id === groupId)
+    .sort((a, b) => (a.sort_order ?? 99999) - (b.sort_order ?? 99999));
 
   const [videosRes, gpRes] = channelIds.length > 0
     ? await Promise.all([
         supabase.from("videos").select("*").in("channel_id", channelIds).order("start_time", { ascending: false }),
-        supabase
-          .from("live_graph_points")
-          .select("video_id, concurrent_viewers, recorded_at")
+        supabase.from("live_graph_points").select("video_id, concurrent_viewers, recorded_at")
           .gte("recorded_at", new Date(jstMidnightMs).toISOString()),
       ])
     : [{ data: [] }, { data: [] }];
@@ -152,26 +142,20 @@ export default async function GroupPage({
   const videos = (videosRes.data ?? []) as Video[];
   const graphPoints = (gpRes.data ?? []) as Pick<LiveGraphPoint, "video_id" | "concurrent_viewers" | "recorded_at">[];
 
-  const videoMap = new Map(videos.map((v) => [v.video_id, v]));
   const liveVideos = videos.filter((v) => v.status === "live");
+  const upcomingVideos = videos.filter((v) => v.status === "upcoming");
   const { merged: liveGraphData, lines: liveGraphLines } = buildLiveGraph(liveVideos, channelMap, graphPoints);
 
-  // Latest video status per channel for ChannelCard
   const latestByChannel: Record<string, { status: string; startTime: string | null }> = {};
   for (const ch of channels) {
     const chVideos = videos.filter((v) => v.channel_id === ch.channel_id);
     const live = chVideos.find((v) => v.status === "live");
     const upcoming = chVideos.find((v) => v.status === "upcoming");
     const latest = live ?? upcoming ?? chVideos[0];
-    if (latest) {
-      latestByChannel[ch.channel_id] = { status: latest.status, startTime: latest.start_time };
-    }
+    if (latest) latestByChannel[ch.channel_id] = { status: latest.status, startTime: latest.start_time };
   }
 
-  // YouTube/Twitch 同一人物の重複除去
-  const linkedToIds = new Set(
-    channels.filter((c) => c.linked_channel_id).map((c) => c.linked_channel_id as string)
-  );
+  const linkedToIds = new Set(channels.filter((c) => c.linked_channel_id).map((c) => c.linked_channel_id as string));
   const shownAsLinked = new Set<string>();
   for (const ch of channels) {
     if (!ch.linked_channel_id) continue;
@@ -189,79 +173,100 @@ export default async function GroupPage({
     return b.subscriber_count - a.subscriber_count;
   });
 
-  const todayVideoIds = [...new Set(graphPoints.map((p) => p.video_id))].filter(
-    (id) => {
-      const v = videoMap.get(id);
-      return v && channelIds.includes(v.channel_id);
-    }
-  );
-
-  const peakByVideo = new Map<string, number>();
-  for (const p of graphPoints) {
-    peakByVideo.set(p.video_id, Math.max(peakByVideo.get(p.video_id) ?? 0, p.concurrent_viewers));
-  }
-
-  const peakRanking = todayVideoIds
-    .map((vid) => ({
-      video: videoMap.get(vid)!,
-      channel: channelMap.get(videoMap.get(vid)?.channel_id ?? ""),
-      peak: peakByVideo.get(vid) ?? 0,
-    }))
-    .filter((x) => x.video)
-    .sort((a, b) => b.peak - a.peak)
-    .slice(0, 10);
+  const totalSubs = channels.reduce((s, c) => s + (c.subscriber_count ?? 0), 0);
+  const websiteUrl = group.website_url ?? KNOWN_WEBSITES[group.name] ?? null;
+  const accentColor = group.color ?? "#6b7280";
 
   return (
     <div>
-      {/* Group header */}
-      <div className="mb-2 flex items-center gap-2 text-sm text-gray-400">
-        <Link href="/" className="hover:text-violet-600">ホーム</Link>
+      {/* パンくず */}
+      <div className="mb-4 flex items-center gap-1.5 text-xs text-gray-400">
+        <Link href="/" className="hover:text-violet-600 transition-colors">ホーム</Link>
         <span>›</span>
-        <Link href="/groups" className="hover:text-violet-600">グループ</Link>
+        <Link href="/groups" className="hover:text-violet-600 transition-colors">グループ</Link>
         <span>›</span>
         {parentGroup && (
           <>
-            <Link href={`/group/${parentGroup.id}`} className="hover:text-violet-600">{parentGroup.name}</Link>
+            <Link href={`/group/${parentGroup.id}`} className="hover:text-violet-600 transition-colors">{parentGroup.name}</Link>
             <span>›</span>
           </>
         )}
         <span className="text-gray-600">{group.name}</span>
       </div>
 
-      <div className="mb-8 flex items-center gap-4">
-        {!group.parent_group_id && (group.icon_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={group.icon_url} alt={group.name} className="h-14 w-14 flex-shrink-0 rounded-full object-cover" />
-        ) : (
-          <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full text-white text-xl font-bold" style={{ backgroundColor: group.color }}>
-            {group.name[0]}
+      {/* ヒーローセクション */}
+      <div
+        className="relative mb-8 overflow-hidden rounded-2xl p-6 sm:p-8"
+        style={{ background: `linear-gradient(135deg, ${accentColor}22 0%, ${accentColor}08 100%)`, borderLeft: `4px solid ${accentColor}` }}
+      >
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            {!group.parent_group_id && (group.icon_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={group.icon_url} alt={group.name} className="h-16 w-16 flex-shrink-0 rounded-2xl object-cover shadow-sm sm:h-20 sm:w-20" />
+            ) : (
+              <div
+                className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl text-2xl font-bold text-white shadow-sm sm:h-20 sm:w-20"
+                style={{ backgroundColor: accentColor }}
+              >
+                {group.name[0]}
+              </div>
+            ))}
+            <div>
+              <div className="mb-1 flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">{group.name}</h1>
+                {group.category && (
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${CATEGORY_STYLE[group.category]}`}>
+                    {CATEGORY_LABEL[group.category]}
+                  </span>
+                )}
+                {liveVideos.length > 0 && (
+                  <span className="flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-600">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
+                    {liveVideos.length}本ライブ中
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+                <span><span className="font-semibold text-gray-900">{channels.length}</span> チャンネル</span>
+                <span><span className="font-semibold text-gray-900">{formatCount(totalSubs)}</span> 総登録者</span>
+              </div>
+            </div>
           </div>
-        ))}
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
-            {group.category && (
-              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${CATEGORY_STYLE[group.category]}`}>
-                {CATEGORY_LABEL[group.category]}
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-gray-400">{channels.length}チャンネル</p>
+
+          {/* 公式サイトボタン */}
+          {websiteUrl && (
+            <a
+              href={websiteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:border-violet-300 hover:text-violet-600 hover:shadow-md"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <circle cx="10" cy="10" r="8" />
+                <path d="M10 2C10 2 7 6 7 10s3 8 3 8M10 2c0 0 3 4 3 8s-3 8-3 8M2 10h16" strokeLinecap="round" />
+              </svg>
+              公式サイト
+              <svg className="h-3 w-3 opacity-50" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M2 10L10 2M10 2H5M10 2v5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </a>
+          )}
         </div>
       </div>
 
-      {/* Child groups */}
+      {/* サブグループ */}
       {childGroups.length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-3 text-base font-semibold text-gray-900">サブグループ</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-400">サブグループ</h2>
           <div className="flex flex-wrap gap-2">
             {childGroups.map((g) => (
               <Link
                 key={g.id}
                 href={`/group/${g.id}`}
-                className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm text-gray-700 shadow-sm transition-colors hover:border-violet-300 hover:text-violet-600"
+                className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:border-violet-300 hover:text-violet-600 hover:shadow-md"
               >
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: g.color }} />
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: g.color }} />
                 {g.name}
               </Link>
             ))}
@@ -269,7 +274,7 @@ export default async function GroupPage({
         </section>
       )}
 
-      {/* Live now */}
+      {/* ライブ中 */}
       {liveVideos.length > 0 && (
         <section className="mb-8">
           <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-gray-900">
@@ -277,7 +282,7 @@ export default async function GroupPage({
             ライブ中
             <span className="font-normal text-gray-400">({liveVideos.length})</span>
           </h2>
-          <div className="flex flex-col gap-3 mb-4">
+          <div className="mb-4 flex flex-col gap-3">
             {liveVideos.map((v) => {
               const ch = channelMap.get(v.channel_id);
               return (
@@ -299,52 +304,55 @@ export default async function GroupPage({
         </section>
       )}
 
-      {/* Today's peak ranking */}
-      {peakRanking.length > 0 && (
+      {/* 配信予定 */}
+      {upcomingVideos.length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-3 text-base font-semibold text-gray-900">今日のピーク同接</h2>
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="divide-y divide-gray-100">
-              {peakRanking.map(({ video, channel, peak }, i) => (
+          <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-gray-900">
+            <span className="text-blue-400">◷</span>
+            配信予定
+            <span className="font-normal text-gray-400">({upcomingVideos.length})</span>
+          </h2>
+          <div className="flex flex-col gap-2">
+            {upcomingVideos.slice(0, 5).map((v) => {
+              const ch = channelMap.get(v.channel_id);
+              return (
                 <Link
-                  key={video.video_id}
-                  href={`/live/${video.video_id}`}
-                  className="flex items-center gap-3 py-2.5 transition-opacity hover:opacity-70"
+                  key={v.video_id}
+                  href={`/live/${v.video_id}`}
+                  className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 text-sm transition-all hover:border-violet-200 hover:shadow-sm"
                 >
-                  <span className="w-5 flex-shrink-0 text-center text-xs font-bold text-gray-300">{i + 1}</span>
-                  <ChannelAvatar
-                    channelId={video.channel_id}
-                    name={channel?.name ?? ""}
-                    iconUrl={channel?.icon_url ?? undefined}
-                    size={32}
-                  />
+                  {ch?.icon_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={ch.icon_url} alt={ch.name} className="h-8 w-8 flex-shrink-0 rounded-full object-cover" />
+                  )}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-gray-800">{channel?.name ?? video.channel_id}</p>
-                    <p className="truncate text-xs text-gray-400">{video.title}</p>
+                    <p className="truncate font-medium text-gray-800">{ch?.name ?? v.channel_id}</p>
+                    <p className="truncate text-xs text-gray-400">{v.title}</p>
                   </div>
-                  <span className="flex-shrink-0 font-bold text-violet-600">{peak.toLocaleString()}人</span>
+                  {v.scheduled_start_time && (
+                    <span className="flex-shrink-0 text-xs text-gray-400">
+                      {new Date(v.scheduled_start_time).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" })}
+                    </span>
+                  )}
                 </Link>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </section>
       )}
 
-      {/* Channel list */}
+      {/* チャンネル一覧 */}
       <section>
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">
+        <h2 className="mb-4 text-base font-semibold text-gray-900">
           チャンネル一覧
-          <span className="ml-2 text-sm font-normal text-gray-400">({channels.length}件)</span>
+          <span className="ml-2 text-sm font-normal text-gray-400">({deduped.length}件)</span>
         </h2>
-        {channels.length === 0 ? (
+        {sortedChannels.length === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-400">
             チャンネルがありません
           </div>
         ) : (
-          <div
-            className="grid gap-3"
-            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}
-          >
+          <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
             {sortedChannels.map((ch) => {
               const linked = ch.linked_channel_id ? channelMap.get(ch.linked_channel_id) : undefined;
               return (

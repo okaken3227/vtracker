@@ -11,6 +11,7 @@ export type Group = {
   category?: GroupCategory | null;
   slug?: string | null;
   sort_order?: number | null;
+  website_url?: string | null;
 };
 
 export type Platform = "youtube" | "twitch";
