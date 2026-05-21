@@ -19,21 +19,18 @@ import type { Channel, Group } from "@/lib/types";
 import { GRAPH_COLORS } from "@/lib/chartConfig";
 
 type Metric = "viewers" | "sc" | "subs";
-type PresetDays = 7 | 30 | 90;
+type PresetDays = 1 | 3 | 7;
 
 type ChartDataPoint = Record<string, string | number | null>;
 
-function getDateRange(presetDays: PresetDays | null, customFrom: string, customTo: string): { fromIso: string; toIso: string } {
+function getDateRange(presetDays: PresetDays | null): { fromIso: string; toIso: string } {
   const nowMs = Date.now();
-  if (presetDays !== null) {
-    return {
-      fromIso: new Date(nowMs - presetDays * 24 * 60 * 60 * 1000).toISOString(),
-      toIso: new Date(nowMs).toISOString(),
-    };
-  }
-  const from = customFrom ? new Date(customFrom).toISOString() : new Date(nowMs - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const to = customTo ? new Date(customTo + "T23:59:59").toISOString() : new Date(nowMs).toISOString();
-  return { fromIso: from, toIso: to };
+  const toIso = new Date(nowMs).toISOString();
+  if (presetDays === null) return { fromIso: "", toIso };
+  return {
+    fromIso: new Date(nowMs - presetDays * 24 * 60 * 60 * 1000).toISOString(),
+    toIso,
+  };
 }
 
 function formatK(v: number): string {
@@ -62,10 +59,9 @@ export default function CompareClient({
   const [selectedChannelIds, setSelectedChannelIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [metric, setMetric] = useState<Metric>("viewers");
-  const [presetDays, setPresetDays] = useState<PresetDays | null>(7);
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
+  const [presetDays, setPresetDays] = useState<PresetDays | null>(1);
   const [loading, setLoading] = useState(false);
+  const [loadingPct, setLoadingPct] = useState(0);
 
   // Chart data states
   const [viewerChartData, setViewerChartData] = useState<ChartDataPoint[]>([]);
@@ -108,8 +104,9 @@ export default function CompareClient({
   const fetchData = useCallback(async () => {
     if (selectedChannelIds.length === 0) return;
     setLoading(true);
+    setLoadingPct(10);
 
-    const { fromIso, toIso } = getDateRange(presetDays, customFrom, customTo);
+    const { fromIso, toIso } = getDateRange(presetDays);
     const params = new URLSearchParams({
       type: metric,
       channelIds: selectedChannelIds.join(","),
@@ -118,8 +115,11 @@ export default function CompareClient({
     });
 
     try {
+      setLoadingPct(40);
       const res = await fetch(`/api/compare-data?${params}`);
+      setLoadingPct(80);
       const json = await res.json() as { data: unknown[] };
+      setLoadingPct(100);
 
       if (metric === "viewers") {
         setViewerChartData(json.data as ChartDataPoint[]);
@@ -140,8 +140,9 @@ export default function CompareClient({
       // silently handle
     } finally {
       setLoading(false);
+      setLoadingPct(0);
     }
-  }, [selectedChannelIds, metric, presetDays, customFrom, customTo, channelMap]);
+  }, [selectedChannelIds, metric, presetDays, channelMap]);
 
   useEffect(() => {
     if (selectedChannelIds.length === 0) return;
@@ -290,11 +291,11 @@ export default function CompareClient({
       {/* Date range selector */}
       <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-gray-700">期間</h2>
-        <div className="flex flex-wrap items-center gap-2">
-          {([7, 30, 90] as PresetDays[]).map((days) => (
+        <div className="flex flex-wrap gap-2">
+          {([1, 3, 7] as PresetDays[]).map((days) => (
             <button
               key={days}
-              onClick={() => { setPresetDays(days); setCustomFrom(""); setCustomTo(""); }}
+              onClick={() => setPresetDays(days)}
               className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                 presetDays === days
                   ? "bg-violet-600 text-white"
@@ -304,20 +305,16 @@ export default function CompareClient({
               過去{days}日
             </button>
           ))}
-          <span className="text-xs text-gray-400">または</span>
-          <input
-            type="date"
-            value={customFrom}
-            onChange={(e) => { setCustomFrom(e.target.value); setPresetDays(null); }}
-            className="rounded-lg border border-gray-200 px-2 py-1 text-xs outline-none focus:border-violet-400"
-          />
-          <span className="text-xs text-gray-400">〜</span>
-          <input
-            type="date"
-            value={customTo}
-            onChange={(e) => { setCustomTo(e.target.value); setPresetDays(null); }}
-            className="rounded-lg border border-gray-200 px-2 py-1 text-xs outline-none focus:border-violet-400"
-          />
+          <button
+            onClick={() => setPresetDays(null)}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+              presetDays === null
+                ? "bg-violet-600 text-white"
+                : "border border-gray-200 bg-white text-gray-500 hover:border-violet-300 hover:text-violet-600"
+            }`}
+          >
+            全期間
+          </button>
         </div>
       </div>
 
@@ -344,8 +341,15 @@ export default function CompareClient({
           チャンネルを選択してください
         </div>
       ) : loading ? (
-        <div className="rounded-2xl border border-dashed border-gray-200 py-24 text-center text-sm text-gray-400">
-          データを読み込み中...
+        <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
+          <p className="mb-3 text-center text-sm font-medium text-gray-600">データを読み込み中...</p>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+            <div
+              className="h-full rounded-full bg-violet-500 transition-all duration-500"
+              style={{ width: `${loadingPct}%` }}
+            />
+          </div>
+          <p className="mt-2 text-center text-xs text-gray-400">{loadingPct}%</p>
         </div>
       ) : metric === "viewers" ? (
         <ViewersChart data={viewerChartData} channelIds={selectedChannelIds} channelMap={channelMap} />

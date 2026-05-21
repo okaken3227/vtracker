@@ -19,13 +19,16 @@ export async function GET(req: NextRequest) {
 
   if (type === "viewers") {
     // 時間範囲内の動画のみ取得（全履歴を取らない）
-    const bufferIso = new Date(new Date(fromIso).getTime() - 12 * 3600 * 1000).toISOString();
-    const { data: videosData } = await supabase
+    let videoQuery = supabase
       .from("videos")
       .select("video_id, channel_id")
       .in("channel_id", channelIds)
-      .gte("start_time", bufferIso)
       .lte("start_time", toIso);
+    if (fromIso) {
+      const bufferIso = new Date(new Date(fromIso).getTime() - 12 * 3600 * 1000).toISOString();
+      videoQuery = videoQuery.gte("start_time", bufferIso);
+    }
+    const { data: videosData } = await videoQuery;
 
     const videos = (videosData ?? []) as VideoRow[];
     const videoIdToChannelId = new Map(videos.map((v) => [v.video_id, v.channel_id]));
@@ -34,13 +37,14 @@ export async function GET(req: NextRequest) {
     if (videoIds.length === 0) return NextResponse.json({ data: [] });
 
     // video_idと時間範囲で直接フィルタ（RPCで全データ取得しない）
-    const { data: gpData } = await supabase
+    let gpQuery = supabase
       .from("live_graph_points")
       .select("video_id, concurrent_viewers, recorded_at")
       .in("video_id", videoIds)
-      .gte("recorded_at", fromIso)
       .lte("recorded_at", toIso)
       .limit(50000);
+    if (fromIso) gpQuery = gpQuery.gte("recorded_at", fromIso);
+    const { data: gpData } = await gpQuery;
 
     const points = (gpData ?? []) as RawPoint[];
 
@@ -72,13 +76,16 @@ export async function GET(req: NextRequest) {
 
   if (type === "sc") {
     // 時間範囲内の動画のみ取得
-    const bufferIso = new Date(new Date(fromIso).getTime() - 12 * 3600 * 1000).toISOString();
-    const { data: videosData } = await supabase
+    let scVideoQuery = supabase
       .from("videos")
       .select("video_id, channel_id")
       .in("channel_id", channelIds)
-      .gte("start_time", bufferIso)
       .lte("start_time", toIso);
+    if (fromIso) {
+      const bufferIso = new Date(new Date(fromIso).getTime() - 12 * 3600 * 1000).toISOString();
+      scVideoQuery = scVideoQuery.gte("start_time", bufferIso);
+    }
+    const { data: videosData } = await scVideoQuery;
 
     const videos = (videosData ?? []) as VideoRow[];
     const videoIdToChannelId = new Map(videos.map((v) => [v.video_id, v.channel_id]));
@@ -86,14 +93,15 @@ export async function GET(req: NextRequest) {
 
     if (videoIds.length === 0) return NextResponse.json({ data: [] });
 
-    const { data: scData } = await supabase
+    let scQuery = supabase
       .from("superchats")
       .select("video_id, amount_jpy")
       .in("video_id", videoIds)
-      .gte("published_at", fromIso)
       .lte("published_at", toIso)
       .not("amount_jpy", "is", null)
       .limit(200000);
+    if (fromIso) scQuery = scQuery.gte("published_at", fromIso);
+    const { data: scData } = await scQuery;
 
     const scRows = (scData ?? []) as SCRow[];
     const scByChannel = new Map<string, number>();
@@ -112,14 +120,15 @@ export async function GET(req: NextRequest) {
   }
 
   if (type === "subs") {
-    const { data: histData } = await supabase
+    let subsQuery = supabase
       .from("channel_stats_history")
       .select("channel_id, subscriber_count, recorded_at")
       .in("channel_id", channelIds)
-      .gte("recorded_at", fromIso)
       .lte("recorded_at", toIso)
       .order("recorded_at", { ascending: true })
       .limit(10000);
+    if (fromIso) subsQuery = subsQuery.gte("recorded_at", fromIso);
+    const { data: histData } = await subsQuery;
 
     const rows = (histData ?? []) as StatsRow[];
     const dateMap = new Map<string, Map<string, number>>();
