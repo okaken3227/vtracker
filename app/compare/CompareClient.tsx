@@ -426,7 +426,7 @@ export default function CompareClient({
                     className="flex-shrink-0 text-[10px] text-gray-400 hover:text-violet-500 transition-colors px-0.5"
                     title="前回の配信へ"
                   >
-                    ◀
+                    ▶
                   </button>
                   {offset > 0 && (
                     <button
@@ -434,7 +434,7 @@ export default function CompareClient({
                       className="flex-shrink-0 text-[10px] text-gray-400 hover:text-violet-500 transition-colors px-0.5"
                       title="新しい配信へ"
                     >
-                      ▶
+                      ◀
                     </button>
                   )}
                 </>
