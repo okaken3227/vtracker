@@ -34,7 +34,7 @@ export default async function TimelinePage({
 
   const [chRes, gpRes, grRes, scRes] = await Promise.all([
     supabase.from("channels").select("*"),
-    supabase.rpc("get_chart_data", { from_ts: fromIso, to_ts: toIso }),
+    supabase.rpc("get_chart_data", { from_ts: fromIso, to_ts: toIso }).limit(200000),
     supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
     supabase
       .from("superchats")
