@@ -217,6 +217,8 @@ export default async function GroupPage({
       <div className="mb-2 flex items-center gap-2 text-sm text-gray-400">
         <Link href="/" className="hover:text-violet-600">ホーム</Link>
         <span>›</span>
+        <Link href="/groups" className="hover:text-violet-600">グループ</Link>
+        <span>›</span>
         {parentGroup && (
           <>
             <Link href={`/group/${parentGroup.id}`} className="hover:text-violet-600">{parentGroup.name}</Link>

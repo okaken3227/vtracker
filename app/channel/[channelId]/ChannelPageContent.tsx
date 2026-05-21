@@ -10,6 +10,7 @@ export type ChData = {
   videos: Video[];
   history: ChannelStatsHistory[];
   group: Group | null;
+  parentGroup: Group | null;
   totalSCJPY: number;
   peakByVideo: Record<string, number>;
 };
@@ -137,6 +138,14 @@ function ChannelView({ d }: { d: ChData }) {
       <div className="mb-3 flex items-center gap-1.5 text-xs text-gray-500">
         <Link href="/" className="hover:text-violet-600 transition-colors">ホーム</Link>
         <span className="text-gray-300">›</span>
+        <Link href="/groups" className="hover:text-violet-600 transition-colors">グループ</Link>
+        <span className="text-gray-300">›</span>
+        {d.parentGroup && (
+          <>
+            <Link href={`/group/${d.parentGroup.id}`} className="hover:text-violet-600 transition-colors">{d.parentGroup.name}</Link>
+            <span className="text-gray-300">›</span>
+          </>
+        )}
         {group && (
           <>
             <Link href={`/group/${group.id}`} className="hover:text-violet-600 transition-colors">{group.name}</Link>

@@ -70,6 +70,10 @@ async function fetchChannelData(channelId: string): Promise<ChData | null> {
   ]);
 
   const group = groupRes.data as Group | null;
+  const parentGroupRes = group?.parent_group_id
+    ? await supabase.from("groups").select("*").eq("id", group.parent_group_id).single()
+    : { data: null };
+  const parentGroup = parentGroupRes.data as Group | null;
 
   const scRows = (scRes.data ?? []) as Pick<Superchat, "amount_jpy" | "amount" | "currency">[];
   const needsRates = scRows.some((sc) => sc.amount_jpy == null && sc.currency !== "JPY");
@@ -84,7 +88,7 @@ async function fetchChannelData(channelId: string): Promise<ChData | null> {
     peakByVideo[p.video_id] = Math.max(peakByVideo[p.video_id] ?? 0, p.concurrent_viewers);
   }
 
-  return { channel, videos, history, group, totalSCJPY, peakByVideo };
+  return { channel, videos, history, group, parentGroup, totalSCJPY, peakByVideo };
 }
 
 export default async function ChannelPage({
