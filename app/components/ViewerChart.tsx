@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ReferenceDot, ResponsiveContainer,
@@ -25,35 +26,33 @@ function formatK(v: number) {
 }
 
 function CustomTooltip({
-  active, payload, label, streams, coordinate, viewBox,
+  active, payload, label, streams, coordinate, chartRect,
 }: {
   active?: boolean;
   payload?: { dataKey: string; value: number; color: string }[];
   label?: number;
   streams: StreamInfo[];
   coordinate?: { x: number; y: number };
-  viewBox?: { x: number; y: number; width: number; height: number };
+  chartRect: DOMRect | null;
 }) {
-  if (!active || !payload?.length) return null;
+  if (!active || !payload?.length || typeof document === "undefined") return null;
   const streamMap = Object.fromEntries(streams.map((s) => [s.videoId, s]));
 
-  const W = 156; // fixed tooltip width (px), matches w-39 below
+  const W = 156;
   const off = 10;
-  const cx = coordinate?.x ?? 0;
-  // viewBox.x = left margin, viewBox.width = plot area width, +24 = right margin
-  const containerW = (viewBox?.x ?? 0) + (viewBox?.width ?? 0) + 24;
-  let dx: number;
-  if (cx + off + W <= containerW) {
-    dx = off; // fits on the right
-  } else if (cx - off - W >= 0) {
-    dx = -(W + off); // fits on the left
-  } else {
-    dx = Math.max(-cx, containerW - cx - W); // clamp to whichever side loses less
-  }
+  const margin = 8;
+  const pageX = (chartRect?.left ?? 0) + (coordinate?.x ?? 0);
+  const pageY = (chartRect?.top ?? 0) + (coordinate?.y ?? 0);
+  const screenW = window.innerWidth;
 
-  return (
+  let left = pageX + off;
+  if (left + W > screenW - margin) left = pageX - off - W;
+  left = Math.max(margin, Math.min(left, screenW - W - margin));
+  const top = Math.max(margin, pageY - 80);
+
+  return createPortal(
     <div
-      style={{ transform: `translateX(${dx}px)`, width: W }}
+      style={{ position: "fixed", left, top, width: W, zIndex: 9999, pointerEvents: "none" }}
       className="rounded-xl border border-gray-100 bg-white/95 p-2 text-sm shadow-xl backdrop-blur-sm"
     >
       <p className="mb-1 text-[10px] font-medium text-gray-400">{tToHHMM(label ?? 0)}</p>
@@ -81,7 +80,8 @@ function CustomTooltip({
             );
           })}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -286,15 +286,9 @@ export default function ViewerChart({ data, streams }: Props) {
     return fallback();
   };
 
-  const topGroupEntries = groupEntries.filter((g) => !g.parentName);
-  const subGroupEntries = groupEntries.filter((g) => g.parentName);
-  const sortedGroupEntries = [
-    ...topGroupEntries.sort((a, b) => sortByOrder(a.sortOrder, b.sortOrder, () => a.name.localeCompare(b.name, "ja"))),
-    ...subGroupEntries.sort((a, b) => {
-      const pc = sortByOrder(a.parentSortOrder, b.parentSortOrder, () => (a.parentName ?? "").localeCompare(b.parentName ?? "", "ja"));
-      return pc !== 0 ? pc : sortByOrder(a.sortOrder, b.sortOrder, () => a.name.localeCompare(b.name, "ja"));
-    }),
-  ];
+  const sortedGroupEntries = groupEntries
+    .filter((g) => !g.parentName)
+    .sort((a, b) => sortByOrder(a.sortOrder, b.sortOrder, () => a.name.localeCompare(b.name, "ja")));
 
   function applyGroupFilter(group: string | null) {
     setFilterGroup(group);
@@ -344,25 +338,18 @@ export default function ViewerChart({ data, streams }: Props) {
           </button>
           {sortedGroupEntries.map((g) => {
             const isActive = filterGroup === g.name;
-            const isSub = !!g.parentName;
             return (
               <button
                 key={g.name}
                 onClick={() => applyGroupFilter(isActive ? null : g.name)}
                 style={isActive ? { backgroundColor: g.color, borderColor: g.color } : {}}
-                className={`rounded-full border transition-colors font-medium ${
-                  isSub
-                    ? "px-2 py-0.5 text-[10px]"
-                    : "px-2.5 py-1 text-xs"
-                } ${
+                className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
                   isActive
                     ? "text-white"
-                    : isSub
-                    ? "border-dashed border-gray-300 bg-gray-50 text-gray-400 hover:border-gray-400 hover:text-gray-600"
                     : "border-gray-200 bg-white text-gray-500 hover:border-gray-400"
                 }`}
               >
-                {isSub ? `└ ${g.name}` : g.name}
+                {g.name}
               </button>
             );
           })}
@@ -500,7 +487,7 @@ export default function ViewerChart({ data, streams }: Props) {
         </div>
       </div>
 
-      <div ref={chartContainerRef} className="relative overflow-hidden">
+      <div ref={chartContainerRef} className="relative">
       <ResponsiveContainer width="100%" height={400}>
         <LineChart
           data={chartData}
@@ -533,7 +520,6 @@ export default function ViewerChart({ data, streams }: Props) {
                   payload?: { dataKey: string; value: number; color: string }[];
                   label?: number;
                   coordinate?: { x: number; y: number };
-                  viewBox?: { x: number; y: number; width: number; height: number };
                 };
                 if (p.active && p.payload?.[0]?.dataKey) {
                   lastHoveredVideoId.current = p.payload[0].dataKey;
@@ -545,7 +531,7 @@ export default function ViewerChart({ data, streams }: Props) {
                     label={p.label}
                     streams={visibleStreams}
                     coordinate={p.coordinate}
-                    viewBox={p.viewBox}
+                    chartRect={chartContainerRef.current?.getBoundingClientRect() ?? null}
                   />
                 );
               }}

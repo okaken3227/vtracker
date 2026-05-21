@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -52,13 +53,17 @@ function CustomTooltip({
   payload,
   label,
   lines,
+  coordinate,
+  chartRect,
 }: {
   active?: boolean;
   payload?: TooltipPayload[];
   label?: string;
   lines: LineConfig[];
+  coordinate?: { x: number; y: number };
+  chartRect: DOMRect | null;
 }) {
-  if (!active || !payload?.length) return null;
+  if (!active || !payload?.length || typeof document === "undefined") return null;
 
   const seen = new Set<string>();
   const deduped = (payload as TooltipPayload[])
@@ -69,8 +74,20 @@ function CustomTooltip({
   if (!deduped.length) return null;
   const total = deduped.reduce((s, p) => s + p.value, 0);
 
-  return (
-    <div className="min-w-[150px] max-w-[210px] rounded-xl border border-gray-200 bg-white p-2 shadow-lg" style={{ fontSize: 11 }}>
+  const W = 210;
+  const off = 10;
+  const margin = 8;
+  const pageX = (chartRect?.left ?? 0) + (coordinate?.x ?? 0);
+  const pageY = (chartRect?.top ?? 0) + (coordinate?.y ?? 0);
+  const screenW = window.innerWidth;
+
+  let left = pageX + off;
+  if (left + W > screenW - margin) left = pageX - off - W;
+  left = Math.max(margin, Math.min(left, screenW - W - margin));
+  const top = Math.max(margin, pageY - 80);
+
+  return createPortal(
+    <div style={{ position: "fixed", left, top, width: W, zIndex: 9999, pointerEvents: "none", fontSize: 11 }} className="rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
       <p className="mb-1 text-[10px] text-gray-400">{label}</p>
       <div className="max-h-[200px] overflow-y-auto">
         {deduped.map((entry) => {
@@ -98,7 +115,8 @@ function CustomTooltip({
           <span className="font-mono text-[10px] font-bold text-gray-700">{total.toLocaleString()}人</span>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -258,7 +276,7 @@ export default function CombinedLiveGraph({
       </div>
 
       {/* ── チャート ── */}
-      <div ref={chartContainerRef} className="relative overflow-hidden">
+      <div ref={chartContainerRef} className="relative">
       <ResponsiveContainer width="100%" height={graphHeight}>
         <ComposedChart
           data={chartData}
@@ -291,14 +309,19 @@ export default function CombinedLiveGraph({
           />
           {tooltipVisible && (
             <Tooltip
-              content={(props) => (
-                <CustomTooltip
-                  active={(props as unknown as { active?: boolean }).active}
-                  payload={(props as unknown as { payload?: TooltipPayload[] }).payload}
-                  label={(props as unknown as { label?: string }).label}
-                  lines={lines}
-                />
-              )}
+              content={(props) => {
+                const p = props as unknown as { active?: boolean; payload?: TooltipPayload[]; label?: string; coordinate?: { x: number; y: number } };
+                return (
+                  <CustomTooltip
+                    active={p.active}
+                    payload={p.payload}
+                    label={p.label}
+                    lines={lines}
+                    coordinate={p.coordinate}
+                    chartRect={chartContainerRef.current?.getBoundingClientRect() ?? null}
+                  />
+                );
+              }}
               isAnimationActive={false}
             />
           )}
