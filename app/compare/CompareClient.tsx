@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   LineChart,
@@ -52,16 +52,20 @@ function formatSC(v: number): string {
 export default function CompareClient({
   channels,
   groups,
+  liveChannelIds,
 }: {
   channels: Channel[];
   groups: Group[];
+  liveChannelIds: string[];
 }) {
+  const liveSet = new Set(liveChannelIds);
   const [selectedChannelIds, setSelectedChannelIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [metric, setMetric] = useState<Metric>("viewers");
   const [presetDays, setPresetDays] = useState<PresetDays | null>(1);
   const [loading, setLoading] = useState(false);
   const [loadingPct, setLoadingPct] = useState(0);
+  const pctTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Chart data states
   const [viewerChartData, setViewerChartData] = useState<ChartDataPoint[]>([]);
@@ -78,14 +82,18 @@ export default function CompareClient({
     return g;
   }
 
-  // Filtered channels for search
+  // 同接モードはライブ中のみ、他は全チャンネル
+  const baseChannels = metric === "viewers"
+    ? channels.filter((c) => liveSet.has(c.channel_id))
+    : channels;
+
   const filteredChannels = searchQuery.trim()
-    ? channels.filter(
+    ? baseChannels.filter(
         (c) =>
           c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           (c.custom_url ?? "").toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : channels;
+    : baseChannels;
 
   const channelMap = new Map(channels.map((c) => [c.channel_id, c]));
 
@@ -104,9 +112,15 @@ export default function CompareClient({
   const fetchData = useCallback(async () => {
     if (selectedChannelIds.length === 0) return;
     setLoading(true);
-    setLoadingPct(10);
+    // スムーズなプログレスバー: 0→85%をインターバルで徐々に増加
+    setLoadingPct(0);
+    if (pctTimerRef.current) clearInterval(pctTimerRef.current);
+    pctTimerRef.current = setInterval(() => {
+      setLoadingPct((prev) => (prev < 85 ? prev + 3 : prev));
+    }, 120);
 
-    const { fromIso, toIso } = getDateRange(presetDays);
+    const effectiveDays = metric === "viewers" ? 1 : presetDays;
+    const { fromIso, toIso } = getDateRange(effectiveDays);
     const params = new URLSearchParams({
       type: metric,
       channelIds: selectedChannelIds.join(","),
@@ -115,11 +129,8 @@ export default function CompareClient({
     });
 
     try {
-      setLoadingPct(40);
       const res = await fetch(`/api/compare-data?${params}`);
-      setLoadingPct(80);
       const json = await res.json() as { data: unknown[] };
-      setLoadingPct(100);
 
       if (metric === "viewers") {
         setViewerChartData(json.data as ChartDataPoint[]);
@@ -139,8 +150,9 @@ export default function CompareClient({
     } catch {
       // silently handle
     } finally {
-      setLoading(false);
-      setLoadingPct(0);
+      if (pctTimerRef.current) clearInterval(pctTimerRef.current);
+      setLoadingPct(100);
+      setTimeout(() => { setLoading(false); setLoadingPct(0); }, 300);
     }
   }, [selectedChannelIds, metric, presetDays, channelMap]);
 
@@ -170,7 +182,17 @@ export default function CompareClient({
 
       {/* Channel selector */}
       <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-gray-700">チャンネルを選択</h2>
+        <div className="mb-3 flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-gray-700">
+            {metric === "viewers" ? "ライブ中チャンネルを選択" : "チャンネルを選択"}
+          </h2>
+          {metric === "viewers" && (
+            <span className="flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+              {liveChannelIds.length}配信中
+            </span>
+          )}
+        </div>
 
         {/* Selected channel chips */}
         {selectedChannelIds.length > 0 && (
@@ -260,7 +282,12 @@ export default function CompareClient({
 
                 {/* Name + group */}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-gray-800">{ch.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-sm font-medium text-gray-800">{ch.name}</p>
+                    {liveSet.has(ch.channel_id) && metric !== "viewers" && (
+                      <span className="flex-shrink-0 h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+                    )}
+                  </div>
                   {group && (
                     <div className="flex items-center gap-1 mt-0.5">
                       <span
@@ -288,42 +315,12 @@ export default function CompareClient({
         </div>
       </div>
 
-      {/* Date range selector */}
-      <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-gray-700">期間</h2>
-        <div className="flex flex-wrap gap-2">
-          {([1, 3, 7] as PresetDays[]).map((days) => (
-            <button
-              key={days}
-              onClick={() => setPresetDays(days)}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                presetDays === days
-                  ? "bg-violet-600 text-white"
-                  : "border border-gray-200 bg-white text-gray-500 hover:border-violet-300 hover:text-violet-600"
-              }`}
-            >
-              過去{days}日
-            </button>
-          ))}
-          <button
-            onClick={() => setPresetDays(null)}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-              presetDays === null
-                ? "bg-violet-600 text-white"
-                : "border border-gray-200 bg-white text-gray-500 hover:border-violet-300 hover:text-violet-600"
-            }`}
-          >
-            全期間
-          </button>
-        </div>
-      </div>
-
       {/* Metric tabs */}
       <div className="mb-4 flex gap-1">
         {(["viewers", "sc", "subs"] as Metric[]).map((m) => (
           <button
             key={m}
-            onClick={() => setMetric(m)}
+            onClick={() => { setMetric(m); setSelectedChannelIds([]); setSearchQuery(""); }}
             className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
               metric === m
                 ? "bg-violet-600 text-white"
@@ -335,10 +332,44 @@ export default function CompareClient({
         ))}
       </div>
 
+      {/* 同接以外は期間選択を表示 */}
+      {metric !== "viewers" && (
+        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <h2 className="mb-3 text-sm font-semibold text-gray-700">期間</h2>
+          <div className="flex flex-wrap gap-2">
+            {([1, 3, 7] as PresetDays[]).map((days) => (
+              <button
+                key={days}
+                onClick={() => setPresetDays(days)}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  presetDays === days
+                    ? "bg-violet-600 text-white"
+                    : "border border-gray-200 bg-white text-gray-500 hover:border-violet-300 hover:text-violet-600"
+                }`}
+              >
+                過去{days}日
+              </button>
+            ))}
+            <button
+              onClick={() => setPresetDays(null)}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                presetDays === null
+                  ? "bg-violet-600 text-white"
+                  : "border border-gray-200 bg-white text-gray-500 hover:border-violet-300 hover:text-violet-600"
+              }`}
+            >
+              全期間
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Chart / Data area */}
       {selectedChannelIds.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-200 py-24 text-center text-sm text-gray-400">
-          チャンネルを選択してください
+          {metric === "viewers" && liveChannelIds.length === 0
+            ? "現在ライブ中の配信はありません"
+            : "チャンネルを選択してください"}
         </div>
       ) : loading ? (
         <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">

@@ -11,21 +11,25 @@ export const metadata: Metadata = {
 };
 
 export default async function ComparePage() {
-  const [chRes, grRes] = await Promise.all([
+  const [chRes, grRes, liveRes] = await Promise.all([
     supabase.from("channels").select("*").order("subscriber_count", { ascending: false }),
     supabase
       .from("groups")
       .select("*")
       .order("sort_order", { ascending: true, nullsFirst: false })
       .order("name"),
+    supabase.from("videos").select("channel_id").eq("status", "live"),
   ]);
 
   const channels = (chRes.data ?? []) as Channel[];
   const groups = (grRes.data ?? []) as Group[];
+  const liveChannelIds = [...new Set(
+    ((liveRes.data ?? []) as { channel_id: string }[]).map((v) => v.channel_id)
+  )];
 
   return (
     <div>
-      <CompareClient channels={channels} groups={groups} />
+      <CompareClient channels={channels} groups={groups} liveChannelIds={liveChannelIds} />
     </div>
   );
 }
