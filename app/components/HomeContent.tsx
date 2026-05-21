@@ -191,13 +191,21 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
     }
   }
 
-  // ライブ優先（live→upcoming→none）→登録者数
+  // ライブ優先（live→upcoming→none）→登録者数→グループ順
   const statusRank = (s?: string) => s === "live" ? 0 : s === "upcoming" ? 1 : 2;
+  const getEffectiveGroupOrder = (groupId: string | null | undefined): number => {
+    if (!groupId) return 99999;
+    const group = groupMap.get(groupId);
+    if (!group) return 99999;
+    const topGroup = group.parent_group_id ? groupMap.get(group.parent_group_id) : group;
+    return topGroup?.sort_order ?? group.sort_order ?? 99999;
+  };
   const sortedChannels = [...filteredChannels].sort((a, b) => {
     const aRank = statusRank(latestByChannel[a.channel_id]?.status);
     const bRank = statusRank(latestByChannel[b.channel_id]?.status);
     if (aRank !== bRank) return aRank - bRank;
-    return b.subscriber_count - a.subscriber_count;
+    if (b.subscriber_count !== a.subscriber_count) return b.subscriber_count - a.subscriber_count;
+    return getEffectiveGroupOrder(a.group_id) - getEffectiveGroupOrder(b.group_id);
   });
 
   // サムネイルマーキー用: 配信予定以外・グループフィルター適用（ショート含む）
