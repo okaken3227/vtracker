@@ -417,6 +417,41 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
         </div>
       )}
 
+      {/* ── ランキング・比較リンク ── */}
+      <div className="mb-8 grid grid-cols-2 gap-3">
+        <Link
+          href="/ranking"
+          className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:border-violet-200 hover:shadow-md"
+        >
+          <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-500 group-hover:bg-violet-100 transition-colors">
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+              <polyline points="17 6 23 6 23 12" />
+            </svg>
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-gray-900 group-hover:text-violet-700 transition-colors">ランキング</p>
+            <p className="text-xs text-gray-400">同接・スパチャ・登録者</p>
+          </div>
+        </Link>
+        <Link
+          href="/compare"
+          className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:border-violet-200 hover:shadow-md"
+        >
+          <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-500 group-hover:bg-violet-100 transition-colors">
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="3" width="6" height="18" rx="1" />
+              <rect x="9" y="8" width="6" height="13" rx="1" />
+              <rect x="16" y="5" width="6" height="16" rx="1" />
+            </svg>
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-gray-900 group-hover:text-violet-700 transition-colors">比較</p>
+            <p className="text-xs text-gray-400">チャンネルを並べて分析</p>
+          </div>
+        </Link>
+      </div>
+
       {/* ── チャンネル一覧（全幅） ── */}
       <section ref={channelListRef}>
         <h2 className="mb-4 text-lg font-semibold text-gray-900">チャンネル一覧</h2>

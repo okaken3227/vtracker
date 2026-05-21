@@ -1,0 +1,346 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { supabase } from "@/lib/supabase/client";
+import type { Channel, Group } from "@/lib/types";
+import { getJstMidnightMs } from "@/lib/jst";
+
+export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "ランキング",
+  description: "VTuberの同接・スパチャ・登録者数ランキング。今日・今週・今月のVTuberランキングを確認できます。",
+};
+
+type Period = "today" | "week" | "month";
+type Metric = "viewers" | "sc" | "subs";
+
+type GraphPointRow = { video_id: string; concurrent_viewers: number };
+type SCRow = { video_id: string; amount_jpy: number | null };
+type VideoRow = { video_id: string; channel_id: string };
+
+function getPeriodRange(period: Period): { fromIso: string; toIso: string } {
+  const nowMs = Date.now();
+  const jstMidnightMs = getJstMidnightMs();
+
+  if (period === "today") {
+    return {
+      fromIso: new Date(jstMidnightMs).toISOString(),
+      toIso: new Date(nowMs).toISOString(),
+    };
+  } else if (period === "week") {
+    return {
+      fromIso: new Date(nowMs - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      toIso: new Date(nowMs).toISOString(),
+    };
+  } else {
+    return {
+      fromIso: new Date(nowMs - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      toIso: new Date(nowMs).toISOString(),
+    };
+  }
+}
+
+function formatValue(value: number, metric: Metric): string {
+  if (metric === "sc") {
+    if (value >= 1_000_000) return `¥${(value / 1_000_000).toFixed(1)}M`;
+    if (value >= 10_000) return `¥${(value / 10_000).toFixed(1)}万`;
+    return `¥${value.toLocaleString()}`;
+  }
+  if (metric === "subs") {
+    if (value >= 10_000) return `${(value / 10_000).toFixed(1)}万人`;
+    return `${value.toLocaleString()}人`;
+  }
+  // viewers
+  return `${value.toLocaleString()} 人`;
+}
+
+async function fetchViewersRanking(
+  fromIso: string,
+  toIso: string,
+  channelMap: Map<string, Channel>,
+): Promise<{ channel: Channel; value: number }[]> {
+  // Fetch live_graph_points for the period
+  const { data: points } = await supabase
+    .from("live_graph_points")
+    .select("video_id, concurrent_viewers")
+    .gte("recorded_at", fromIso)
+    .lte("recorded_at", toIso)
+    .limit(500000);
+
+  const gpRows = (points ?? []) as GraphPointRow[];
+
+  // Get peak per video_id
+  const peakByVideo = new Map<string, number>();
+  for (const p of gpRows) {
+    const cur = peakByVideo.get(p.video_id) ?? 0;
+    if (p.concurrent_viewers > cur) {
+      peakByVideo.set(p.video_id, p.concurrent_viewers);
+    }
+  }
+
+  if (peakByVideo.size === 0) return [];
+
+  // Get video -> channel mapping
+  const videoIds = Array.from(peakByVideo.keys());
+  const { data: videos } = await supabase
+    .from("videos")
+    .select("video_id, channel_id")
+    .in("video_id", videoIds);
+
+  const videoRows = (videos ?? []) as VideoRow[];
+  const channelToVideoMap = new Map<string, number>(); // channel_id -> peak
+
+  for (const v of videoRows) {
+    const peak = peakByVideo.get(v.video_id) ?? 0;
+    const cur = channelToVideoMap.get(v.channel_id) ?? 0;
+    if (peak > cur) {
+      channelToVideoMap.set(v.channel_id, peak);
+    }
+  }
+
+  const results: { channel: Channel; value: number }[] = [];
+  for (const [channelId, peak] of channelToVideoMap) {
+    const channel = channelMap.get(channelId);
+    if (channel) results.push({ channel, value: peak });
+  }
+
+  return results.sort((a, b) => b.value - a.value).slice(0, 50);
+}
+
+async function fetchSCRanking(
+  fromIso: string,
+  toIso: string,
+  channelMap: Map<string, Channel>,
+): Promise<{ channel: Channel; value: number }[]> {
+  const { data: scData } = await supabase
+    .from("superchats")
+    .select("video_id, amount_jpy")
+    .gte("published_at", fromIso)
+    .lte("published_at", toIso)
+    .not("amount_jpy", "is", null)
+    .limit(200000);
+
+  const scRows = (scData ?? []) as SCRow[];
+
+  if (scRows.length === 0) return [];
+
+  // Sum by video_id
+  const scByVideo = new Map<string, number>();
+  for (const sc of scRows) {
+    const jpy = sc.amount_jpy ?? 0;
+    scByVideo.set(sc.video_id, (scByVideo.get(sc.video_id) ?? 0) + jpy);
+  }
+
+  // Get video -> channel mapping
+  const videoIds = Array.from(scByVideo.keys());
+  const { data: videos } = await supabase
+    .from("videos")
+    .select("video_id, channel_id")
+    .in("video_id", videoIds);
+
+  const videoRows = (videos ?? []) as VideoRow[];
+  const scByChannel = new Map<string, number>();
+
+  for (const v of videoRows) {
+    const sc = scByVideo.get(v.video_id) ?? 0;
+    scByChannel.set(v.channel_id, (scByChannel.get(v.channel_id) ?? 0) + sc);
+  }
+
+  const results: { channel: Channel; value: number }[] = [];
+  for (const [channelId, total] of scByChannel) {
+    const channel = channelMap.get(channelId);
+    if (channel && total > 0) results.push({ channel, value: total });
+  }
+
+  return results.sort((a, b) => b.value - a.value).slice(0, 50);
+}
+
+function fetchSubsRanking(channels: Channel[]): { channel: Channel; value: number }[] {
+  return [...channels]
+    .filter((c) => c.subscriber_count > 0)
+    .sort((a, b) => b.subscriber_count - a.subscriber_count)
+    .slice(0, 50)
+    .map((c) => ({ channel: c, value: c.subscriber_count }));
+}
+
+const PERIOD_LABELS: Record<Period, string> = {
+  today: "今日",
+  week: "今週",
+  month: "今月",
+};
+
+const METRIC_LABELS: Record<Metric, string> = {
+  viewers: "同接ピーク",
+  sc: "スパチャ",
+  subs: "登録者数",
+};
+
+export default async function RankingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const sp = await searchParams;
+  const period = (["today", "week", "month"].includes(String(sp.period)) ? sp.period : "today") as Period;
+  const metric = (["viewers", "sc", "subs"].includes(String(sp.metric)) ? sp.metric : "viewers") as Metric;
+
+  // Fetch channels and groups
+  const [chRes, grRes] = await Promise.all([
+    supabase.from("channels").select("*").order("subscriber_count", { ascending: false }),
+    supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
+  ]);
+
+  const channels = (chRes.data ?? []) as Channel[];
+  const groups = (grRes.data ?? []) as Group[];
+  const channelMap = new Map(channels.map((c) => [c.channel_id, c]));
+  const groupMap = new Map(groups.map((g) => [g.id, g]));
+
+  const { fromIso, toIso } = getPeriodRange(period);
+
+  let ranking: { channel: Channel; value: number }[] = [];
+
+  if (metric === "viewers") {
+    ranking = await fetchViewersRanking(fromIso, toIso, channelMap);
+  } else if (metric === "sc") {
+    ranking = await fetchSCRanking(fromIso, toIso, channelMap);
+  } else {
+    ranking = fetchSubsRanking(channels);
+  }
+
+  function getGroup(channel: Channel): Group | undefined {
+    if (!channel.group_id) return undefined;
+    const g = groupMap.get(channel.group_id);
+    if (!g) return undefined;
+    if (g.parent_group_id) return groupMap.get(g.parent_group_id) ?? g;
+    return g;
+  }
+
+  return (
+    <div>
+      {/* Breadcrumb + Header */}
+      <div className="mb-6">
+        <div className="mb-1 flex items-center gap-2 text-xs text-gray-400">
+          <Link href="/" className="hover:text-violet-600 transition-colors">ホーム</Link>
+          <span>›</span>
+          <span>ランキング</span>
+        </div>
+        <h1 className="text-xl font-bold text-gray-900">ランキング</h1>
+      </div>
+
+      {/* Period selector */}
+      <div className="mb-4 flex items-center gap-2">
+        <span className="text-xs text-gray-500 font-medium">期間</span>
+        <div className="flex gap-1">
+          {(["today", "week", "month"] as Period[]).map((p) => (
+            <Link
+              key={p}
+              href={`/ranking?period=${p}&metric=${metric}`}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                period === p
+                  ? "bg-violet-600 text-white"
+                  : "border border-gray-200 bg-white text-gray-500 hover:border-violet-300 hover:text-violet-600"
+              }`}
+            >
+              {PERIOD_LABELS[p]}
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* Metric selector */}
+      <div className="mb-6 flex items-center gap-2">
+        <span className="text-xs text-gray-500 font-medium">指標</span>
+        <div className="flex gap-1">
+          {(["viewers", "sc", "subs"] as Metric[]).map((m) => (
+            <Link
+              key={m}
+              href={`/ranking?period=${period}&metric=${m}`}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                metric === m
+                  ? "bg-violet-600 text-white"
+                  : "border border-gray-200 bg-white text-gray-500 hover:border-violet-300 hover:text-violet-600"
+              }`}
+            >
+              {METRIC_LABELS[m]}
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* Ranking list */}
+      {ranking.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-gray-200 py-24 text-center text-sm text-gray-400">
+          この期間のデータがありません
+        </div>
+      ) : (
+        <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+          <div className="divide-y divide-gray-100">
+            {ranking.map(({ channel, value }, i) => {
+              const group = getGroup(channel);
+              const rank = i + 1;
+              const rankStyle =
+                rank === 1
+                  ? "bg-amber-400 text-white"
+                  : rank === 2
+                  ? "bg-gray-300 text-gray-700"
+                  : rank === 3
+                  ? "bg-amber-700/80 text-white"
+                  : "bg-gray-100 text-gray-400";
+
+              return (
+                <Link
+                  key={channel.channel_id}
+                  href={`/channel/${channel.channel_id}`}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                >
+                  {/* Rank badge */}
+                  <div
+                    className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${rankStyle}`}
+                  >
+                    {rank <= 3 ? (rank === 1 ? "★" : rank) : rank}
+                  </div>
+
+                  {/* Avatar */}
+                  {channel.icon_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={channel.icon_url}
+                      alt={channel.name}
+                      className="h-9 w-9 flex-shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                      style={{ backgroundColor: group?.color ?? "#6b7280" }}
+                    >
+                      {channel.name[0]}
+                    </div>
+                  )}
+
+                  {/* Name + group */}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-gray-900">{channel.name}</p>
+                    {group && (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span
+                          className="inline-block h-2 w-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: group.color }}
+                        />
+                        <span className="text-xs text-gray-400 truncate">{group.name}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Value */}
+                  <span className="flex-shrink-0 text-sm font-bold text-violet-600">
+                    {formatValue(value, metric)}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
