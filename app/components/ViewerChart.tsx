@@ -260,25 +260,6 @@ export default function ViewerChart({ data, streams }: Props) {
 
   const legendLimit = isMobile ? 8 : 12;
 
-  // 親グループ → { name, color }、サブグループ → { name, color, parentName }
-  const groupEntries = Array.from(
-    new Map(
-      streams
-        .filter((s) => s.groupName)
-        .map((s) => [
-          s.groupName!,
-          {
-            name: s.groupName!,
-            color: s.groupColor ?? "#6b7280",
-            sortOrder: s.groupSortOrder,
-            parentName: s.parentGroupName ?? null,
-            parentColor: s.parentGroupColor ?? null,
-            parentSortOrder: s.parentGroupSortOrder,
-          },
-        ])
-    ).values()
-  );
-
   const sortByOrder = (a: number | null | undefined, b: number | null | undefined, fallback: () => number) => {
     if (a != null && b != null) return a - b;
     if (a != null) return -1;
@@ -286,8 +267,29 @@ export default function ViewerChart({ data, streams }: Props) {
     return fallback();
   };
 
-  const sortedGroupEntries = groupEntries
-    .filter((g) => !g.parentName)
+  // フィルターボタン: 各ストリームの「最上位グループ」を集める
+  // サブグループに属する場合は parentGroupName を使用、直属なら groupName
+  const topGroupMap = new Map<string, { name: string; color: string; sortOrder: number | null }>();
+  for (const s of streams) {
+    if (s.parentGroupName) {
+      if (!topGroupMap.has(s.parentGroupName)) {
+        topGroupMap.set(s.parentGroupName, {
+          name: s.parentGroupName,
+          color: s.parentGroupColor ?? "#6b7280",
+          sortOrder: s.parentGroupSortOrder,
+        });
+      }
+    } else if (s.groupName) {
+      if (!topGroupMap.has(s.groupName)) {
+        topGroupMap.set(s.groupName, {
+          name: s.groupName,
+          color: s.groupColor ?? "#6b7280",
+          sortOrder: s.groupSortOrder,
+        });
+      }
+    }
+  }
+  const sortedGroupEntries = Array.from(topGroupMap.values())
     .sort((a, b) => sortByOrder(a.sortOrder, b.sortOrder, () => a.name.localeCompare(b.name, "ja")));
 
   function applyGroupFilter(group: string | null) {
