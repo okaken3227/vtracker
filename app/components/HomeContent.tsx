@@ -191,8 +191,8 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
     }
   }
 
-  // ライブ優先（live→upcoming→none）→登録者数→グループ順
-  const statusRank = (s?: string) => s === "live" ? 0 : s === "upcoming" ? 1 : 2;
+  // ライブ優先（live→登録者数）→配信予定は登録者順に含める
+  const statusRank = (s?: string) => s === "live" ? 0 : 1;
   const getEffectiveGroupOrder = (groupId: string | null | undefined): number => {
     if (!groupId) return 99999;
     const group = groupMap.get(groupId);
