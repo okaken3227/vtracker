@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
 
 type VideoRow = { video_id: string; channel_id: string };
+type RecentVideoRow = { video_id: string; channel_id: string; title: string; start_time: string };
 type RawPoint = { video_id: string; concurrent_viewers: number; recorded_at: string };
 type SCRow = { video_id: string; amount_jpy: number | null };
 type StatsRow = { channel_id: string; subscriber_count: number; recorded_at: string };
@@ -149,6 +150,69 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ data: chartData });
+  }
+
+  // チャンネルごとに最新N番目の完了済み配信を取得
+  if (type === "recent-viewers") {
+    const offsets = (searchParams.get("offsets") ?? "").split(",").map((n) => Math.max(0, parseInt(n) || 0));
+
+    const videoPromises = channelIds.map((channelId, i) => {
+      const offset = offsets[i] ?? 0;
+      return supabase
+        .from("videos")
+        .select("video_id, channel_id, title, start_time")
+        .eq("channel_id", channelId)
+        .neq("status", "live")
+        .not("start_time", "is", null)
+        .order("start_time", { ascending: false })
+        .range(offset, offset);
+    });
+
+    const results = await Promise.all(videoPromises);
+    const videos = results.flatMap((r) => (r.data ?? []) as RecentVideoRow[]).filter((v) => v.video_id);
+
+    if (videos.length === 0) return NextResponse.json({ data: [], meta: [] });
+
+    const videoIds = videos.map((v) => v.video_id);
+    const channelIdByVideoId = new Map(videos.map((v) => [v.video_id, v.channel_id]));
+
+    const { data: gpData } = await supabase
+      .from("live_graph_points")
+      .select("video_id, concurrent_viewers, recorded_at")
+      .in("video_id", videoIds)
+      .limit(50000);
+
+    const points = (gpData ?? []) as RawPoint[];
+    const bucketMap = new Map<number, Map<string, number[]>>();
+    for (const p of points) {
+      const channelId = channelIdByVideoId.get(p.video_id);
+      if (!channelId) continue;
+      const t = Math.floor(new Date(p.recorded_at).getTime() / BUCKET_MS) * BUCKET_MS;
+      if (!bucketMap.has(t)) bucketMap.set(t, new Map());
+      const cm = bucketMap.get(t)!;
+      if (!cm.has(channelId)) cm.set(channelId, []);
+      cm.get(channelId)!.push(p.concurrent_viewers);
+    }
+
+    const buckets = Array.from(bucketMap.keys()).sort((a, b) => a - b);
+    const chartData = buckets.map((t) => {
+      const cm = bucketMap.get(t)!;
+      const row: Record<string, string | number | null> = { t: new Date(t).toISOString() };
+      for (const channelId of channelIds) {
+        const vals = cm.get(channelId);
+        row[channelId] = vals ? Math.round(vals.reduce((s, x) => s + x, 0) / vals.length) : null;
+      }
+      return row;
+    });
+
+    const meta = videos.map((v) => ({
+      channelId: v.channel_id,
+      videoId: v.video_id,
+      title: v.title,
+      startTime: v.start_time,
+    }));
+
+    return NextResponse.json({ data: chartData, meta });
   }
 
   return NextResponse.json({ data: [] });

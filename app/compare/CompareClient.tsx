@@ -10,8 +10,10 @@ import type { Channel, Group } from "@/lib/types";
 import { GRAPH_COLORS } from "@/lib/chartConfig";
 
 type Metric = "viewers" | "sc" | "subs";
+type ViewersMode = "live" | "past";
 type PresetDays = 1 | 3 | 7;
 type ChartDataPoint = Record<string, string | number | null>;
+type RecentMeta = { channelId: string; videoId: string; title: string; startTime: string };
 
 const MAX_CHANNELS = 10;
 const AUTO_LIVE_LIMIT = 8;
@@ -41,10 +43,12 @@ export default function CompareClient({
   channels,
   groups,
   liveChannelIds,
+  defaultScChannelIds,
 }: {
   channels: Channel[];
   groups: Group[];
   liveChannelIds: string[];
+  defaultScChannelIds: string[];
 }) {
   const liveSet = new Set(liveChannelIds);
   const channelMap = new Map(channels.map((c) => [c.channel_id, c]));
@@ -57,11 +61,16 @@ export default function CompareClient({
     return g.parent_group_id ? groupMap.get(g.parent_group_id) ?? g : g;
   }
 
+  const top5BySubs = channels
+    .filter((c) => c.subscriber_count > 0)
+    .sort((a, b) => b.subscriber_count - a.subscriber_count)
+    .slice(0, AUTO_DEFAULT_LIMIT)
+    .map((c) => c.channel_id);
+
   const [metric, setMetric] = useState<Metric>("viewers");
+  const [viewersMode, setViewersMode] = useState<ViewersMode>("live");
   const [presetDays, setPresetDays] = useState<PresetDays | null>(1);
-  // selectedIds: all channels to fetch (order = color assignment)
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  // hiddenIds: toggled off in chart (still fetched)
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -74,24 +83,31 @@ export default function CompareClient({
   const [scData, setScData] = useState<{ channelId: string; value: number }[]>([]);
   const [subsData, setSubsData] = useState<ChartDataPoint[]>([]);
 
-  // Auto-select on metric change
+  const [videoOffsets, setVideoOffsets] = useState<Record<string, number>>({});
+  const [recentMeta, setRecentMeta] = useState<RecentMeta[]>([]);
+
+  // Auto-select on metric / viewersMode change
   useEffect(() => {
     let defaults: string[];
     if (metric === "viewers") {
-      defaults = liveChannelIds.slice(0, AUTO_LIVE_LIMIT);
+      if (viewersMode === "live") {
+        defaults = liveChannelIds.slice(0, AUTO_LIVE_LIMIT);
+      } else {
+        defaults = top5BySubs;
+      }
+    } else if (metric === "sc") {
+      defaults = defaultScChannelIds.length > 0 ? defaultScChannelIds : top5BySubs;
     } else {
-      defaults = channels
-        .filter((c) => c.subscriber_count > 0)
-        .sort((a, b) => b.subscriber_count - a.subscriber_count)
-        .slice(0, AUTO_DEFAULT_LIMIT)
-        .map((c) => c.channel_id);
+      defaults = top5BySubs;
     }
     setSelectedIds(defaults);
     setHiddenIds(new Set());
+    setVideoOffsets({});
+    setRecentMeta([]);
     setViewerData([]);
     setScData([]);
     setSubsData([]);
-  }, [metric]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [metric, viewersMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchData = useCallback(async () => {
     if (selectedIds.length === 0) return;
@@ -102,38 +118,55 @@ export default function CompareClient({
       setLoadingPct((p) => (p < 85 ? p + 4 : p));
     }, 100);
 
-    const effectiveDays = metric === "viewers" ? 1 : presetDays;
-    const { fromIso, toIso } = getDateRange(effectiveDays);
-    const params = new URLSearchParams({
-      type: metric,
-      channelIds: selectedIds.join(","),
-      from: fromIso,
-      to: toIso,
-    });
+    let url: string;
+    if (metric === "viewers" && viewersMode === "past") {
+      const offsets = selectedIds.map((id) => videoOffsets[id] ?? 0);
+      const params = new URLSearchParams({
+        type: "recent-viewers",
+        channelIds: selectedIds.join(","),
+        offsets: offsets.join(","),
+      });
+      url = `/api/compare-data?${params}`;
+    } else {
+      const effectiveDays = metric === "viewers" ? 1 : presetDays;
+      const { fromIso, toIso } = getDateRange(effectiveDays);
+      const params = new URLSearchParams({
+        type: metric,
+        channelIds: selectedIds.join(","),
+        from: fromIso,
+        to: toIso,
+      });
+      url = `/api/compare-data?${params}`;
+    }
 
     try {
-      const res = await fetch(`/api/compare-data?${params}`);
-      const json = await res.json() as { data: unknown[] };
-      if (metric === "viewers") setViewerData(json.data as ChartDataPoint[]);
-      else if (metric === "sc") setScData(json.data as { channelId: string; value: number }[]);
-      else setSubsData(json.data as ChartDataPoint[]);
+      const res = await fetch(url);
+      const json = await res.json() as { data: unknown[]; meta?: RecentMeta[] };
+      if (metric === "viewers") {
+        setViewerData(json.data as ChartDataPoint[]);
+        if (viewersMode === "past") setRecentMeta(json.meta ?? []);
+      } else if (metric === "sc") {
+        setScData(json.data as { channelId: string; value: number }[]);
+      } else {
+        setSubsData(json.data as ChartDataPoint[]);
+      }
     } catch { /* silent */ } finally {
       if (pctTimerRef.current) clearInterval(pctTimerRef.current);
       setLoadingPct(100);
       setTimeout(() => { setLoading(false); setLoadingPct(0); }, 700);
     }
-  }, [selectedIds, metric, presetDays]);
+  }, [selectedIds, metric, viewersMode, videoOffsets, presetDays]);
 
   useEffect(() => {
     if (selectedIds.length > 0) fetchData();
   }, [fetchData]);
 
-  // Auto-refresh for live viewers
+  // Auto-refresh only in live mode
   useEffect(() => {
-    if (metric !== "viewers") return;
+    if (metric !== "viewers" || viewersMode !== "live") return;
     const timer = setInterval(fetchData, 60000);
     return () => clearInterval(timer);
-  }, [metric, fetchData]);
+  }, [metric, viewersMode, fetchData]);
 
   function toggleHide(channelId: string) {
     setHiddenIds((prev) => {
@@ -154,6 +187,22 @@ export default function CompareClient({
   function removeChannel(channelId: string) {
     setSelectedIds((prev) => prev.filter((id) => id !== channelId));
     setHiddenIds((prev) => { const next = new Set(prev); next.delete(channelId); return next; });
+    setVideoOffsets((prev) => { const next = { ...prev }; delete next[channelId]; return next; });
+  }
+
+  function prevStream(channelId: string) {
+    setVideoOffsets((prev) => ({ ...prev, [channelId]: (prev[channelId] ?? 0) + 1 }));
+  }
+
+  function nextStream(channelId: string) {
+    setVideoOffsets((prev) => {
+      const cur = prev[channelId] ?? 0;
+      if (cur <= 0) return prev;
+      const next = { ...prev };
+      if (cur === 1) delete next[channelId];
+      else next[channelId] = cur - 1;
+      return next;
+    });
   }
 
   const visibleIds = selectedIds.filter((id) => !hiddenIds.has(id));
@@ -170,10 +219,20 @@ export default function CompareClient({
     : [];
 
   const METRIC_LABELS: Record<Metric, string> = {
-    viewers: "同接（ライブ中）",
+    viewers: "同接",
     sc: "スパチャ",
     subs: "登録者推移",
   };
+
+  function defaultLabel(): string {
+    if (metric === "viewers" && viewersMode === "live") {
+      return `ライブ中の${liveChannelIds.length}チャンネルから上位${Math.min(AUTO_LIVE_LIMIT, liveChannelIds.length)}を自動選択`;
+    }
+    if (metric === "sc" && defaultScChannelIds.length > 0) return "スパチャ上位5チャンネルを自動選択（変更可能）";
+    return "登録者上位5チャンネルを自動選択（変更可能）";
+  }
+
+  const isPastMode = metric === "viewers" && viewersMode === "past";
 
   return (
     <div>
@@ -188,7 +247,7 @@ export default function CompareClient({
       </div>
 
       {/* Metric tabs */}
-      <div className="mb-4 flex gap-1.5">
+      <div className="mb-3 flex gap-1.5">
         {(["viewers", "sc", "subs"] as Metric[]).map((m) => (
           <button
             key={m}
@@ -204,13 +263,38 @@ export default function CompareClient({
         ))}
       </div>
 
-      {/* Controls row: period (sc/subs) + live badge (viewers) */}
+      {/* Viewers sub-tabs */}
+      {metric === "viewers" && (
+        <div className="mb-4 flex gap-1">
+          {(["live", "past"] as ViewersMode[]).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setViewersMode(mode)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                viewersMode === mode
+                  ? "bg-gray-800 text-white"
+                  : "border border-gray-200 bg-white text-gray-400 hover:border-gray-400 hover:text-gray-600"
+              }`}
+            >
+              {mode === "live" ? (
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse inline-block" />
+                  ライブ中
+                </span>
+              ) : "過去の配信"}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Controls row */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        {metric === "viewers" ? (
+        {metric === "viewers" && viewersMode === "live" ? (
           <div className="flex items-center gap-1.5 text-xs text-gray-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
             <span>{liveChannelIds.length}配信中 · 60秒ごとに自動更新</span>
           </div>
+        ) : metric === "viewers" && viewersMode === "past" ? (
+          <div className="text-xs text-gray-400">各チャンネルの最新の配信を表示。◀ で一つ前へ</div>
         ) : (
           <>
             <span className="text-xs text-gray-400">期間</span>
@@ -242,15 +326,18 @@ export default function CompareClient({
       </div>
 
       {/* Channel chips + add button */}
-      <div className="mb-5 flex flex-wrap items-center gap-2">
+      <div className="mb-1 flex flex-wrap items-center gap-2">
         {selectedIds.map((channelId, idx) => {
           const ch = channelMap.get(channelId);
           const color = GRAPH_COLORS[idx % GRAPH_COLORS.length];
           const hidden = hiddenIds.has(channelId);
+          const meta = recentMeta.find((m) => m.channelId === channelId);
+          const offset = videoOffsets[channelId] ?? 0;
+
           return (
             <div
               key={channelId}
-              className="flex items-center gap-1.5 rounded-full border py-1 pl-1.5 pr-2 transition-all"
+              className="flex items-center gap-1 rounded-full border py-1 pl-1.5 pr-2 transition-all"
               style={{
                 borderColor: hidden ? "#e5e7eb" : color,
                 backgroundColor: hidden ? "transparent" : `${color}18`,
@@ -262,10 +349,9 @@ export default function CompareClient({
               ) : (
                 <span className="h-5 w-5 flex-shrink-0 rounded-full" style={{ backgroundColor: hidden ? "#d1d5db" : color }} />
               )}
-              {/* クリックで表示/非表示トグル */}
               <button
                 onClick={() => toggleHide(channelId)}
-                className={`max-w-[110px] truncate text-xs font-medium transition-colors ${
+                className={`max-w-[90px] truncate text-xs font-medium transition-colors ${
                   hidden ? "text-gray-300 line-through" : ""
                 }`}
                 style={hidden ? {} : { color }}
@@ -273,6 +359,34 @@ export default function CompareClient({
               >
                 {ch?.name ?? channelId}
               </button>
+
+              {/* Past mode: date + nav */}
+              {isPastMode && (
+                <>
+                  {meta?.startTime && (
+                    <span className="text-[10px] text-gray-400 flex-shrink-0">
+                      · {formatDate(meta.startTime)}
+                    </span>
+                  )}
+                  {offset > 0 && (
+                    <button
+                      onClick={() => nextStream(channelId)}
+                      className="flex-shrink-0 text-[10px] text-gray-400 hover:text-violet-500 transition-colors px-0.5"
+                      title="新しい配信へ"
+                    >
+                      ▶
+                    </button>
+                  )}
+                  <button
+                    onClick={() => prevStream(channelId)}
+                    className="flex-shrink-0 text-[10px] text-gray-400 hover:text-violet-500 transition-colors px-0.5"
+                    title="前回の配信へ"
+                  >
+                    ◀
+                  </button>
+                </>
+              )}
+
               <button
                 onClick={() => removeChannel(channelId)}
                 className="ml-0.5 flex-shrink-0 text-[11px] text-gray-300 hover:text-gray-500 transition-colors"
@@ -295,7 +409,6 @@ export default function CompareClient({
             </button>
             {showSearch && (
               <>
-                {/* オーバーレイ */}
                 <div className="fixed inset-0 z-10" onClick={() => { setShowSearch(false); setSearchQuery(""); }} />
                 <div className="absolute left-0 top-full z-20 mt-1.5 w-72 rounded-xl border border-gray-200 bg-white shadow-xl">
                   <input
@@ -351,6 +464,9 @@ export default function CompareClient({
         )}
       </div>
 
+      {/* Default label */}
+      <p className="mb-4 text-[10px] text-gray-400">{defaultLabel()}</p>
+
       {/* Chart area */}
       {loading ? (
         <div className="rounded-2xl border border-gray-100 bg-white p-10 shadow-sm">
@@ -365,12 +481,19 @@ export default function CompareClient({
         </div>
       ) : selectedIds.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-200 py-24 text-center text-sm text-gray-400">
-          {metric === "viewers" && liveChannelIds.length === 0
+          {metric === "viewers" && viewersMode === "live" && liveChannelIds.length === 0
             ? "現在ライブ中の配信はありません"
             : "チャンネルを追加してください"}
         </div>
       ) : metric === "viewers" ? (
-        <ViewersChart data={viewerData} visibleIds={visibleIds} selectedIds={selectedIds} channelMap={channelMap} />
+        <ViewersChart
+          data={viewerData}
+          visibleIds={visibleIds}
+          selectedIds={selectedIds}
+          channelMap={channelMap}
+          isPastMode={isPastMode}
+          recentMeta={recentMeta}
+        />
       ) : metric === "sc" ? (
         <SCView data={scData} visibleIds={visibleIds} selectedIds={selectedIds} channelMap={channelMap} />
       ) : (
@@ -385,71 +508,99 @@ function ViewersChart({
   visibleIds,
   selectedIds,
   channelMap,
+  isPastMode,
+  recentMeta,
 }: {
   data: ChartDataPoint[];
   visibleIds: string[];
   selectedIds: string[];
   channelMap: Map<string, Channel>;
+  isPastMode: boolean;
+  recentMeta: RecentMeta[];
 }) {
   if (data.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-gray-200 py-24 text-center text-sm text-gray-400">
-        この期間の同接データがありません
+        {isPastMode ? "この配信のデータがありません" : "この期間の同接データがありません"}
       </div>
     );
   }
+
   return (
-    <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-      <ResponsiveContainer width="100%" height={320}>
-        <LineChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-          <XAxis
-            dataKey="t"
-            tickFormatter={(v) =>
-              new Date(String(v)).toLocaleString("ja-JP", {
-                timeZone: "Asia/Tokyo",
-                month: "numeric",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            }
-            tick={{ fill: "#9ca3af", fontSize: 10 }}
-            axisLine={{ stroke: "#e5e7eb" }}
-            tickLine={false}
-            interval="preserveStartEnd"
-          />
-          <YAxis
-            tickFormatter={(v) => formatK(Number(v))}
-            tick={{ fill: "#9ca3af", fontSize: 10 }}
-            axisLine={false}
-            tickLine={false}
-            width={48}
-          />
-          <Tooltip
-            formatter={(value, name) => [
-              `${Number(value).toLocaleString()}人`,
-              channelMap.get(String(name))?.name ?? String(name),
-            ]}
-            labelFormatter={(v) =>
-              new Date(String(v)).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
-            }
-            contentStyle={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "10px", fontSize: "12px" }}
-          />
-          {selectedIds.map((channelId, idx) => (
-            <Line
-              key={channelId}
-              type="monotone"
-              dataKey={channelId}
-              stroke={GRAPH_COLORS[idx % GRAPH_COLORS.length]}
-              strokeWidth={visibleIds.includes(channelId) ? 2 : 0}
-              dot={false}
-              activeDot={visibleIds.includes(channelId) ? { r: 4, strokeWidth: 0 } : false}
-              connectNulls
+    <div className="space-y-3">
+      <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+        <ResponsiveContainer width="100%" height={320}>
+          <LineChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+            <XAxis
+              dataKey="t"
+              tickFormatter={(v) =>
+                new Date(String(v)).toLocaleString("ja-JP", {
+                  timeZone: "Asia/Tokyo",
+                  month: "numeric",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              }
+              tick={{ fill: "#9ca3af", fontSize: 10 }}
+              axisLine={{ stroke: "#e5e7eb" }}
+              tickLine={false}
+              interval="preserveStartEnd"
             />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
+            <YAxis
+              tickFormatter={(v) => formatK(Number(v))}
+              tick={{ fill: "#9ca3af", fontSize: 10 }}
+              axisLine={false}
+              tickLine={false}
+              width={48}
+            />
+            <Tooltip
+              formatter={(value, name) => [
+                `${Number(value).toLocaleString()}人`,
+                channelMap.get(String(name))?.name ?? String(name),
+              ]}
+              labelFormatter={(v) =>
+                new Date(String(v)).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
+              }
+              contentStyle={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "10px", fontSize: "12px" }}
+            />
+            {selectedIds.map((channelId, idx) => (
+              <Line
+                key={channelId}
+                type="monotone"
+                dataKey={channelId}
+                stroke={GRAPH_COLORS[idx % GRAPH_COLORS.length]}
+                strokeWidth={visibleIds.includes(channelId) ? 2 : 0}
+                dot={false}
+                activeDot={visibleIds.includes(channelId) ? { r: 4, strokeWidth: 0 } : false}
+                connectNulls
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Past mode: stream titles */}
+      {isPastMode && recentMeta.length > 0 && (
+        <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+          <div className="divide-y divide-gray-50">
+            {recentMeta.map((m, i) => {
+              const idx = selectedIds.indexOf(m.channelId);
+              const color = GRAPH_COLORS[idx % GRAPH_COLORS.length];
+              const ch = channelMap.get(m.channelId);
+              return (
+                <div key={m.channelId} className="flex items-center gap-2 px-4 py-2.5">
+                  <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                  <span className="text-[11px] text-gray-400 flex-shrink-0">{formatDate(m.startTime)}</span>
+                  <span className="text-[11px] font-medium text-gray-500 flex-shrink-0">{ch?.name}</span>
+                  <span className="truncate text-[11px] text-gray-400">{m.title}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
