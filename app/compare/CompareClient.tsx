@@ -38,6 +38,53 @@ function formatSC(v: number): string {
   if (v >= 10_000) return `¥${(v / 10_000).toFixed(1)}万`;
   return `¥${v.toLocaleString()}`;
 }
+function formatRelMin(min: number): string {
+  const sign = min < 0 ? "-" : "";
+  const abs = Math.abs(min);
+  const h = Math.floor(abs / 60);
+  const m = abs % 60;
+  if (h === 0) return `${sign}${m}分`;
+  return m === 0 ? `${sign}${h}時間` : `${sign}${h}時間${m}分`;
+}
+
+// 過去配信モード用: 各チャンネルの開始時刻を0分に正規化
+function normalizeToRelativeTime(
+  data: ChartDataPoint[],
+  meta: RecentMeta[],
+  channelIds: string[]
+): ChartDataPoint[] {
+  const startMs = new Map(meta.map((m) => [m.channelId, new Date(m.startTime).getTime()]));
+  const BUCKET_MS = 5 * 60 * 1000;
+
+  const byChannel = new Map<string, Map<number, number>>();
+  for (const row of data) {
+    const tMs = new Date(String(row.t)).getTime();
+    for (const channelId of channelIds) {
+      const val = row[channelId];
+      if (val === null || val === undefined) continue;
+      const chStart = startMs.get(channelId);
+      if (chStart === undefined) continue;
+      const relMin = Math.round((tMs - chStart) / BUCKET_MS) * 5;
+      if (!byChannel.has(channelId)) byChannel.set(channelId, new Map());
+      byChannel.get(channelId)!.set(relMin, Number(val));
+    }
+  }
+
+  const allMins = new Set<number>();
+  for (const minMap of byChannel.values()) {
+    for (const min of minMap.keys()) allMins.add(min);
+  }
+
+  return Array.from(allMins)
+    .sort((a, b) => a - b)
+    .map((relMin) => {
+      const row: ChartDataPoint = { t: relMin };
+      for (const channelId of channelIds) {
+        row[channelId] = byChannel.get(channelId)?.get(relMin) ?? null;
+      }
+      return row;
+    });
+}
 
 export default function CompareClient({
   channels,
@@ -143,8 +190,14 @@ export default function CompareClient({
       const res = await fetch(url);
       const json = await res.json() as { data: unknown[]; meta?: RecentMeta[] };
       if (metric === "viewers") {
-        setViewerData(json.data as ChartDataPoint[]);
-        if (viewersMode === "past") setRecentMeta(json.meta ?? []);
+        const raw = json.data as ChartDataPoint[];
+        const meta = json.meta ?? [];
+        if (viewersMode === "past" && meta.length > 0) {
+          setViewerData(normalizeToRelativeTime(raw, meta, selectedIds));
+          setRecentMeta(meta);
+        } else {
+          setViewerData(raw);
+        }
       } else if (metric === "sc") {
         setScData(json.data as { channelId: string; value: number }[]);
       } else {
@@ -368,6 +421,13 @@ export default function CompareClient({
                       · {formatDate(meta.startTime)}
                     </span>
                   )}
+                  <button
+                    onClick={() => prevStream(channelId)}
+                    className="flex-shrink-0 text-[10px] text-gray-400 hover:text-violet-500 transition-colors px-0.5"
+                    title="前回の配信へ"
+                  >
+                    ◀
+                  </button>
                   {offset > 0 && (
                     <button
                       onClick={() => nextStream(channelId)}
@@ -377,13 +437,6 @@ export default function CompareClient({
                       ▶
                     </button>
                   )}
-                  <button
-                    onClick={() => prevStream(channelId)}
-                    className="flex-shrink-0 text-[10px] text-gray-400 hover:text-violet-500 transition-colors px-0.5"
-                    title="前回の配信へ"
-                  >
-                    ◀
-                  </button>
                 </>
               )}
 
@@ -535,13 +588,15 @@ function ViewersChart({
             <XAxis
               dataKey="t"
               tickFormatter={(v) =>
-                new Date(String(v)).toLocaleString("ja-JP", {
-                  timeZone: "Asia/Tokyo",
-                  month: "numeric",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
+                isPastMode
+                  ? formatRelMin(Number(v))
+                  : new Date(String(v)).toLocaleString("ja-JP", {
+                      timeZone: "Asia/Tokyo",
+                      month: "numeric",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
               }
               tick={{ fill: "#9ca3af", fontSize: 10 }}
               axisLine={{ stroke: "#e5e7eb" }}
@@ -561,7 +616,9 @@ function ViewersChart({
                 channelMap.get(String(name))?.name ?? String(name),
               ]}
               labelFormatter={(v) =>
-                new Date(String(v)).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
+                isPastMode
+                  ? `開始から ${formatRelMin(Number(v))}`
+                  : new Date(String(v)).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
               }
               contentStyle={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "10px", fontSize: "12px" }}
             />
