@@ -17,6 +17,7 @@ type Metric = "viewers" | "sc" | "subs";
 type GraphPointRow = { video_id: string; concurrent_viewers: number };
 type SCRow = { video_id: string; amount_jpy: number | null };
 type VideoRow = { video_id: string; channel_id: string };
+type RankingEntry = { channel: Channel; value: number; videoId?: string };
 
 function getPeriodRange(period: Period): { fromIso: string; toIso: string } {
   const nowMs = Date.now();
@@ -58,8 +59,7 @@ async function fetchViewersRanking(
   fromIso: string,
   toIso: string,
   channelMap: Map<string, Channel>,
-): Promise<{ channel: Channel; value: number }[]> {
-  // Fetch live_graph_points for the period
+): Promise<RankingEntry[]> {
   const { data: points } = await supabase
     .from("live_graph_points")
     .select("video_id, concurrent_viewers")
@@ -69,18 +69,14 @@ async function fetchViewersRanking(
 
   const gpRows = (points ?? []) as GraphPointRow[];
 
-  // Get peak per video_id
   const peakByVideo = new Map<string, number>();
   for (const p of gpRows) {
     const cur = peakByVideo.get(p.video_id) ?? 0;
-    if (p.concurrent_viewers > cur) {
-      peakByVideo.set(p.video_id, p.concurrent_viewers);
-    }
+    if (p.concurrent_viewers > cur) peakByVideo.set(p.video_id, p.concurrent_viewers);
   }
 
   if (peakByVideo.size === 0) return [];
 
-  // Get video -> channel mapping
   const videoIds = Array.from(peakByVideo.keys());
   const { data: videos } = await supabase
     .from("videos")
@@ -88,20 +84,19 @@ async function fetchViewersRanking(
     .in("video_id", videoIds);
 
   const videoRows = (videos ?? []) as VideoRow[];
-  const channelToVideoMap = new Map<string, number>(); // channel_id -> peak
+  // channel_id -> { peak, videoId }
+  const channelBest = new Map<string, { peak: number; videoId: string }>();
 
   for (const v of videoRows) {
     const peak = peakByVideo.get(v.video_id) ?? 0;
-    const cur = channelToVideoMap.get(v.channel_id) ?? 0;
-    if (peak > cur) {
-      channelToVideoMap.set(v.channel_id, peak);
-    }
+    const cur = channelBest.get(v.channel_id);
+    if (!cur || peak > cur.peak) channelBest.set(v.channel_id, { peak, videoId: v.video_id });
   }
 
-  const results: { channel: Channel; value: number }[] = [];
-  for (const [channelId, peak] of channelToVideoMap) {
+  const results: RankingEntry[] = [];
+  for (const [channelId, { peak, videoId }] of channelBest) {
     const channel = channelMap.get(channelId);
-    if (channel) results.push({ channel, value: peak });
+    if (channel) results.push({ channel, value: peak, videoId });
   }
 
   return results.sort((a, b) => b.value - a.value).slice(0, 50);
@@ -197,7 +192,7 @@ export default async function RankingPage({
 
   const { fromIso, toIso } = getPeriodRange(period);
 
-  let ranking: { channel: Channel; value: number }[] = [];
+  let ranking: RankingEntry[] = [];
 
   if (metric === "viewers") {
     ranking = await fetchViewersRanking(fromIso, toIso, channelMap);
@@ -275,7 +270,7 @@ export default async function RankingPage({
       ) : (
         <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
           <div className="divide-y divide-gray-100">
-            {ranking.map(({ channel, value }, i) => {
+            {ranking.map(({ channel, value, videoId }, i) => {
               const group = getGroup(channel);
               const rank = i + 1;
               const rankStyle =
@@ -286,11 +281,14 @@ export default async function RankingPage({
                   : rank === 3
                   ? "bg-amber-700/80 text-white"
                   : "bg-gray-100 text-gray-400";
+              const href = metric === "viewers" && videoId
+                ? `/live/${videoId}`
+                : `/channel/${channel.channel_id}`;
 
               return (
                 <Link
                   key={channel.channel_id}
-                  href={`/channel/${channel.channel_id}`}
+                  href={href}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
                 >
                   {/* Rank badge */}
