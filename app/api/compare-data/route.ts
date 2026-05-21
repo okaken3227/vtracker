@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
 
 type VideoRow = { video_id: string; channel_id: string };
-type GraphPoint = { video_id: string; bucket: string; avg_viewers: number };
+type RawPoint = { video_id: string; concurrent_viewers: number; recorded_at: string };
 type SCRow = { video_id: string; amount_jpy: number | null };
 type StatsRow = { channel_id: string; subscriber_count: number; recorded_at: string };
+
+const BUCKET_MS = 5 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -16,10 +18,14 @@ export async function GET(req: NextRequest) {
   if (channelIds.length === 0) return NextResponse.json({ data: [] });
 
   if (type === "viewers") {
+    // 時間範囲内の動画のみ取得（全履歴を取らない）
+    const bufferIso = new Date(new Date(fromIso).getTime() - 12 * 3600 * 1000).toISOString();
     const { data: videosData } = await supabase
       .from("videos")
       .select("video_id, channel_id")
-      .in("channel_id", channelIds);
+      .in("channel_id", channelIds)
+      .gte("start_time", bufferIso)
+      .lte("start_time", toIso);
 
     const videos = (videosData ?? []) as VideoRow[];
     const videoIdToChannelId = new Map(videos.map((v) => [v.video_id, v.channel_id]));
@@ -27,27 +33,33 @@ export async function GET(req: NextRequest) {
 
     if (videoIds.length === 0) return NextResponse.json({ data: [] });
 
+    // video_idと時間範囲で直接フィルタ（RPCで全データ取得しない）
     const { data: gpData } = await supabase
-      .rpc("get_chart_data", { from_ts: fromIso, to_ts: toIso })
-      .limit(200000);
+      .from("live_graph_points")
+      .select("video_id, concurrent_viewers, recorded_at")
+      .in("video_id", videoIds)
+      .gte("recorded_at", fromIso)
+      .lte("recorded_at", toIso)
+      .limit(50000);
 
-    const allPoints = (gpData ?? []) as GraphPoint[];
-    const points = allPoints.filter((p) => videoIdToChannelId.has(p.video_id));
+    const points = (gpData ?? []) as RawPoint[];
 
-    const bucketMap = new Map<string, Map<string, number[]>>();
+    // 5分バケットに集約
+    const bucketMap = new Map<number, Map<string, number[]>>();
     for (const p of points) {
       const channelId = videoIdToChannelId.get(p.video_id);
       if (!channelId) continue;
-      if (!bucketMap.has(p.bucket)) bucketMap.set(p.bucket, new Map());
-      const cm = bucketMap.get(p.bucket)!;
+      const t = Math.floor(new Date(p.recorded_at).getTime() / BUCKET_MS) * BUCKET_MS;
+      if (!bucketMap.has(t)) bucketMap.set(t, new Map());
+      const cm = bucketMap.get(t)!;
       if (!cm.has(channelId)) cm.set(channelId, []);
-      cm.get(channelId)!.push(p.avg_viewers);
+      cm.get(channelId)!.push(p.concurrent_viewers);
     }
 
-    const buckets = Array.from(bucketMap.keys()).sort();
-    const chartData = buckets.map((bucket) => {
-      const cm = bucketMap.get(bucket)!;
-      const row: Record<string, string | number | null> = { t: bucket };
+    const buckets = Array.from(bucketMap.keys()).sort((a, b) => a - b);
+    const chartData = buckets.map((t) => {
+      const cm = bucketMap.get(t)!;
+      const row: Record<string, string | number | null> = { t: new Date(t).toISOString() };
       for (const channelId of channelIds) {
         const vals = cm.get(channelId);
         row[channelId] = vals ? Math.round(vals.reduce((s, x) => s + x, 0) / vals.length) : null;
@@ -59,10 +71,14 @@ export async function GET(req: NextRequest) {
   }
 
   if (type === "sc") {
+    // 時間範囲内の動画のみ取得
+    const bufferIso = new Date(new Date(fromIso).getTime() - 12 * 3600 * 1000).toISOString();
     const { data: videosData } = await supabase
       .from("videos")
       .select("video_id, channel_id")
-      .in("channel_id", channelIds);
+      .in("channel_id", channelIds)
+      .gte("start_time", bufferIso)
+      .lte("start_time", toIso);
 
     const videos = (videosData ?? []) as VideoRow[];
     const videoIdToChannelId = new Map(videos.map((v) => [v.video_id, v.channel_id]));
