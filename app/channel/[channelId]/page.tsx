@@ -39,7 +39,12 @@ async function fetchChannelData(channelId: string): Promise<ChData | null> {
   const monthStartIso = monthStartUtc.toISOString();
   const monthLabel = `${jstNow.getUTCFullYear()}年${jstNow.getUTCMonth() + 1}月`;
 
-  const [channelRes, videosRes, historyRes, allVideoIdsRes, monthlyRes] = await Promise.all([
+  // 6ヶ月前の月初（JST）
+  const sixMonthsAgoIso = new Date(
+    Date.UTC(jstNow.getUTCFullYear(), jstNow.getUTCMonth() - 5, 1) - 9 * 3600 * 1000
+  ).toISOString();
+
+  const [channelRes, videosRes, historyRes, allVideoIdsRes, monthlyRes, sixMonthsRes] = await Promise.all([
     supabase.from("channels").select("*").eq("channel_id", channelId).single(),
     supabase
       .from("videos")
@@ -59,6 +64,13 @@ async function fetchChannelData(channelId: string): Promise<ChData | null> {
       .select("video_id, start_time, end_time, status")
       .eq("channel_id", channelId)
       .gte("start_time", monthStartIso)
+      .neq("status", "upcoming")
+      .not("start_time", "is", null),
+    supabase
+      .from("videos")
+      .select("start_time, end_time, status")
+      .eq("channel_id", channelId)
+      .gte("start_time", sixMonthsAgoIso)
       .neq("status", "upcoming")
       .not("start_time", "is", null),
   ]);
@@ -114,7 +126,30 @@ async function fetchChannelData(channelId: string): Promise<ChData | null> {
   const avgPeakViewers = monthlyPeaks.length > 0 ? Math.round(monthlyPeaks.reduce((s, n) => s + n, 0) / monthlyPeaks.length) : 0;
   const monthlyStats = { streamCount, totalHours, avgPeakViewers, monthLabel };
 
-  return { channel, videos, history, group, parentGroup, totalSCJPY, peakByVideo, monthlyStats };
+  // 月次履歴（過去6ヶ月）
+  type SixMonthRow = { start_time: string | null; end_time: string | null; status: string };
+  const sixMonthMap = new Map<string, { streamCount: number; totalSeconds: number }>();
+  for (const v of (sixMonthsRes.data ?? []) as SixMonthRow[]) {
+    if (!v.start_time) continue;
+    const jst = new Date(new Date(v.start_time).getTime() + 9 * 3600 * 1000);
+    const key = `${jst.getUTCFullYear()}-${String(jst.getUTCMonth() + 1).padStart(2, "0")}`;
+    const entry = sixMonthMap.get(key) ?? { streamCount: 0, totalSeconds: 0 };
+    entry.streamCount++;
+    if (v.end_time) {
+      entry.totalSeconds += (new Date(v.end_time).getTime() - new Date(v.start_time).getTime()) / 1000;
+    }
+    sixMonthMap.set(key, entry);
+  }
+  const monthlyHistory = Array.from(sixMonthMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, stats]) => ({
+      monthKey: key,
+      monthLabel: `${parseInt(key.split("-")[1])}月`,
+      streamCount: stats.streamCount,
+      totalHours: stats.totalSeconds / 3600,
+    }));
+
+  return { channel, videos, history, group, parentGroup, totalSCJPY, peakByVideo, monthlyStats, monthlyHistory };
 }
 
 export default async function ChannelPage({

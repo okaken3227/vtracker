@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+} from "recharts";
 import type { Channel, Video, ChannelStatsHistory, Group } from "@/lib/types";
 import SubscriberChart from "./SubscriberChart";
 
@@ -10,6 +13,13 @@ export type MonthlyStats = {
   totalHours: number;
   avgPeakViewers: number;
   monthLabel: string;
+};
+
+export type MonthlyStatsEntry = {
+  monthKey: string;
+  monthLabel: string;
+  streamCount: number;
+  totalHours: number;
 };
 
 export type ChData = {
@@ -21,6 +31,7 @@ export type ChData = {
   totalSCJPY: number;
   peakByVideo: Record<string, number>;
   monthlyStats: MonthlyStats;
+  monthlyHistory: MonthlyStatsEntry[];
 };
 
 type PreviewVideo = {
@@ -137,7 +148,7 @@ function VideoPreviewDialog({ video, onClose }: { video: PreviewVideo; onClose: 
 }
 
 function ChannelView({ d }: { d: ChData }) {
-  const { channel, videos, history, group, totalSCJPY, peakByVideo, monthlyStats } = d;
+  const { channel, videos, history, group, totalSCJPY, peakByVideo, monthlyStats, monthlyHistory } = d;
   const [preview, setPreview] = useState<PreviewVideo | null>(null);
 
   const isYt = !channel.platform || channel.platform === "youtube";
@@ -356,6 +367,13 @@ function ChannelView({ d }: { d: ChData }) {
         </div>
       </section>
 
+      {/* ── 月次比較グラフ ── */}
+      {monthlyHistory.length >= 2 && (
+        <section className="mb-6">
+          <MonthlyComparisonChart data={monthlyHistory} />
+        </section>
+      )}
+
       {/* ── 登録者数推移グラフ ── */}
       {history.length >= 2 && (
         <section className="mb-8">
@@ -511,6 +529,78 @@ export default function ChannelPageContent({
       )}
 
       <ChannelView d={active} />
+    </div>
+  );
+}
+
+function MonthlyComparisonChart({ data }: { data: MonthlyStatsEntry[] }) {
+  const [metric, setMetric] = useState<"count" | "hours">("count");
+
+  const chartData = data.map((d) => ({
+    month: d.monthLabel,
+    value: metric === "count" ? d.streamCount : Math.round(d.totalHours * 10) / 10,
+  }));
+
+  const maxVal = Math.max(...chartData.map((d) => d.value), 1);
+  const currentMonth = data[data.length - 1]?.monthLabel;
+
+  return (
+    <div className="rounded-2xl border border-gray-100/80 bg-white/80 backdrop-blur-sm p-4">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-gray-700">月次推移</h3>
+        <div className="flex gap-1">
+          {(["count", "hours"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMetric(m)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                metric === m
+                  ? "bg-violet-600 text-white"
+                  : "border border-gray-200 bg-white text-gray-400 hover:text-gray-600"
+              }`}
+            >
+              {m === "count" ? "配信枠数" : "配信時間"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <ResponsiveContainer width="100%" height={180}>
+        <BarChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }} barSize={28}>
+          <XAxis
+            dataKey="month"
+            tick={{ fill: "#9ca3af", fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis hide domain={[0, maxVal * 1.2]} />
+          <Tooltip
+            formatter={(v) => [
+              metric === "count" ? `${v} 枠` : `${v} 時間`,
+              metric === "count" ? "配信枠数" : "配信時間",
+            ]}
+            contentStyle={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "10px", fontSize: "12px" }}
+            cursor={{ fill: "rgba(124,58,237,0.05)" }}
+          />
+          <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+            {chartData.map((entry) => (
+              <Cell
+                key={entry.month}
+                fill={entry.month === currentMonth ? "#7c3aed" : "#c4b5fd"}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+
+      <div className="mt-2 flex items-center justify-end gap-3 text-[10px] text-gray-400">
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2 w-2 rounded-sm bg-violet-600" />今月
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2 w-2 rounded-sm bg-violet-300" />過去
+        </span>
+      </div>
     </div>
   );
 }
