@@ -191,27 +191,12 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
     }
   }
 
-  // ライブ優先（live→upcoming→none）→グループ順→登録者数
+  // ライブ優先（live→upcoming→none）→登録者数
   const statusRank = (s?: string) => s === "live" ? 0 : s === "upcoming" ? 1 : 2;
-  // サブグループは親グループの sort_order を使って親グループ単位でまとめる
-  const getEffectiveGroupOrder = (groupId: string | null | undefined): number => {
-    if (!groupId) return 99999;
-    const group = groupMap.get(groupId);
-    if (!group) return 99999;
-    const topGroup = group.parent_group_id ? groupMap.get(group.parent_group_id) : group;
-    return topGroup?.sort_order ?? group.sort_order ?? 99999;
-  };
   const sortedChannels = [...filteredChannels].sort((a, b) => {
     const aRank = statusRank(latestByChannel[a.channel_id]?.status);
     const bRank = statusRank(latestByChannel[b.channel_id]?.status);
     if (aRank !== bRank) return aRank - bRank;
-    const aGroupOrder = getEffectiveGroupOrder(a.group_id);
-    const bGroupOrder = getEffectiveGroupOrder(b.group_id);
-    if (aGroupOrder !== bGroupOrder) return aGroupOrder - bGroupOrder;
-    // 同じ親グループ内はサブグループの sort_order で並べる
-    const aSubOrder = groupMap.get(a.group_id ?? "")?.sort_order ?? 99999;
-    const bSubOrder = groupMap.get(b.group_id ?? "")?.sort_order ?? 99999;
-    if (aSubOrder !== bSubOrder) return aSubOrder - bSubOrder;
     return b.subscriber_count - a.subscriber_count;
   });
 
