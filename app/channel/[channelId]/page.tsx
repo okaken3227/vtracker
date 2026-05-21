@@ -32,7 +32,14 @@ export async function generateMetadata({
 }
 
 async function fetchChannelData(channelId: string): Promise<ChData | null> {
-  const [channelRes, videosRes, historyRes, allVideoIdsRes] = await Promise.all([
+  // 今月の開始（JST: UTC+9）
+  const nowMs = Date.now();
+  const jstNow = new Date(nowMs + 9 * 3600 * 1000);
+  const monthStartUtc = new Date(Date.UTC(jstNow.getUTCFullYear(), jstNow.getUTCMonth(), 1) - 9 * 3600 * 1000);
+  const monthStartIso = monthStartUtc.toISOString();
+  const monthLabel = `${jstNow.getUTCFullYear()}年${jstNow.getUTCMonth() + 1}月`;
+
+  const [channelRes, videosRes, historyRes, allVideoIdsRes, monthlyRes] = await Promise.all([
     supabase.from("channels").select("*").eq("channel_id", channelId).single(),
     supabase
       .from("videos")
@@ -47,6 +54,13 @@ async function fetchChannelData(channelId: string): Promise<ChData | null> {
       .order("recorded_at", { ascending: true })
       .limit(200),
     supabase.from("videos").select("video_id").eq("channel_id", channelId),
+    supabase
+      .from("videos")
+      .select("video_id, start_time, end_time, status")
+      .eq("channel_id", channelId)
+      .gte("start_time", monthStartIso)
+      .neq("status", "upcoming")
+      .not("start_time", "is", null),
   ]);
 
   const channel = channelRes.data as Channel | null;
@@ -88,7 +102,19 @@ async function fetchChannelData(channelId: string): Promise<ChData | null> {
     peakByVideo[p.video_id] = Math.max(peakByVideo[p.video_id] ?? 0, p.concurrent_viewers);
   }
 
-  return { channel, videos, history, group, parentGroup, totalSCJPY, peakByVideo };
+  // 今月の配信統計
+  const monthlyVideos = (monthlyRes.data ?? []) as { video_id: string; start_time: string | null; end_time: string | null; status: string }[];
+  const streamCount = monthlyVideos.length;
+  const totalSeconds = monthlyVideos.reduce((sum, v) => {
+    if (!v.start_time || !v.end_time) return sum;
+    return sum + (new Date(v.end_time).getTime() - new Date(v.start_time).getTime()) / 1000;
+  }, 0);
+  const totalHours = totalSeconds / 3600;
+  const monthlyPeaks = monthlyVideos.map((v) => peakByVideo[v.video_id] ?? 0).filter((n) => n > 0);
+  const avgPeakViewers = monthlyPeaks.length > 0 ? Math.round(monthlyPeaks.reduce((s, n) => s + n, 0) / monthlyPeaks.length) : 0;
+  const monthlyStats = { streamCount, totalHours, avgPeakViewers, monthLabel };
+
+  return { channel, videos, history, group, parentGroup, totalSCJPY, peakByVideo, monthlyStats };
 }
 
 export default async function ChannelPage({

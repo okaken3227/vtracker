@@ -5,6 +5,13 @@ import Link from "next/link";
 import type { Channel, Video, ChannelStatsHistory, Group } from "@/lib/types";
 import SubscriberChart from "./SubscriberChart";
 
+export type MonthlyStats = {
+  streamCount: number;
+  totalHours: number;
+  avgPeakViewers: number;
+  monthLabel: string;
+};
+
 export type ChData = {
   channel: Channel;
   videos: Video[];
@@ -13,6 +20,7 @@ export type ChData = {
   parentGroup: Group | null;
   totalSCJPY: number;
   peakByVideo: Record<string, number>;
+  monthlyStats: MonthlyStats;
 };
 
 type PreviewVideo = {
@@ -24,6 +32,15 @@ type PreviewVideo = {
   status: string;
   platform: string;
 };
+
+function formatStreamHours(hours: number): string {
+  if (hours === 0) return "—";
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  if (h === 0) return `${m}分`;
+  if (m === 0) return `${h}時間`;
+  return `${h}時間${m}分`;
+}
 
 function formatCount(n: number): string {
   if (n >= 100000000) return `${(n / 100000000).toFixed(1)}億`;
@@ -120,7 +137,7 @@ function VideoPreviewDialog({ video, onClose }: { video: PreviewVideo; onClose: 
 }
 
 function ChannelView({ d }: { d: ChData }) {
-  const { channel, videos, history, group, totalSCJPY, peakByVideo } = d;
+  const { channel, videos, history, group, totalSCJPY, peakByVideo, monthlyStats } = d;
   const [preview, setPreview] = useState<PreviewVideo | null>(null);
 
   const isYt = !channel.platform || channel.platform === "youtube";
@@ -302,6 +319,42 @@ function ChannelView({ d }: { d: ChData }) {
           </div>
         </div>
       </div>
+
+      {/* ── 今月の配信統計 ── */}
+      <section className="mb-6">
+        <h3 className="mb-3 text-sm font-semibold text-gray-500">
+          {monthlyStats.monthLabel}の配信
+        </h3>
+        <div className={`grid gap-3 ${monthlyStats.avgPeakViewers > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
+          {/* 配信枠数 */}
+          <div className="rounded-2xl border border-gray-100/80 bg-white/80 backdrop-blur-sm p-4 flex flex-col gap-1">
+            <p className="text-[11px] font-medium text-gray-400 tracking-wide">配信枠数</p>
+            <p className="text-2xl font-bold text-gray-900 leading-none">
+              {monthlyStats.streamCount > 0 ? monthlyStats.streamCount : "—"}
+              {monthlyStats.streamCount > 0 && <span className="ml-1 text-sm font-medium text-gray-400">枠</span>}
+            </p>
+          </div>
+
+          {/* 配信時間 */}
+          <div className="rounded-2xl border border-gray-100/80 bg-white/80 backdrop-blur-sm p-4 flex flex-col gap-1">
+            <p className="text-[11px] font-medium text-gray-400 tracking-wide">配信時間</p>
+            <p className="text-2xl font-bold text-gray-900 leading-none tabular-nums">
+              {formatStreamHours(monthlyStats.totalHours)}
+            </p>
+          </div>
+
+          {/* 平均ピーク同接 */}
+          {monthlyStats.avgPeakViewers > 0 && (
+            <div className="rounded-2xl border border-violet-100/80 bg-gradient-to-br from-violet-50/80 to-white/80 backdrop-blur-sm p-4 flex flex-col gap-1">
+              <p className="text-[11px] font-medium text-violet-400 tracking-wide">平均ピーク同接</p>
+              <p className="text-2xl font-bold text-violet-700 leading-none tabular-nums">
+                {monthlyStats.avgPeakViewers.toLocaleString()}
+                <span className="ml-1 text-sm font-medium text-violet-400">人</span>
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* ── 登録者数推移グラフ ── */}
       {history.length >= 2 && (
