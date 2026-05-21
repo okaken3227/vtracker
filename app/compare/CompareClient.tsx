@@ -152,7 +152,7 @@ export default function CompareClient({
     } finally {
       if (pctTimerRef.current) clearInterval(pctTimerRef.current);
       setLoadingPct(100);
-      setTimeout(() => { setLoading(false); setLoadingPct(0); }, 300);
+      setTimeout(() => { setLoading(false); setLoadingPct(0); }, 700);
     }
   }, [selectedChannelIds, metric, presetDays, channelMap]);
 
