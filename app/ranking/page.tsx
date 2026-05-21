@@ -219,7 +219,7 @@ export default async function RankingPage({
           <span>›</span>
           <span>ランキング</span>
         </div>
-        <h1 className="text-xl font-bold text-gray-900">ランキング</h1>
+        <h1 className="section-title text-xl font-bold text-gray-900">ランキング</h1>
       </div>
 
       {/* Period selector */}
@@ -230,10 +230,10 @@ export default async function RankingPage({
             <Link
               key={p}
               href={`/ranking?period=${p}&metric=${metric}`}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
                 period === p
-                  ? "bg-violet-600 text-white"
-                  : "border border-gray-200 bg-white text-gray-500 hover:border-violet-300 hover:text-violet-600"
+                  ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-sm"
+                  : "border border-gray-200 bg-white/80 text-gray-500 hover:border-violet-200 hover:text-violet-600"
               }`}
             >
               {PERIOD_LABELS[p]}
@@ -250,10 +250,10 @@ export default async function RankingPage({
             <Link
               key={m}
               href={`/ranking?period=${period}&metric=${m}`}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
                 metric === m
-                  ? "bg-violet-600 text-white"
-                  : "border border-gray-200 bg-white text-gray-500 hover:border-violet-300 hover:text-violet-600"
+                  ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-sm"
+                  : "border border-gray-200 bg-white/80 text-gray-500 hover:border-violet-200 hover:text-violet-600"
               }`}
             >
               {METRIC_LABELS[m]}
@@ -268,19 +268,19 @@ export default async function RankingPage({
           この期間のデータがありません
         </div>
       ) : (
-        <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-          <div className="divide-y divide-gray-100">
+        <div className="overflow-hidden rounded-2xl border border-violet-100/60 bg-white/90 shadow-[0_2px_12px_-2px_rgba(109,40,217,0.10)] backdrop-blur-sm">
+          <div className="divide-y divide-gray-50">
             {ranking.map(({ channel, value, videoId }, i) => {
               const group = getGroup(channel);
               const rank = i + 1;
               const rankStyle =
                 rank === 1
-                  ? "bg-amber-400 text-white"
+                  ? "bg-gradient-to-br from-amber-400 to-yellow-500 text-white shadow-[0_2px_6px_rgba(245,158,11,0.4)]"
                   : rank === 2
-                  ? "bg-gray-300 text-gray-700"
+                  ? "bg-gradient-to-br from-gray-300 to-slate-400 text-white shadow-sm"
                   : rank === 3
-                  ? "bg-amber-700/80 text-white"
-                  : "bg-gray-100 text-gray-400";
+                  ? "bg-gradient-to-br from-amber-700 to-orange-800 text-white shadow-sm"
+                  : "bg-gray-100/80 text-gray-400";
               const href = metric === "viewers" && videoId
                 ? `/live/${videoId}`
                 : `/channel/${channel.channel_id}`;
@@ -289,7 +289,7 @@ export default async function RankingPage({
                 <Link
                   key={channel.channel_id}
                   href={href}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                  className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-violet-50/50"
                 >
                   {/* Rank badge */}
                   <div

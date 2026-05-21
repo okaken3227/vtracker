@@ -274,23 +274,27 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
         {/* 今日のまとめ */}
         <section className="mb-8">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">今日のまとめ</h2>
-            <Link href="/today" className="text-xs text-violet-500 hover:underline">
-              24時間タイムライン →
+            <h2 className="section-title text-lg font-bold text-gray-900">今日のまとめ</h2>
+            <Link href="/today" className="flex items-center gap-1 text-xs font-medium text-violet-500 hover:text-violet-700 transition-colors">
+              24時間タイムライン
+              <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 8h10M9 4l4 4-4 4" />
+              </svg>
             </Link>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <StatMini label="今日の配信数" value={`${todayVideos.length}`} unit="本" />
-            <StatMini label="現在ライブ中" value={`${liveVideos.length}`} unit="本" />
+            <StatMini label="今日の配信数" value={`${todayVideos.length}`} unit="本" color="violet" />
+            <StatMini label="現在ライブ中" value={`${liveVideos.length}`} unit="本" color="red" />
             <StatMini
               label="今日のスパチャ"
               value={todaySCTotal > 0 ? `¥${todaySCTotal.toLocaleString()}` : "—"}
+              color="pink"
             />
           </div>
 
           {todayVideos.length === 0 && liveVideos.length === 0 && (
-            <div className="mt-4 rounded-xl border border-dashed border-gray-200 p-8 text-center text-sm text-gray-400">
+            <div className="mt-4 rounded-xl border border-dashed border-violet-100 bg-violet-50/30 p-8 text-center text-sm text-gray-400">
               今日の配信データはまだありません
             </div>
           )}
@@ -321,7 +325,7 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
           </section>
         ) : finishedToday.length > 0 ? (
           <section className="mb-8">
-            <h2 className="mb-4 text-base font-semibold text-gray-900">終了済み配信</h2>
+            <h2 className="section-title mb-4 text-base font-bold text-gray-900">終了済み配信</h2>
             {(() => {
               const row1 = finishedToday.filter((_, i) => i % 2 === 0);
               const row2 = finishedToday.filter((_, i) => i % 2 === 1);
@@ -359,16 +363,16 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
         {/* スパチャランキング */}
         {scRanking.length > 0 && (
           <section className="mb-8">
-            <h2 className="mb-3 text-base font-semibold text-gray-900">今日のスパチャ</h2>
-            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="divide-y divide-gray-100">
+            <h2 className="section-title mb-3 text-base font-bold text-gray-900">今日のスパチャ</h2>
+            <div className="overflow-hidden rounded-2xl bg-white/90 shadow-[0_2px_12px_-2px_rgba(109,40,217,0.10)] border border-violet-100/60 backdrop-blur-sm">
+              <div className="divide-y divide-gray-50">
                 {scRanking.map(({ video, channel, sc }, i) => (
                   <Link
                     key={video.video_id}
                     href={`/live/${video.video_id}`}
-                    className="flex items-center gap-3 py-2 transition-opacity hover:opacity-70"
+                    className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-violet-50/50"
                   >
-                    <span className="w-4 flex-shrink-0 text-center text-xs font-bold text-gray-300">{i + 1}</span>
+                    <span className={`w-5 flex-shrink-0 text-center text-xs font-black ${i === 0 ? "text-amber-400" : i === 1 ? "text-gray-400" : i === 2 ? "text-amber-700" : "text-gray-200"}`}>{i + 1}</span>
                     <ChannelAvatar
                       channelId={video.channel_id}
                       name={channel?.name ?? ""}
@@ -376,10 +380,10 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
                       size={28}
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-medium text-gray-800">{channel?.name ?? video.channel_id}</p>
+                      <p className="truncate text-xs font-semibold text-gray-800">{channel?.name ?? video.channel_id}</p>
                       <p className="truncate text-xs text-gray-400">{video.title}</p>
                     </div>
-                    <span className="flex-shrink-0 text-sm font-bold text-violet-600">
+                    <span className="flex-shrink-0 font-mono text-sm font-bold text-violet-600">
                       ¥{sc.toLocaleString()}
                     </span>
                   </Link>
@@ -394,7 +398,7 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
         <div className="mb-8">
           {/* ラベル */}
           <div className="mb-2 flex items-center gap-2">
-            <h2 className="text-base font-semibold text-gray-900">関連動画</h2>
+            <h2 className="section-title text-base font-bold text-gray-900">関連動画</h2>
             {selectedGroup && groupMap.get(selectedGroup) && (() => {
               const g = groupMap.get(selectedGroup)!;
               return (
@@ -425,24 +429,26 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
       <div className="mb-8 grid grid-cols-2 gap-3">
         <Link
           href="/ranking"
-          className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:border-violet-200 hover:shadow-md"
+          className="group card-lift relative flex items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 p-4 shadow-[0_4px_20px_-4px_rgba(109,40,217,0.5)]"
         >
-          <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-500 group-hover:bg-violet-100 transition-colors">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.18)_0%,_transparent_60%)]" />
+          <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-transform group-hover:scale-110">
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
               <polyline points="17 6 23 6 23 12" />
             </svg>
           </span>
           <div>
-            <p className="text-sm font-semibold text-gray-900 group-hover:text-violet-700 transition-colors">ランキング</p>
-            <p className="text-xs text-gray-400">同接・スパチャ・登録者</p>
+            <p className="text-sm font-bold text-white">ランキング</p>
+            <p className="text-xs text-violet-200">同接・スパチャ・登録者</p>
           </div>
         </Link>
         <Link
           href="/compare"
-          className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:border-violet-200 hover:shadow-md"
+          className="group card-lift relative flex items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 p-4 shadow-[0_4px_20px_-4px_rgba(236,72,153,0.45)]"
         >
-          <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-500 group-hover:bg-violet-100 transition-colors">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.18)_0%,_transparent_60%)]" />
+          <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-transform group-hover:scale-110">
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
               <rect x="2" y="3" width="6" height="18" rx="1" />
               <rect x="9" y="8" width="6" height="13" rx="1" />
@@ -450,15 +456,15 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
             </svg>
           </span>
           <div>
-            <p className="text-sm font-semibold text-gray-900 group-hover:text-violet-700 transition-colors">比較</p>
-            <p className="text-xs text-gray-400">チャンネルを並べて分析</p>
+            <p className="text-sm font-bold text-white">比較</p>
+            <p className="text-xs text-pink-200">チャンネルを並べて分析</p>
           </div>
         </Link>
       </div>
 
       {/* ── チャンネル一覧（全幅） ── */}
       <section ref={channelListRef}>
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">チャンネル一覧</h2>
+        <h2 className="section-title mb-4 text-lg font-bold text-gray-900">チャンネル一覧</h2>
         {groups.length > 0 && (
           <GroupTabs groups={groups} selected={selectedGroup} onSelect={handleGroupSelect} />
         )}
@@ -471,30 +477,35 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
             className="grid gap-3"
             style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}
           >
-            {sortedChannels.map((ch) => {
+            {sortedChannels.map((ch, i) => {
               const latest = latestByChannel[ch.channel_id];
               const group = ch.group_id ? groupMap.get(ch.group_id) : undefined;
               const parentGroup = group?.parent_group_id ? groupMap.get(group.parent_group_id) : undefined;
               const displayGroup = parentGroup ?? group;
               const linked = ch.linked_channel_id ? channelMap.get(ch.linked_channel_id) : undefined;
               return (
-                <ChannelCard
+                <div
                   key={ch.channel_id}
-                  channelId={ch.channel_id}
-                  name={ch.name}
-                  customUrl={ch.custom_url}
-                  iconUrl={ch.icon_url}
-                  subscriberCount={ch.subscriber_count}
-                  totalSuperchat={scByChannel[ch.channel_id] ?? 0}
-                  latestVideoStatus={latest?.status ?? "none"}
-                  latestVideoStartTime={latest?.startTime ?? null}
-                  groupId={displayGroup?.id}
-                  groupName={displayGroup?.name}
-                  groupColor={displayGroup?.color}
-                  groupIconUrl={displayGroup?.icon_url}
-                  linkedPlatform={linked?.platform ?? null}
-                  onGroupFilter={setSelectedGroup}
-                />
+                  className="card-in"
+                  style={{ animationDelay: `${Math.min(i * 30, 600)}ms` }}
+                >
+                  <ChannelCard
+                    channelId={ch.channel_id}
+                    name={ch.name}
+                    customUrl={ch.custom_url}
+                    iconUrl={ch.icon_url}
+                    subscriberCount={ch.subscriber_count}
+                    totalSuperchat={scByChannel[ch.channel_id] ?? 0}
+                    latestVideoStatus={latest?.status ?? "none"}
+                    latestVideoStartTime={latest?.startTime ?? null}
+                    groupId={displayGroup?.id}
+                    groupName={displayGroup?.name}
+                    groupColor={displayGroup?.color}
+                    groupIconUrl={displayGroup?.icon_url}
+                    linkedPlatform={linked?.platform ?? null}
+                    onGroupFilter={setSelectedGroup}
+                  />
+                </div>
               );
             })}
           </div>
@@ -604,13 +615,38 @@ function VideoPreviewDialog({ video, onClose }: { video: PreviewVideo; onClose: 
   );
 }
 
-function StatMini({ label, value, unit }: { label: string; value: string; unit?: string }) {
+const STAT_COLORS = {
+  violet: {
+    bg: "from-violet-50 to-purple-50",
+    border: "border-violet-100/80",
+    label: "text-violet-400",
+    value: "text-violet-900",
+    unit: "text-violet-400",
+  },
+  red: {
+    bg: "from-red-50 to-rose-50",
+    border: "border-red-100/80",
+    label: "text-red-400",
+    value: "text-red-900",
+    unit: "text-red-400",
+  },
+  pink: {
+    bg: "from-pink-50 to-rose-50",
+    border: "border-pink-100/80",
+    label: "text-pink-400",
+    value: "text-pink-900",
+    unit: "text-pink-400",
+  },
+} as const;
+
+function StatMini({ label, value, unit, color = "violet" }: { label: string; value: string; unit?: string; color?: keyof typeof STAT_COLORS }) {
+  const c = STAT_COLORS[color];
   return (
-    <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm sm:block">
-      <p className="text-xs text-gray-400">{label}</p>
-      <p className="text-xl font-bold text-gray-900 sm:mt-1">
+    <div className={`flex items-center justify-between rounded-2xl border bg-gradient-to-br ${c.bg} ${c.border} px-4 py-3.5 shadow-sm backdrop-blur-sm sm:block`}>
+      <p className={`text-xs font-medium ${c.label}`}>{label}</p>
+      <p className={`text-xl font-black sm:mt-1 ${c.value}`}>
         {value}
-        {unit && <span className="ml-1 text-sm font-normal text-gray-400">{unit}</span>}
+        {unit && <span className={`ml-1 text-sm font-normal ${c.unit}`}>{unit}</span>}
       </p>
     </div>
   );

@@ -333,32 +333,32 @@ function ChannelView({ d }: { d: ChData }) {
 
       {/* ── 今月の配信統計 ── */}
       <section className="mb-6">
-        <h3 className="mb-3 text-sm font-semibold text-gray-500">
+        <h3 className="section-title mb-3 text-sm font-bold text-gray-700">
           {monthlyStats.monthLabel}の配信
         </h3>
         <div className={`grid gap-3 ${monthlyStats.avgPeakViewers > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
           {/* 配信枠数 */}
-          <div className="rounded-2xl border border-gray-100/80 bg-white/80 backdrop-blur-sm p-4 flex flex-col gap-1">
-            <p className="text-[11px] font-medium text-gray-400 tracking-wide">配信枠数</p>
-            <p className="text-2xl font-bold text-gray-900 leading-none">
+          <div className="rounded-2xl border border-gray-100/80 bg-gradient-to-br from-gray-50 to-white backdrop-blur-sm p-4 flex flex-col gap-1 shadow-sm">
+            <p className="text-[11px] font-semibold text-gray-400 tracking-wide uppercase">配信枠数</p>
+            <p className="text-2xl font-black text-gray-900 leading-none">
               {monthlyStats.streamCount > 0 ? monthlyStats.streamCount : "—"}
               {monthlyStats.streamCount > 0 && <span className="ml-1 text-sm font-medium text-gray-400">枠</span>}
             </p>
           </div>
 
           {/* 配信時間 */}
-          <div className="rounded-2xl border border-gray-100/80 bg-white/80 backdrop-blur-sm p-4 flex flex-col gap-1">
-            <p className="text-[11px] font-medium text-gray-400 tracking-wide">配信時間</p>
-            <p className="text-2xl font-bold text-gray-900 leading-none tabular-nums">
+          <div className="rounded-2xl border border-gray-100/80 bg-gradient-to-br from-gray-50 to-white backdrop-blur-sm p-4 flex flex-col gap-1 shadow-sm">
+            <p className="text-[11px] font-semibold text-gray-400 tracking-wide uppercase">配信時間</p>
+            <p className="text-2xl font-black text-gray-900 leading-none tabular-nums">
               {formatStreamHours(monthlyStats.totalHours)}
             </p>
           </div>
 
           {/* 平均ピーク同接 */}
           {monthlyStats.avgPeakViewers > 0 && (
-            <div className="rounded-2xl border border-violet-100/80 bg-gradient-to-br from-violet-50/80 to-white/80 backdrop-blur-sm p-4 flex flex-col gap-1">
-              <p className="text-[11px] font-medium text-violet-400 tracking-wide">平均ピーク同接</p>
-              <p className="text-2xl font-bold text-violet-700 leading-none tabular-nums">
+            <div className="rounded-2xl border border-violet-100/80 bg-gradient-to-br from-violet-50 to-purple-50/60 backdrop-blur-sm p-4 flex flex-col gap-1 shadow-sm">
+              <p className="text-[11px] font-semibold text-violet-400 tracking-wide uppercase">平均ピーク同接</p>
+              <p className="text-2xl font-black text-violet-700 leading-none tabular-nums">
                 {monthlyStats.avgPeakViewers.toLocaleString()}
                 <span className="ml-1 text-sm font-medium text-violet-400">人</span>
               </p>
@@ -377,7 +377,7 @@ function ChannelView({ d }: { d: ChData }) {
       {/* ── 登録者数推移グラフ ── */}
       {history.length >= 2 && (
         <section className="mb-8">
-          <h3 className="mb-3 text-base font-semibold text-gray-900">
+          <h3 className="section-title mb-3 text-base font-bold text-gray-900">
             {isYt ? "登録者数推移" : "フォロワー数推移"}
           </h3>
           <SubscriberChart data={history} />
@@ -386,7 +386,7 @@ function ChannelView({ d }: { d: ChData }) {
 
       {/* ── 過去の配信グリッド ── */}
       <section>
-        <h3 className="mb-4 text-base font-semibold text-gray-900">
+        <h3 className="section-title mb-4 text-base font-bold text-gray-900">
           過去の配信{" "}
           <span className="text-sm font-normal text-gray-400">({videos.length}件)</span>
         </h3>
@@ -433,12 +433,12 @@ function ChannelView({ d }: { d: ChData }) {
                       }}
                     />
                     {v.status === "live" && (
-                      <span className="absolute left-2 top-2 rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">
+                      <span className="absolute left-2 top-2 rounded-md bg-gradient-to-r from-red-500 to-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-[0_2px_8px_rgba(239,68,68,0.45)] live-pulse-ring">
                         ● LIVE
                       </span>
                     )}
                     {v.status === "upcoming" && (
-                      <span className="absolute left-2 top-2 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">
+                      <span className="absolute left-2 top-2 rounded-md bg-gradient-to-r from-amber-400 to-orange-400 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">
                         配信予定
                       </span>
                     )}
@@ -545,18 +545,18 @@ function MonthlyComparisonChart({ data }: { data: MonthlyStatsEntry[] }) {
   const currentMonth = data[data.length - 1]?.monthLabel;
 
   return (
-    <div className="rounded-2xl border border-gray-100/80 bg-white/80 backdrop-blur-sm p-4">
+    <div className="rounded-2xl border border-violet-100/60 bg-white/90 backdrop-blur-sm p-4 shadow-[0_2px_12px_-2px_rgba(109,40,217,0.10)]">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-700">月次推移</h3>
+        <h3 className="section-title text-sm font-bold text-gray-700">月次推移</h3>
         <div className="flex gap-1">
           {(["count", "hours"] as const).map((m) => (
             <button
               key={m}
               onClick={() => setMetric(m)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${
                 metric === m
-                  ? "bg-violet-600 text-white"
-                  : "border border-gray-200 bg-white text-gray-400 hover:text-gray-600"
+                  ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-sm"
+                  : "border border-gray-200 bg-white text-gray-400 hover:border-violet-200 hover:text-violet-600"
               }`}
             >
               {m === "count" ? "配信枠数" : "配信時間"}

@@ -12,7 +12,8 @@ export default function Header() {
   const pathname = usePathname();
 
   return (
-    <header className="shrink-0 bg-white/75 backdrop-blur-xl border-b border-white/60 shadow-[0_1px_24px_-4px_rgba(109,40,217,0.10)]">
+    <header className="relative shrink-0 bg-white/80 backdrop-blur-xl shadow-[0_1px_24px_-4px_rgba(109,40,217,0.12)]">
+      <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-violet-400/50 via-purple-300/25 to-pink-400/40" />
       <div className="mx-auto flex h-14 max-w-full items-center gap-3 px-4">
 
         {/* ── モバイル検索モード ── */}

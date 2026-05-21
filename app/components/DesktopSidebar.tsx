@@ -89,7 +89,7 @@ export default function DesktopSidebar() {
 
   return (
     <aside
-      className={`hidden lg:flex h-full shrink-0 flex-col overflow-hidden bg-white/40 backdrop-blur-2xl border-r border-white/50 transition-[width] duration-200 ${
+      className={`hidden lg:flex h-full shrink-0 flex-col overflow-hidden bg-white/50 backdrop-blur-2xl border-r border-white/60 shadow-[1px_0_16px_-4px_rgba(109,40,217,0.08)] transition-[width] duration-200 ${
         open ? "w-48" : "w-14"
       }`}
     >
@@ -104,8 +104,8 @@ export default function DesktopSidebar() {
                 title={open ? undefined : item.label}
                 className={`group flex items-center rounded-xl text-sm font-medium transition-all duration-150 ${
                   active
-                    ? "bg-gradient-to-r from-violet-600/10 to-violet-400/10 text-violet-700 shadow-[inset_0_0_0_1px_rgba(124,58,237,0.15)]"
-                    : "text-gray-500 hover:bg-white/60 hover:text-gray-800"
+                    ? "bg-gradient-to-r from-violet-500/12 to-purple-400/8 text-violet-700 shadow-[inset_0_0_0_1px_rgba(124,58,237,0.2),0_2px_8px_-2px_rgba(124,58,237,0.12)]"
+                    : "text-gray-500 hover:bg-white/70 hover:text-gray-800"
                 } ${
                   open
                     ? "w-full gap-3 px-2.5 py-2.5"
