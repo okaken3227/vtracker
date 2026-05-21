@@ -1,10 +1,28 @@
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase/client";
 import type { Channel, Video, Superchat, Group } from "@/lib/types";
 import { getJstMidnightMs } from "@/lib/jst";
 import HomeContent from "./components/HomeContent";
 
 export const dynamic = "force-dynamic";
+
+const fetchCachedChannelsGroupsVideos = unstable_cache(
+  async () => {
+    const [chRes, grRes, vRes] = await Promise.all([
+      supabase.from("channels").select("*").order("subscriber_count", { ascending: false }),
+      supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
+      supabase.from("videos").select("*").order("start_time", { ascending: false }).limit(300),
+    ]);
+    return {
+      channels: (chRes.data ?? []) as Channel[],
+      groups: (grRes.data ?? []) as Group[],
+      videos: (vRes.data ?? []) as Video[],
+    };
+  },
+  ["home-static-data"],
+  { revalidate: 60 },
+);
 
 export const metadata: Metadata = {
   title: "vtracker | VTuber同接グラフ・視聴者数・スパチャ統計をリアルタイム追跡",
@@ -21,35 +39,31 @@ async function fetchData() {
   const todayIso = new Date(jstMidnightMs).toISOString();
   const since90mIso = new Date(Date.now() - 90 * 60 * 1000).toISOString();
   try {
-    const [chRes, vRes, scRes, grRes, gpRes, lpRes] = await Promise.all([
-      supabase.from("channels").select("*").order("subscriber_count", { ascending: false }),
-      supabase.from("videos").select("*").order("start_time", { ascending: false }).limit(500),
+    const [{ channels, groups, videos }, scRes, gpRes, lpRes] = await Promise.all([
+      fetchCachedChannelsGroupsVideos(),
       supabase.from("superchats").select("video_id, amount, amount_jpy, currency").gte("published_at", todayIso).limit(2000),
-      supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
       supabase
         .from("live_graph_points")
         .select("video_id, concurrent_viewers, recorded_at")
         .gte("recorded_at", todayIso)
         .order("recorded_at", { ascending: true })
-        .limit(100000),
+        .limit(20000),
       supabase
         .from("live_graph_points")
         .select("video_id, concurrent_viewers, recorded_at")
         .gte("recorded_at", since90mIso)
         .order("recorded_at", { ascending: true })
-        .limit(100000),
+        .limit(10000),
     ]);
 
     return {
-      channels: (chRes.data ?? []) as Channel[],
-      videos: (vRes.data ?? []) as Video[],
+      channels,
+      videos,
+      groups,
       superchats: (scRes.data ?? []) as SCRow[],
-      groups: (grRes.data ?? []) as Group[],
       todayPoints: (gpRes.data ?? []) as GraphPoint[],
       livePoints: (lpRes.data ?? []) as GraphPoint[],
-      error:
-        chRes.error?.message ?? vRes.error?.message ??
-        scRes.error?.message ?? grRes.error?.message ?? gpRes.error?.message ?? lpRes.error?.message ?? null,
+      error: scRes.error?.message ?? gpRes.error?.message ?? lpRes.error?.message ?? null,
     };
   } catch (e) {
     return { channels: [], videos: [], superchats: [], groups: [], todayPoints: [], livePoints: [], error: String(e) };

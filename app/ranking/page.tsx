@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase/client";
 import type { Channel, Group } from "@/lib/types";
 import { getJstMidnightMs } from "@/lib/jst";
@@ -55,22 +56,57 @@ function formatValue(value: number, metric: Metric): string {
   return `${value.toLocaleString()} 人`;
 }
 
+const fetchCachedViewerPoints = unstable_cache(
+  async (fromIso: string, toIso: string) => {
+    const { data } = await supabase
+      .from("live_graph_points")
+      .select("video_id, concurrent_viewers")
+      .gte("recorded_at", fromIso)
+      .lte("recorded_at", toIso)
+      .limit(50000);
+    return (data ?? []) as GraphPointRow[];
+  },
+  ["ranking-viewer-points"],
+  { revalidate: 300 },
+);
+
+const fetchCachedSCRows = unstable_cache(
+  async (fromIso: string, toIso: string) => {
+    const { data } = await supabase
+      .from("superchats")
+      .select("video_id, amount_jpy")
+      .gte("published_at", fromIso)
+      .lte("published_at", toIso)
+      .not("amount_jpy", "is", null)
+      .limit(100000);
+    return (data ?? []) as SCRow[];
+  },
+  ["ranking-sc-rows"],
+  { revalidate: 300 },
+);
+
+const fetchCachedChannelsGroups = unstable_cache(
+  async () => {
+    const [chRes, grRes] = await Promise.all([
+      supabase.from("channels").select("*").order("subscriber_count", { ascending: false }),
+      supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
+    ]);
+    return {
+      channels: (chRes.data ?? []) as Channel[],
+      groups: (grRes.data ?? []) as Group[],
+    };
+  },
+  ["ranking-channels-groups"],
+  { revalidate: 120 },
+);
+
 async function fetchViewersRanking(
   fromIso: string,
   toIso: string,
   channelMap: Map<string, Channel>,
 ): Promise<RankingEntry[]> {
-  const { data: points } = await supabase
-    .from("live_graph_points")
-    .select("video_id, concurrent_viewers")
-    .gte("recorded_at", fromIso)
-    .lte("recorded_at", toIso)
-    .limit(500000);
-
-  const gpRows = (points ?? []) as GraphPointRow[];
-
   const peakByVideo = new Map<string, number>();
-  for (const p of gpRows) {
+  for (const p of await fetchCachedViewerPoints(fromIso, toIso)) {
     const cur = peakByVideo.get(p.video_id) ?? 0;
     if (p.concurrent_viewers > cur) peakByVideo.set(p.video_id, p.concurrent_viewers);
   }
@@ -107,15 +143,7 @@ async function fetchSCRanking(
   toIso: string,
   channelMap: Map<string, Channel>,
 ): Promise<{ channel: Channel; value: number }[]> {
-  const { data: scData } = await supabase
-    .from("superchats")
-    .select("video_id, amount_jpy")
-    .gte("published_at", fromIso)
-    .lte("published_at", toIso)
-    .not("amount_jpy", "is", null)
-    .limit(200000);
-
-  const scRows = (scData ?? []) as SCRow[];
+  const scRows = await fetchCachedSCRows(fromIso, toIso);
 
   if (scRows.length === 0) return [];
 
@@ -179,14 +207,7 @@ export default async function RankingPage({
   const period = (["today", "week", "month"].includes(String(sp.period)) ? sp.period : "today") as Period;
   const metric = (["viewers", "sc", "subs"].includes(String(sp.metric)) ? sp.metric : "viewers") as Metric;
 
-  // Fetch channels and groups
-  const [chRes, grRes] = await Promise.all([
-    supabase.from("channels").select("*").order("subscriber_count", { ascending: false }),
-    supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
-  ]);
-
-  const channels = (chRes.data ?? []) as Channel[];
-  const groups = (grRes.data ?? []) as Group[];
+  const { channels, groups } = await fetchCachedChannelsGroups();
   const channelMap = new Map(channels.map((c) => [c.channel_id, c]));
   const groupMap = new Map(groups.map((g) => [g.id, g]));
 
