@@ -26,9 +26,9 @@ function formatCount(n: number): string {
 }
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  live:     { label: "● LIVE",    className: "bg-red-500 text-white" },
-  upcoming: { label: "○ 配信予定", className: "bg-amber-400 text-white" },
-  none:     { label: "配信終了",   className: "bg-gray-500/80 text-white backdrop-blur-sm" },
+  live:     { label: "● LIVE",    className: "bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-[0_2px_8px_rgba(239,68,68,0.45)] live-pulse-ring" },
+  upcoming: { label: "○ 配信予定", className: "bg-gradient-to-r from-amber-400 to-orange-400 text-white" },
+  none:     { label: "配信終了",   className: "bg-black/40 text-white backdrop-blur-sm" },
 };
 
 export default function ChannelCard({
@@ -44,7 +44,7 @@ export default function ChannelCard({
   return (
     <a
       href={`/channel/${channelId}`}
-      className="group card-lift flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+      className="group card-lift flex flex-col overflow-hidden rounded-2xl border border-gray-100/80 bg-white/90 shadow-sm backdrop-blur-sm"
     >
       {/* チャンネルアイコン */}
       <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">

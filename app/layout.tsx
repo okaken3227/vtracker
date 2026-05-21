@@ -96,17 +96,34 @@ export default async function RootLayout({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "WebApplication",
-            "name": "vtracker",
-            "url": SITE_URL,
-            "description": SITE_DESCRIPTION,
-            "applicationCategory": "EntertainmentApplication",
-            "inLanguage": "ja",
-            "keywords": "VTuber,同接グラフ,視聴者数,スパチャ統計,VTuber統計,にじさんじ,ホロライブ,ぶいすぽっ！",
-            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "JPY" },
-          }),
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              "name": "vtracker",
+              "url": SITE_URL,
+              "description": SITE_DESCRIPTION,
+              "inLanguage": "ja",
+              "potentialAction": {
+                "@type": "SearchAction",
+                "target": { "@type": "EntryPoint", "urlTemplate": `${SITE_URL}/channel/{search_term_string}` },
+                "query-input": "required name=search_term_string",
+              },
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebApplication",
+              "name": "vtracker",
+              "url": SITE_URL,
+              "description": SITE_DESCRIPTION,
+              "applicationCategory": "EntertainmentApplication",
+              "operatingSystem": "Web",
+              "inLanguage": "ja",
+              "keywords": "VTuber,同接グラフ,視聴者数,スパチャ統計,VTuberランキング,にじさんじ,ホロライブ,ぶいすぽっ！,VTuber tracker,VTuber stats",
+              "offers": { "@type": "Offer", "price": "0", "priceCurrency": "JPY" },
+              "creator": { "@type": "Organization", "name": "vtracker" },
+            },
+          ]),
         }}
       />
       <Script
@@ -123,7 +140,7 @@ export default async function RootLayout({
             </div>
             <div className="fixed inset-x-0 top-14 bottom-0 flex overflow-hidden">
               <DesktopSidebar />
-              <main id="main-scroll" className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto px-4 pt-8 pb-24">
+              <main id="main-scroll" className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto px-4 pt-8 pb-24 page-fade-up">
                 {children}
               </main>
             </div>

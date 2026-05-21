@@ -12,7 +12,7 @@ export default function Header() {
   const pathname = usePathname();
 
   return (
-    <header className="shrink-0 bg-white">
+    <header className="shrink-0 bg-white/75 backdrop-blur-xl border-b border-white/60 shadow-[0_1px_24px_-4px_rgba(109,40,217,0.10)]">
       <div className="mx-auto flex h-14 max-w-full items-center gap-3 px-4">
 
         {/* ── モバイル検索モード ── */}
@@ -39,8 +39,8 @@ export default function Header() {
           {/* 左: PCサイドバートグル + ロゴ */}
           <div className="flex shrink-0 items-center gap-2">
             <SidebarToggle />
-            <Link href="/" className="text-xl font-bold tracking-tight text-gray-900">
-              v<span className="text-violet-600">tracker</span>
+            <Link href="/" className="text-xl font-bold tracking-tight">
+              <span className="text-gradient">v</span><span className="text-gray-800">tracker</span>
             </Link>
           </div>
 

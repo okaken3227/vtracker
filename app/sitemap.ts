@@ -16,8 +16,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]);
 
   return [
-    { url: base, lastModified: new Date(), changeFrequency: "hourly", priority: 1.0 },
-    { url: `${base}/today`, lastModified: new Date(), changeFrequency: "hourly", priority: 0.7 },
+    { url: base,                  lastModified: new Date(), changeFrequency: "hourly",  priority: 1.0 },
+    { url: `${base}/ranking`,     lastModified: new Date(), changeFrequency: "hourly",  priority: 0.9 },
+    { url: `${base}/compare`,     lastModified: new Date(), changeFrequency: "daily",   priority: 0.8 },
+    { url: `${base}/today`,       lastModified: new Date(), changeFrequency: "hourly",  priority: 0.7 },
+    { url: `${base}/groups`,      lastModified: new Date(), changeFrequency: "weekly",  priority: 0.6 },
     ...(groups ?? []).map((g) => ({
       url: `${base}/group/${g.id}`,
       lastModified: new Date(g.created_at),

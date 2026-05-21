@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* ── アニメーション ── */
 @keyframes sort-in {
   from { opacity: 0; transform: translateY(-10px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0)     scale(1);    }
@@ -10,22 +11,25 @@
   to   { transform: translateX(-50%); }
 }
 
-/* マーキー外枠: 左右フェードマスク */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
+  70%  { box-shadow: 0 0 0 7px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.page-fade-up {
+  animation: fade-up 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── マーキー ── */
 .marquee-outer {
-  mask-image: linear-gradient(
-    to right,
-    transparent 0%,
-    black 6%,
-    black 94%,
-    transparent 100%
-  );
-  -webkit-mask-image: linear-gradient(
-    to right,
-    transparent 0%,
-    black 6%,
-    black 94%,
-    transparent 100%
-  );
+  mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
 }
 
 .marquee-track {
@@ -34,7 +38,6 @@
   animation-iteration-count: infinite;
 }
 
-/* ホバーで一時停止 */
 .marquee-outer:hover .marquee-track {
   animation-play-state: paused;
 }
@@ -43,50 +46,71 @@
   animation-direction: reverse;
 }
 
-/* カードホバー: 浮き上がり */
+/* ── カードホバー ── */
 .card-lift {
   transition:
-    transform 0.35s cubic-bezier(0.4, 0.4, 0, 1),
-    box-shadow 0.35s cubic-bezier(0.4, 0.4, 0, 1);
+    transform 0.32s cubic-bezier(0.34, 1.4, 0.64, 1),
+    box-shadow 0.32s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
 }
 .card-lift:hover {
-  transform: translateY(-6px) scale(1.03) rotate(-1.5deg);
+  transform: translateY(-7px) scale(1.03) rotate(-1deg);
   box-shadow:
-    0 20px 48px -8px rgba(109, 40, 217, 0.18),
-    0 8px 20px -4px rgba(0, 0, 0, 0.10);
+    0 24px 56px -8px rgba(109, 40, 217, 0.22),
+    0 8px 20px -4px rgba(0, 0, 0, 0.09);
   z-index: 10;
   position: relative;
 }
 
-/* 行型カード（回転なし） */
 .row-lift {
   transition:
-    transform 0.35s cubic-bezier(0.4, 0.4, 0, 1),
-    box-shadow 0.35s cubic-bezier(0.4, 0.4, 0, 1);
+    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .row-lift:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px -4px rgba(109, 40, 217, 0.14);
+  box-shadow: 0 8px 24px -4px rgba(109, 40, 217, 0.15);
   position: relative;
   z-index: 10;
 }
 
-/* サムネイルズーム（overflow-hidden 親の中で使う） */
+/* ── サムネイルズーム ── */
 .thumb-inner {
-  transition: transform 0.5s cubic-bezier(0.4, 0.4, 0, 1);
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
 }
 .card-lift:hover .thumb-inner,
 .row-lift:hover .thumb-inner {
-  transform: scale(1.12);
+  transform: scale(1.13);
 }
 
+/* ── LIVE パルスリング ── */
+.live-pulse-ring {
+  animation: pulse-ring 1.8s ease-out infinite;
+}
+
+/* ── グラデーションテキスト ── */
+.text-gradient {
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 60%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── スクロールバー ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(109, 40, 217, 0.18); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(109, 40, 217, 0.38); }
+
+/* ── アクセシビリティ ── */
 @media (prefers-reduced-motion: reduce) {
   .card-lift,
   .row-lift,
-  .thumb-inner {
+  .thumb-inner,
+  .page-fade-up {
     transition: none !important;
+    animation: none !important;
     will-change: auto !important;
   }
   .card-lift:hover,
@@ -103,26 +127,28 @@
   }
 }
 
+/* ── ベース ── */
 :root {
-  --background: #ffffff;
+  --background: #faf8ff;
   --foreground: #111827;
+  --accent: #7c3aed;
 }
 
 html {
   height: 100%;
-  background-color: #ffffff;
+  background-color: #faf8ff;
   overflow-x: hidden;
 }
 
 body {
   color: var(--foreground);
-  font-family: "Yu Gothic", "YuGothic", "游ゴシック", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: "Yu Gothic", "YuGothic", "游ゴシック", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
   min-height: 100dvh;
   margin: 0;
   overflow-x: hidden;
 }
 
-/* モバイル含む全環境で背景を画面全体に固定（iOS Safe Area 対応） */
+/* メッシュグラデーション背景 */
 body::before {
   content: "";
   position: fixed;
@@ -131,14 +157,9 @@ body::before {
   right: 0;
   bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
   z-index: -1;
-  background: linear-gradient(
-    135deg,
-    #faf8ff 0%,
-    #fff5fb 16%,
-    #fff8f8 32%,
-    #fffcf8 48%,
-    #fffef5 64%,
-    #f8fff9 80%,
-    #f5f8ff 100%
-  );
+  background:
+    radial-gradient(ellipse 70% 55% at 5% -5%,  rgba(139, 92, 246, 0.13) 0%, transparent 55%),
+    radial-gradient(ellipse 55% 45% at 95% 105%, rgba(236, 72, 153, 0.09) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 35% at 55% 55%,  rgba(99, 102, 241, 0.05) 0%, transparent 65%),
+    linear-gradient(160deg, #faf8ff 0%, #fdf4ff 35%, #fff8fb 65%, #f5f8ff 100%);
 }
