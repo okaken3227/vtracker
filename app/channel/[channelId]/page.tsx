@@ -4,8 +4,6 @@ import type { Channel, Video, ChannelStatsHistory, Group, Superchat } from "@/li
 import { fetchRatesToJPY } from "@/lib/exchange";
 import BackButton from "./BackButton";
 import ChannelPageContent, { type ChData } from "./ChannelPageContent";
-import BackgroundVideo from "@/app/components/BackgroundVideo";
-
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
@@ -173,16 +171,8 @@ export default async function ChannelPage({
   const linkedChannelId = mainData.channel.linked_channel_id;
   const linkedData = linkedChannelId ? await fetchChannelData(linkedChannelId) : null;
 
-  // ライブ優先・なければ直近動画を背景プールとして渡す（YouTubeのみ）
-  const ytVideos = mainData.videos.filter((v) => !v.platform || v.platform === "youtube");
-  const liveIds = ytVideos.filter((v) => v.status === "live").map((v) => v.video_id);
-  const bgVideoIds = liveIds.length > 0
-    ? liveIds
-    : ytVideos.filter((v) => v.status === "none").map((v) => v.video_id);
-
   return (
     <div>
-      {bgVideoIds.length > 0 && <BackgroundVideo videoIds={bgVideoIds} />}
       <BackButton />
       <ChannelPageContent
         mainData={mainData}

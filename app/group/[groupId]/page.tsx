@@ -7,7 +7,6 @@ import ChannelCard from "@/app/components/ChannelCard";
 import CombinedLiveGraph from "@/app/components/CombinedLiveGraph";
 import type { LineConfig } from "@/app/components/CombinedLiveGraph";
 import LiveBanner from "@/app/components/LiveBanner";
-import BackgroundVideo from "@/app/components/BackgroundVideo";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -191,14 +190,8 @@ export default async function GroupPage({ params }: { params: Promise<{ groupId:
   const websiteUrl = group.website_url ?? KNOWN_WEBSITES[group.name] ?? null;
   const accentColor = group.color ?? "#6b7280";
 
-  // グループ所属のライブ優先・なければ直近動画を背景プールとして渡す（YouTubeのみ）
-  const ytLiveIds = liveVideos.filter((v) => !v.platform || v.platform === "youtube").map((v) => v.video_id);
-  const ytRecentIds = videos.filter((v) => (!v.platform || v.platform === "youtube") && v.status === "none").map((v) => v.video_id);
-  const bgVideoIds = ytLiveIds.length > 0 ? ytLiveIds : ytRecentIds;
-
   return (
     <div>
-      {bgVideoIds.length > 0 && <BackgroundVideo videoIds={bgVideoIds} />}
       {/* パンくず */}
       <div className="mb-4 flex items-center gap-1.5 text-xs text-gray-400">
         <Link href="/" className="hover:text-violet-600 transition-colors">ホーム</Link>

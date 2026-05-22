@@ -1,17 +1,5 @@
 @import "tailwindcss";
 
-/* 背景動画フレーム */
-.bg-video-frame {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  height: 56.25vw;
-  min-height: 100%;
-  width: 100%;
-  min-width: 177.78vh;
-}
-
 /* ── アニメーション ── */
 @keyframes sort-in {
   from { opacity: 0; transform: translateY(-10px) scale(0.97); }
@@ -208,7 +196,7 @@ body {
   overflow-x: hidden;
 }
 
-/* メッシュグラデーション背景 */
+/* 虹色グラデーション背景 */
 body::before {
   content: "";
   position: fixed;
@@ -218,8 +206,16 @@ body::before {
   bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
   z-index: -1;
   background:
-    radial-gradient(ellipse 70% 55% at 5% -5%,  rgba(139, 92, 246, 0.13) 0%, transparent 55%),
-    radial-gradient(ellipse 55% 45% at 95% 105%, rgba(236, 72, 153, 0.09) 0%, transparent 55%),
-    radial-gradient(ellipse 45% 35% at 55% 55%,  rgba(99, 102, 241, 0.05) 0%, transparent 65%),
+    linear-gradient(
+      135deg,
+      rgba(255, 80,  80,  0.07) 0%,
+      rgba(255, 160, 60,  0.07) 14%,
+      rgba(255, 220, 60,  0.07) 28%,
+      rgba(60,  200, 100, 0.07) 42%,
+      rgba(60,  160, 255, 0.07) 57%,
+      rgba(100, 80,  240, 0.07) 71%,
+      rgba(200, 60,  220, 0.07) 85%,
+      rgba(255, 80,  140, 0.07) 100%
+    ),
     linear-gradient(160deg, #faf8ff 0%, #fdf4ff 35%, #fff8fb 65%, #f5f8ff 100%);
 }
