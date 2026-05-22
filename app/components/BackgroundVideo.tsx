@@ -44,7 +44,7 @@ export default function BackgroundVideo({ videoIds }: { videoIds: string[] }) {
             <iframe
               key={currentId}
               src={`https://www.youtube.com/embed/${currentId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${currentId}&modestbranding=1&rel=0&disablekb=1&fs=0&iv_load_policy=3`}
-              className="absolute left-1/2 top-1/4 h-[56.25vw] min-h-full w-full min-w-[177.78vh] -translate-x-1/2 -translate-y-1/2"
+              className="absolute left-1/2 top-1/2 h-[56.25vw] min-h-full w-full min-w-[177.78vh] -translate-x-1/2 -translate-y-1/2"
               style={{ opacity: 0.35 }}
               allow="autoplay; encrypted-media"
               frameBorder="0"
@@ -76,7 +76,7 @@ export default function BackgroundVideo({ videoIds }: { videoIds: string[] }) {
                 <svg className="h-2.5 w-2.5 shrink-0" viewBox="0 0 16 16" fill="currentColor">
                   <polygon points="3 2 13 8 3 14 3 2" />
                 </svg>
-                背景動画
+                再表示
               </>
             )}
           </button>
