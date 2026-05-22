@@ -131,11 +131,9 @@ export default function CompareClient({
   const [videoOffsets, setVideoOffsets] = useState<Record<string, number>>({});
   const [recentMeta, setRecentMeta] = useState<RecentMeta[]>([]);
   const [selectedMeta, setSelectedMeta] = useState<RecentMeta | null>(null);
-  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
 
-  function handleSelectMeta(m: RecentMeta, rect: DOMRect) {
+  function handleSelectMeta(m: RecentMeta) {
     setSelectedMeta(m);
-    setAnchorRect(rect);
   }
 
   // Auto-select on metric / viewersMode change
@@ -562,8 +560,7 @@ export default function CompareClient({
         <MetaDialog
           meta={selectedMeta}
           channel={channelMap.get(selectedMeta.channelId)}
-          anchorRect={anchorRect}
-          onClose={() => { setSelectedMeta(null); setAnchorRect(null); }}
+          onClose={() => setSelectedMeta(null)}
         />
       )}
     </div>
@@ -574,12 +571,10 @@ function MetaDialog({
   meta,
   channel,
   onClose,
-  anchorRect,
 }: {
   meta: RecentMeta;
   channel: Channel | undefined;
   onClose: () => void;
-  anchorRect: DOMRect | null;
 }) {
   const isTwitch = channel?.platform === "twitch";
   const videoUrl = isTwitch
@@ -592,29 +587,14 @@ function MetaDialog({
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  const DIALOG_W = 304;
-  const GAP = 6;
-  const posStyle: React.CSSProperties = (() => {
-    if (!anchorRect || typeof window === "undefined") return { top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
-    const vh = window.innerHeight;
-    const vw = window.innerWidth;
-    const showBelow = anchorRect.top < vh / 2;
-    let left = anchorRect.right - DIALOG_W;
-    if (left < 8) left = 8;
-    if (left + DIALOG_W > vw - 8) left = vw - 8 - DIALOG_W;
-    return showBelow
-      ? { top: anchorRect.bottom + GAP, left }
-      : { bottom: vh - anchorRect.top + GAP, left };
-  })();
-
   return (
     <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div
-        className="fixed z-50 w-76 rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-black/5"
-        style={{ width: DIALOG_W, ...posStyle }}
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+        <div
+          className="relative w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
           <button
             onClick={onClose}
             className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 transition-colors text-sm"
@@ -663,6 +643,7 @@ function MetaDialog({
             </a>
           </div>
         </div>
+      </div>
     </>
   );
 }
@@ -682,7 +663,7 @@ function ViewersChart({
   channelMap: Map<string, Channel>;
   isPastMode: boolean;
   recentMeta: RecentMeta[];
-  onSelectMeta?: (meta: RecentMeta, rect: DOMRect) => void;
+  onSelectMeta?: (meta: RecentMeta) => void;
 }) {
   if (data.length === 0) {
     return (
@@ -762,7 +743,7 @@ function ViewersChart({
               return (
                 <button
                   key={m.channelId}
-                  onClick={(e) => onSelectMeta?.(m, e.currentTarget.getBoundingClientRect())}
+                  onClick={() => onSelectMeta?.(m)}
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-left transition-colors hover:bg-violet-50/60"
                 >
                   <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: color }} />
