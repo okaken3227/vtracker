@@ -13,7 +13,7 @@ export default function BackgroundVideo({ videoId }: { videoId: string }) {
       <iframe
         src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&modestbranding=1&rel=0&disablekb=1&fs=0&iv_load_policy=3`}
         className="absolute left-1/2 top-1/3 h-[56.25vw] min-h-full w-full min-w-[177.78vh] -translate-x-1/2 -translate-y-1/2"
-        style={{ opacity: 0.18 }}
+        style={{ opacity: 0.26 }}
         allow="autoplay; encrypted-media"
         frameBorder="0"
       />
