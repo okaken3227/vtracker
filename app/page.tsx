@@ -7,21 +7,20 @@ import HomeContent from "./components/HomeContent";
 
 export const dynamic = "force-dynamic";
 
-const fetchCachedChannelsGroupsVideos = unstable_cache(
+// チャンネル・グループはキャッシュ可（ライブ状態に関係ない）
+const fetchCachedChannelsGroups = unstable_cache(
   async () => {
-    const [chRes, grRes, vRes] = await Promise.all([
+    const [chRes, grRes] = await Promise.all([
       supabase.from("channels").select("*").order("subscriber_count", { ascending: false }),
       supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
-      supabase.from("videos").select("*").order("start_time", { ascending: false }).limit(300),
     ]);
     return {
       channels: (chRes.data ?? []) as Channel[],
       groups: (grRes.data ?? []) as Group[],
-      videos: (vRes.data ?? []) as Video[],
     };
   },
-  ["home-static-data"],
-  { revalidate: 60 },
+  ["home-channels-groups"],
+  { revalidate: 120 },
 );
 
 export const metadata: Metadata = {
@@ -42,8 +41,10 @@ async function fetchData() {
   const todayIso = new Date(effectiveFromMs).toISOString();
   const since90mIso = new Date(Date.now() - 90 * 60 * 1000).toISOString();
   try {
-    const [{ channels, groups, videos }, scRes, gpRes, lpRes] = await Promise.all([
-      fetchCachedChannelsGroupsVideos(),
+    const [{ channels, groups }, vRes, scRes, gpRes, lpRes] = await Promise.all([
+      fetchCachedChannelsGroups(),
+      // videosはライブ状態を即時反映するためキャッシュしない
+      supabase.from("videos").select("*").order("start_time", { ascending: false }).limit(500),
       supabase.from("superchats").select("video_id, amount, amount_jpy, currency").gte("published_at", todayIso).limit(2000),
       supabase
         .from("live_graph_points")
@@ -61,8 +62,8 @@ async function fetchData() {
 
     return {
       channels,
-      videos,
       groups,
+      videos: (vRes.data ?? []) as Video[],
       superchats: (scRes.data ?? []) as SCRow[],
       todayPoints: (gpRes.data ?? []) as GraphPoint[],
       livePoints: (lpRes.data ?? []) as GraphPoint[],

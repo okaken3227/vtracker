@@ -164,11 +164,17 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
     .filter((v) => v.status === "live")
     .filter((v) => !selectedGroup || filteredChannelIds.has(v.channel_id));
 
-  // 今日のサマリー
+  // 今日のサマリー（グラフポイントがある配信 + 現在ライブ中を合算）
   const todayVideoIds = [...new Set(todayPoints.map((p) => p.video_id))];
-  const todayVideos = todayVideoIds
+  const todayVideosFromPoints = todayVideoIds
     .map((id) => videoMap.get(id))
     .filter((v): v is Video => v != null);
+  const todayVideoIdSet = new Set(todayVideoIds);
+  // ライブ中でまだグラフポイントがないものを追加
+  const todayVideos = [
+    ...todayVideosFromPoints,
+    ...liveVideos.filter((v) => !todayVideoIdSet.has(v.video_id)),
+  ];
 
   const scRanking = todayVideos
     .map((v) => ({ video: v, channel: channelMap.get(v.channel_id), sc: scByVideo[v.video_id] ?? 0 }))
