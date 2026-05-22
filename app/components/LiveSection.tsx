@@ -62,10 +62,13 @@ export default function LiveSection({
     setShowConfirm(false);
     // TODO: 広告処理をここに追加
     setRefreshState("loading");
-    await revalidateHomeLiveData();
+    await Promise.all([
+      revalidateHomeLiveData(),
+      new Promise((r) => setTimeout(r, 1800)),
+    ]);
     router.refresh();
     setRefreshState("done");
-    setTimeout(() => setRefreshState("idle"), 3000);
+    setTimeout(() => setRefreshState("idle"), 2500);
   }
 
   const groupEntries = Array.from(
@@ -126,6 +129,20 @@ export default function LiveSection({
             </svg>
           </button>
         </div>
+
+        {/* プログレスバー */}
+        {refreshState !== "idle" && (
+          <div className="mt-1.5 h-0.5 w-full overflow-hidden rounded-full bg-violet-100">
+            {refreshState === "loading" ? (
+              <div
+                className="h-full w-1/3 rounded-full bg-violet-400"
+                style={{ animation: "progress-slide 1.1s ease-in-out infinite" }}
+              />
+            ) : (
+              <div className="h-full w-full rounded-full bg-green-400 transition-all duration-300" />
+            )}
+          </div>
+        )}
 
         {/* 2行目: ソート + 更新（開いているときのみ） */}
         {isOpen && (
