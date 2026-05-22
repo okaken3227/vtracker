@@ -55,10 +55,11 @@ export default function LiveSection({
   const [animRev, setAnimRev] = useState(0);
   const [refreshState, setRefreshState] = useState<"idle" | "loading" | "done">("idle");
   const [isOpen, setIsOpen] = useState(true);
+  const [showConfirm, setShowConfirm] = useState(false);
   const router = useRouter();
 
-  async function handleRefresh() {
-    if (refreshState !== "idle") return;
+  async function handleRefreshConfirm() {
+    setShowConfirm(false);
     // TODO: 広告処理をここに追加
     setRefreshState("loading");
     await revalidateHomeLiveData();
@@ -152,7 +153,7 @@ export default function LiveSection({
               </button>
             </div>
             <button
-              onClick={handleRefresh}
+              onClick={() => { if (refreshState === "idle") setShowConfirm(true); }}
               disabled={refreshState === "loading"}
               className={`ml-auto flex shrink-0 items-center justify-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
                 refreshState === "done"
@@ -278,7 +279,29 @@ export default function LiveSection({
         />
       </div>
 
-
+      {showConfirm && (
+        <div className="fixed inset-0 z-[500] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowConfirm(false)} />
+          <div className="relative z-[501] w-72 rounded-2xl bg-white p-5 shadow-xl">
+            <p className="text-sm font-semibold text-gray-900">最新のデータを取ってきますか？</p>
+            <p className="mt-1 text-xs text-gray-500">グラフが最新の情報に更新されます。</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="rounded-full px-4 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-100"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleRefreshConfirm}
+                className="rounded-full bg-violet-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-violet-700"
+              >
+                更新する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
