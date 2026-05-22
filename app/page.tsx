@@ -113,9 +113,10 @@ export default async function Home() {
   const scByVideo = scTotalByVideo(superchats);
   const scByChannel = scTotalByChannel(videos, scByVideo);
 
-  // ライブ中のYouTube動画からランダムに1本選んで背景に流す
-  const liveYt = videos.filter((v) => v.status === "live" && (!v.platform || v.platform === "youtube"));
-  const bgVideoId = liveYt.length > 0 ? liveYt[Math.floor(Math.random() * liveYt.length)].video_id : null;
+  // ライブ中のYouTube動画を背景プールとして渡す
+  const bgVideoIds = videos
+    .filter((v) => v.status === "live" && (!v.platform || v.platform === "youtube"))
+    .map((v) => v.video_id);
 
   return (
     <HomeContent
@@ -127,7 +128,7 @@ export default async function Home() {
       todayPoints={todayPoints}
       livePoints={livePoints}
       error={error}
-      bgVideoId={bgVideoId}
+      bgVideoIds={bgVideoIds}
     />
   );
 }

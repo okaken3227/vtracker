@@ -49,7 +49,7 @@ export type HomeData = {
   todayPoints: GraphPoint[];
   livePoints: GraphPoint[];
   error: string | null;
-  bgVideoId: string | null;
+  bgVideoIds: string[];
 };
 
 function buildCombinedGraph(
@@ -115,7 +115,7 @@ type PreviewVideo = {
 };
 
 
-export default function HomeContent({ channels, videos, scByVideo, scByChannel, groups, todayPoints, livePoints, error, bgVideoId }: HomeData) {
+export default function HomeContent({ channels, videos, scByVideo, scByChannel, groups, todayPoints, livePoints, error, bgVideoIds }: HomeData) {
   const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
   const [preview, setPreview] = useState<PreviewVideo | null>(null);
   const channelListRef = useRef<HTMLElement>(null);
@@ -274,7 +274,7 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
 
   return (
     <div>
-      {bgVideoId && <BackgroundVideo videoId={bgVideoId} />}
+      {bgVideoIds.length > 0 && <BackgroundVideo videoIds={bgVideoIds} />}
       {liveVideos.length > 0 && <AutoRefresher intervalMs={60000} />}
       {error && (
           <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">

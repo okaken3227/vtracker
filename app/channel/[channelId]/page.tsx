@@ -173,15 +173,16 @@ export default async function ChannelPage({
   const linkedChannelId = mainData.channel.linked_channel_id;
   const linkedData = linkedChannelId ? await fetchChannelData(linkedChannelId) : null;
 
-  // ライブ優先・なければ直近動画からランダムに1本選んで背景に流す（YouTubeのみ）
+  // ライブ優先・なければ直近動画を背景プールとして渡す（YouTubeのみ）
   const ytVideos = mainData.videos.filter((v) => !v.platform || v.platform === "youtube");
-  const liveVid = ytVideos.find((v) => v.status === "live");
-  const bgPool = liveVid ? [liveVid] : ytVideos.filter((v) => v.status === "none");
-  const bgVideoId = bgPool.length > 0 ? bgPool[Math.floor(Math.random() * bgPool.length)].video_id : null;
+  const liveIds = ytVideos.filter((v) => v.status === "live").map((v) => v.video_id);
+  const bgVideoIds = liveIds.length > 0
+    ? liveIds
+    : ytVideos.filter((v) => v.status === "none").map((v) => v.video_id);
 
   return (
     <div>
-      {bgVideoId && <BackgroundVideo videoId={bgVideoId} />}
+      {bgVideoIds.length > 0 && <BackgroundVideo videoIds={bgVideoIds} />}
       <BackButton />
       <ChannelPageContent
         mainData={mainData}
