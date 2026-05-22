@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Channel, Video, Group } from "@/lib/types";
@@ -594,15 +595,15 @@ function VideoPreviewDialog({ video, onClose }: { video: PreviewVideo; onClose: 
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  return (
+  return createPortal(
     <>
       {/* バックドロップ */}
       <div
-        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-[500] bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
       {/* ダイアログ本体 */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="fixed inset-0 z-[501] flex items-center justify-center p-4" onClick={onClose}>
         <div className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
           {/* 閉じるボタン */}
           <button
@@ -671,7 +672,8 @@ function VideoPreviewDialog({ video, onClose }: { video: PreviewVideo; onClose: 
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 
