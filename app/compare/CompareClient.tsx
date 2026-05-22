@@ -421,6 +421,13 @@ export default function CompareClient({
                       · {formatDate(meta.startTime)}
                     </span>
                   )}
+                  <button
+                    onClick={() => prevStream(channelId)}
+                    className="flex-shrink-0 text-[10px] text-gray-400 hover:text-violet-500 transition-colors px-0.5"
+                    title="前回の配信へ"
+                  >
+                    ◀
+                  </button>
                   {offset > 0 && (
                     <button
                       onClick={() => nextStream(channelId)}
@@ -430,13 +437,6 @@ export default function CompareClient({
                       ▶
                     </button>
                   )}
-                  <button
-                    onClick={() => prevStream(channelId)}
-                    className="flex-shrink-0 text-[10px] text-gray-400 hover:text-violet-500 transition-colors px-0.5"
-                    title="前回の配信へ"
-                  >
-                    ◀
-                  </button>
                 </>
               )}
 
