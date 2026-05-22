@@ -56,6 +56,7 @@ export default function LiveSection({
   const [refreshState, setRefreshState] = useState<"idle" | "loading" | "done">("idle");
   const [isOpen, setIsOpen] = useState(true);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [graphKey, setGraphKey] = useState(0);
   const router = useRouter();
 
   async function handleRefreshConfirm() {
@@ -67,6 +68,7 @@ export default function LiveSection({
       new Promise((r) => setTimeout(r, 1800)),
     ]);
     router.refresh();
+    setGraphKey((k) => k + 1);
     setRefreshState("done");
     setTimeout(() => setRefreshState("idle"), 2500);
   }
@@ -129,20 +131,6 @@ export default function LiveSection({
             </svg>
           </button>
         </div>
-
-        {/* プログレスバー */}
-        {refreshState !== "idle" && (
-          <div className="mt-1.5 h-0.5 w-full overflow-hidden rounded-full bg-violet-100">
-            {refreshState === "loading" ? (
-              <div
-                className="h-full w-1/3 rounded-full bg-violet-400"
-                style={{ animation: "progress-slide 1.1s ease-in-out infinite" }}
-              />
-            ) : (
-              <div className="h-full w-full rounded-full bg-green-400 transition-all duration-300" />
-            )}
-          </div>
-        )}
 
         {/* 2行目: ソート + 更新（開いているときのみ） */}
         {isOpen && (
@@ -290,10 +278,24 @@ export default function LiveSection({
 
       {/* ── 右カラム: グラフ ── */}
       <div className="min-w-0 flex-1">
-        <CombinedLiveGraph
-          data={graphData}
-          lines={sortedLines}
-        />
+        {/* プログレスバー */}
+        <div className={`mb-1.5 h-0.5 w-full overflow-hidden rounded-full transition-colors duration-300 ${refreshState !== "idle" ? "bg-violet-100" : "bg-transparent"}`}>
+          {refreshState === "loading" && (
+            <div
+              className="h-full w-1/3 rounded-full bg-violet-400"
+              style={{ animation: "progress-slide 1.1s ease-in-out infinite" }}
+            />
+          )}
+          {refreshState === "done" && (
+            <div className="h-full w-full rounded-full bg-green-400 transition-all duration-300" />
+          )}
+        </div>
+        <div key={graphKey} style={{ animation: graphKey > 0 ? "fade-up 0.4s cubic-bezier(0.22,1,0.36,1) both" : undefined }}>
+          <CombinedLiveGraph
+            data={graphData}
+            lines={sortedLines}
+          />
+        </div>
       </div>
 
       {showConfirm && (
