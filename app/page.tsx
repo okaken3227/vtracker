@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 const fetchCachedChannelsGroups = unstable_cache(
   async () => {
     const [chRes, grRes] = await Promise.all([
-      supabase.from("channels").select("*").order("subscriber_count", { ascending: false }),
+      supabase.from("channels").select("channel_id, name, icon_url, custom_url, subscriber_count, group_id, platform, linked_channel_id, color").order("subscriber_count", { ascending: false }),
       supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
     ]);
     return {
@@ -43,7 +43,7 @@ const fetchCachedLiveData = unstable_cache(
         .select("video_id, concurrent_viewers, recorded_at")
         .gte("recorded_at", since90mIso)
         .order("recorded_at", { ascending: true })
-        .limit(30000),
+        .limit(5000),
       supabase
         .from("superchats")
         .select("video_id, amount, amount_jpy, currency")
@@ -75,7 +75,7 @@ async function fetchData() {
     const [{ channels, groups }, vRes, { todayPoints, livePoints, superchats }] = await Promise.all([
       fetchCachedChannelsGroups(),
       // videosはライブ状態を即時反映するためキャッシュしない
-      supabase.from("videos").select("*").order("start_time", { ascending: false }).limit(500),
+      supabase.from("videos").select("video_id, channel_id, title, thumbnail_url, start_time, status, platform").order("start_time", { ascending: false }).limit(300),
       fetchCachedLiveData(),
     ]);
 

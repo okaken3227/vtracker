@@ -1,10 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import type { LineConfig } from "./CombinedLiveGraph";
-import CombinedLiveGraph from "./CombinedLiveGraph";
 import ChannelAvatar from "./ChannelAvatar";
+
+const CombinedLiveGraph = dynamic(() => import("./CombinedLiveGraph"), {
+  ssr: false,
+  loading: () => <div className="flex h-48 items-center justify-center text-sm text-gray-300">グラフ読み込み中…</div>,
+});
 import LiveTimer from "./LiveTimer";
 import PlatformIcon from "./PlatformIcon";
 
