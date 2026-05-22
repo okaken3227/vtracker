@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import type { LineConfig } from "./CombinedLiveGraph";
 import ChannelAvatar from "./ChannelAvatar";
+import { revalidateHomeLiveData } from "@/app/actions";
 
 const CombinedLiveGraph = dynamic(() => import("./CombinedLiveGraph"), {
   ssr: false,
@@ -59,7 +60,10 @@ export default function LiveSection({
   async function handleRefresh() {
     if (refreshState === "loading") return;
     setRefreshState("loading");
-    await fetch("/api/poll/live", { method: "POST" }).catch(() => {});
+    await Promise.all([
+      fetch("/api/poll/live", { method: "POST" }).catch(() => {}),
+      revalidateHomeLiveData(),
+    ]);
     router.refresh();
     setRefreshState("done");
     setTimeout(() => setRefreshState("idle"), 2500);

@@ -140,7 +140,7 @@ export default function CompareClient({
       if (viewersMode === "live") {
         defaults = liveChannelIds.slice(0, AUTO_LIVE_LIMIT);
       } else {
-        defaults = top5BySubs;
+        defaults = liveChannelIds.length > 0 ? liveChannelIds.slice(0, AUTO_LIVE_LIMIT) : top5BySubs;
       }
     } else if (metric === "sc") {
       defaults = defaultScChannelIds.length > 0 ? defaultScChannelIds : top5BySubs;
@@ -421,22 +421,22 @@ export default function CompareClient({
                       · {formatDate(meta.startTime)}
                     </span>
                   )}
-                  <button
-                    onClick={() => prevStream(channelId)}
-                    className="flex-shrink-0 text-[10px] text-gray-400 hover:text-violet-500 transition-colors px-0.5"
-                    title="前回の配信へ"
-                  >
-                    ▶
-                  </button>
                   {offset > 0 && (
                     <button
                       onClick={() => nextStream(channelId)}
                       className="flex-shrink-0 text-[10px] text-gray-400 hover:text-violet-500 transition-colors px-0.5"
                       title="新しい配信へ"
                     >
-                      ◀
+                      ▶
                     </button>
                   )}
+                  <button
+                    onClick={() => prevStream(channelId)}
+                    className="flex-shrink-0 text-[10px] text-gray-400 hover:text-violet-500 transition-colors px-0.5"
+                    title="前回の配信へ"
+                  >
+                    ◀
+                  </button>
                 </>
               )}
 

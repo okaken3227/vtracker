@@ -192,7 +192,17 @@ export default function CombinedLiveGraph({
     });
   }
 
-  if (data.length < 2 || lines.length === 0) return null;
+  if (lines.length === 0) return null;
+  if (data.length < 2) {
+    return (
+      <div className="flex h-48 items-center justify-center rounded-xl border border-gray-200 bg-white text-sm text-gray-400">
+        <div className="flex flex-col items-center gap-2">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-red-400" />
+          グラフデータを収集中...
+        </div>
+      </div>
+    );
+  }
 
   const visibleLines = lines.filter((l) => !hiddenKeys.has(l.key));
   const { currentTotal, peakTotal, currentByKey } = computeStats(data, visibleLines);
