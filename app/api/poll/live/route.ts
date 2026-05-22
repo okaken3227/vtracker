@@ -26,6 +26,24 @@ export async function POST(req: NextRequest) {
   } catch {
     // body なしでも OK
   }
+
+  // 全体ポーリング時: 1分以内のデータがあれば API を叩かずにスキップ
+  if (!videoId) {
+    const { data: latest } = await supabase
+      .from("live_graph_points")
+      .select("recorded_at")
+      .order("recorded_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (latest) {
+      const ageMs = Date.now() - new Date(latest.recorded_at).getTime();
+      if (ageMs < 60 * 1000) {
+        return NextResponse.json({ fresh: true, latestAt: latest.recorded_at, updated: 0 });
+      }
+    }
+  }
+
   return pollLive(videoId);
 }
 
