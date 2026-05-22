@@ -36,7 +36,10 @@ type GraphPoint = { video_id: string; concurrent_viewers: number; recorded_at: s
 
 async function fetchData() {
   const jstMidnightMs = getJstMidnightMs();
-  const todayIso = new Date(jstMidnightMs).toISOString();
+  const since3hMs = Date.now() - 3 * 60 * 60 * 1000;
+  // 今日の開始か3時間前の、いずれか早い方（深夜帯でも最低3時間分を確保）
+  const effectiveFromMs = Math.min(jstMidnightMs, since3hMs);
+  const todayIso = new Date(effectiveFromMs).toISOString();
   const since90mIso = new Date(Date.now() - 90 * 60 * 1000).toISOString();
   try {
     const [{ channels, groups, videos }, scRes, gpRes, lpRes] = await Promise.all([

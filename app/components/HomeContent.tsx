@@ -295,7 +295,7 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
 
           {todayVideos.length === 0 && liveVideos.length === 0 && (
             <div className="mt-4 rounded-xl border border-dashed border-violet-100 bg-violet-50/30 p-8 text-center text-sm text-gray-400">
-              今日の配信データはまだありません
+              直近の配信データがありません
             </div>
           )}
         </section>
@@ -429,35 +429,33 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
       <div className="mb-8 grid grid-cols-2 gap-3">
         <Link
           href="/ranking"
-          className="group card-lift relative flex items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 p-4 shadow-[0_4px_20px_-4px_rgba(109,40,217,0.5)]"
+          className="group flex items-center gap-3 rounded-2xl border border-violet-100/80 bg-white/80 p-4 shadow-sm backdrop-blur-sm transition-all hover:border-violet-200 hover:shadow-md"
         >
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.18)_0%,_transparent_60%)]" />
-          <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-transform group-hover:scale-110">
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-500 transition-colors group-hover:bg-violet-100">
+            <svg className="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
               <polyline points="17 6 23 6 23 12" />
             </svg>
           </span>
           <div>
-            <p className="text-sm font-bold text-white">ランキング</p>
-            <p className="text-xs text-violet-200">同接・スパチャ・登録者</p>
+            <p className="text-sm font-semibold text-gray-800 transition-colors group-hover:text-violet-700">ランキング</p>
+            <p className="text-xs text-gray-400">同接・スパチャ・登録者</p>
           </div>
         </Link>
         <Link
           href="/compare"
-          className="group card-lift relative flex items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 p-4 shadow-[0_4px_20px_-4px_rgba(236,72,153,0.45)]"
+          className="group flex items-center gap-3 rounded-2xl border border-violet-100/80 bg-white/80 p-4 shadow-sm backdrop-blur-sm transition-all hover:border-violet-200 hover:shadow-md"
         >
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.18)_0%,_transparent_60%)]" />
-          <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-transform group-hover:scale-110">
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-500 transition-colors group-hover:bg-violet-100">
+            <svg className="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
               <rect x="2" y="3" width="6" height="18" rx="1" />
               <rect x="9" y="8" width="6" height="13" rx="1" />
               <rect x="16" y="5" width="6" height="16" rx="1" />
             </svg>
           </span>
           <div>
-            <p className="text-sm font-bold text-white">比較</p>
-            <p className="text-xs text-pink-200">チャンネルを並べて分析</p>
+            <p className="text-sm font-semibold text-gray-800 transition-colors group-hover:text-violet-700">比較</p>
+            <p className="text-xs text-gray-400">チャンネルを並べて分析</p>
           </div>
         </Link>
       </div>

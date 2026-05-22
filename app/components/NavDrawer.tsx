@@ -95,7 +95,7 @@ export default function NavDrawer() {
     <>
       {/* オーバーレイ */}
       <div
-        className={`fixed inset-0 z-[998] bg-black/20 backdrop-blur-[2px] transition-opacity duration-300 ${
+        className={`fixed inset-0 z-[998] bg-black/30 backdrop-blur-[3px] transition-opacity duration-300 ${
           open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={() => setOpen(false)}
@@ -103,17 +103,19 @@ export default function NavDrawer() {
 
       {/* ドロワーパネル（右からスライドイン） */}
       <div
-        className={`fixed right-0 top-0 z-[999] flex h-screen w-full lg:w-72 flex-col bg-white shadow-2xl ring-1 ring-gray-100/80 transition-transform duration-300 ease-in-out ${
+        className={`fixed right-0 top-0 z-[999] flex h-screen w-72 flex-col bg-white/85 backdrop-blur-2xl shadow-[−8px_0_40px_-8px_rgba(109,40,217,0.18)] transition-transform duration-300 ease-in-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <Link href="/" className="text-lg font-bold tracking-tight text-gray-900">
-            v<span className="text-violet-600">tracker</span>
+        {/* ヘッダー */}
+        <div className="relative flex items-center justify-between px-5 py-4">
+          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-violet-400/50 via-purple-300/25 to-pink-400/40" />
+          <Link href="/" className="text-lg font-bold tracking-tight">
+            <span className="text-gradient">v</span><span className="text-gray-800">tracker</span>
           </Link>
           <button
             onClick={() => setOpen(false)}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-gray-100/80 text-gray-500 transition-colors hover:bg-violet-50 hover:text-violet-600"
             aria-label="閉じる"
           >
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -123,7 +125,7 @@ export default function NavDrawer() {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 overflow-y-auto px-3 py-3">
           {/* メインナビ */}
           <div className="space-y-0.5">
             {NAV.map((item) => {
@@ -132,15 +134,17 @@ export default function NavDrawer() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`group flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-150 ${
-                    active ? "bg-violet-50 text-violet-700" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                  className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                    active
+                      ? "bg-gradient-to-r from-violet-500/12 to-purple-400/8 text-violet-700 shadow-[inset_0_0_0_1px_rgba(124,58,237,0.2),0_2px_8px_-2px_rgba(124,58,237,0.12)]"
+                      : "text-gray-500 hover:bg-white/70 hover:text-gray-800"
                   }`}
                 >
-                  <span className={`flex-shrink-0 transition-colors ${active ? "text-violet-500" : "text-gray-400 group-hover:text-gray-600"}`}>
+                  <span className={`flex-shrink-0 transition-colors ${active ? "text-violet-600" : "text-gray-400 group-hover:text-gray-600"}`}>
                     {item.icon}
                   </span>
-                  {item.label}
-                  {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-violet-500" />}
+                  <span className="flex-1">{item.label}</span>
+                  {active && <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />}
                 </Link>
               );
             })}
@@ -149,7 +153,7 @@ export default function NavDrawer() {
           {/* 管理サブナビ（/admin/* のときだけ表示） */}
           {pathname.startsWith("/admin") && (
             <div className="mt-5">
-              <p className="mb-1.5 px-4 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
                 管理メニュー
               </p>
               <div className="space-y-0.5">
@@ -180,15 +184,17 @@ export default function NavDrawer() {
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`group flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-150 ${
-                        active ? "bg-violet-50 text-violet-700" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                      className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                        active
+                          ? "bg-gradient-to-r from-violet-500/12 to-purple-400/8 text-violet-700 shadow-[inset_0_0_0_1px_rgba(124,58,237,0.2)]"
+                          : "text-gray-500 hover:bg-white/70 hover:text-gray-800"
                       }`}
                     >
-                      <span className={`flex-shrink-0 transition-colors ${active ? "text-violet-500" : "text-gray-400 group-hover:text-gray-600"}`}>
+                      <span className={`flex-shrink-0 transition-colors ${active ? "text-violet-600" : "text-gray-400 group-hover:text-gray-600"}`}>
                         {item.icon}
                       </span>
-                      {item.label}
-                      {item.badge ?? (active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-violet-500" />)}
+                      <span className="flex-1">{item.label}</span>
+                      {item.badge ?? (active && <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />)}
                     </Link>
                   );
                 })}
@@ -199,7 +205,7 @@ export default function NavDrawer() {
           {/* グループセクション */}
           {groups.length > 0 && (
             <div className="mt-5">
-              <p className="mb-1.5 px-4 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
                 グループ
               </p>
               <div className="space-y-0.5">
@@ -224,13 +230,14 @@ export default function NavDrawer() {
 
                   return (
                     <div key={g.id}>
-                      {/* 親グループ行: リンク + 子がある場合は右端にシェブロンボタン */}
                       <div className={`flex items-center rounded-xl transition-all duration-150 ${
-                        active || anyChildActive ? "bg-violet-50" : "hover:bg-gray-50"
+                        active || anyChildActive
+                          ? "bg-gradient-to-r from-violet-500/12 to-purple-400/8 shadow-[inset_0_0_0_1px_rgba(124,58,237,0.15)]"
+                          : "hover:bg-white/70"
                       }`}>
                         <Link
                           href={`/group/${g.id}`}
-                          className={`flex flex-1 items-center gap-3 px-4 py-2 text-sm font-medium transition-colors ${
+                          className={`flex flex-1 items-center gap-3 px-3 py-2 text-sm font-medium transition-colors ${
                             active || anyChildActive ? "text-violet-700" : "text-gray-500 hover:text-gray-800"
                           }`}
                         >
@@ -248,9 +255,8 @@ export default function NavDrawer() {
                         )}
                       </div>
 
-                      {/* 子グループ */}
                       {hasChildren && isExpanded && (
-                        <div className="ml-4 mt-0.5 space-y-0.5 border-l-2 border-gray-100 pl-3">
+                        <div className="ml-4 mt-0.5 space-y-0.5 border-l-2 border-violet-100/60 pl-3">
                           {children.map((child) => {
                             const childActive = pathname === `/group/${child.id}`;
                             return (
@@ -258,7 +264,9 @@ export default function NavDrawer() {
                                 key={child.id}
                                 href={`/group/${child.id}`}
                                 className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                                  childActive ? "bg-violet-50 text-violet-700" : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                                  childActive
+                                    ? "bg-gradient-to-r from-violet-500/12 to-purple-400/8 text-violet-700"
+                                    : "text-gray-500 hover:bg-white/70 hover:text-gray-800"
                                 }`}
                               >
                                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: child.color }} />
@@ -277,9 +285,10 @@ export default function NavDrawer() {
           )}
         </nav>
 
-        <div className="border-t border-gray-100 px-5 py-3 flex items-center justify-between">
+        <div className="relative px-5 py-3 flex items-center justify-between">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-violet-400/30 via-purple-300/15 to-pink-400/25" />
           <p className="text-[11px] text-gray-300">vtracker</p>
-          <Link href="/terms" className="text-[11px] text-gray-400 hover:text-gray-600 transition-colors">
+          <Link href="/terms" className="text-[11px] text-gray-400 hover:text-violet-600 transition-colors">
             利用規約
           </Link>
         </div>
@@ -289,7 +298,7 @@ export default function NavDrawer() {
 
   return (
     <>
-      {/* ハンバーガーボタン（header 内に残す） */}
+      {/* ハンバーガーボタン */}
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? "メニューを閉じる" : "メニューを開く"}
@@ -304,7 +313,6 @@ export default function NavDrawer() {
         </div>
       </button>
 
-      {/* オーバーレイ＋パネルは document.body 直下にポータル */}
       {mounted && createPortal(drawer, document.body)}
     </>
   );
