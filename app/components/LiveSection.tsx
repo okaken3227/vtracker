@@ -277,19 +277,19 @@ export default function LiveSection({
       </div>
 
       {/* ── 右カラム: グラフ ── */}
-      <div className="min-w-0 flex-1">
-        {/* プログレスバー */}
-        <div className={`mb-1.5 h-0.5 w-full overflow-hidden rounded-full transition-colors duration-300 ${refreshState !== "idle" ? "bg-violet-100" : "bg-transparent"}`}>
-          {refreshState === "loading" && (
-            <div
-              className="h-full w-1/3 rounded-full bg-violet-400"
-              style={{ animation: "progress-slide 1.1s ease-in-out infinite" }}
-            />
-          )}
-          {refreshState === "done" && (
-            <div className="h-full w-full rounded-full bg-green-400 transition-all duration-300" />
-          )}
-        </div>
+      <div className="relative min-w-0 flex-1">
+        {/* ローディングオーバーレイ */}
+        {refreshState === "loading" && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-xl bg-white/70 backdrop-blur-[2px]">
+            <div className="h-full w-full overflow-hidden rounded-xl">
+              <div
+                className="h-full w-1/2 bg-gradient-to-r from-transparent via-violet-200/60 to-transparent"
+                style={{ animation: "progress-slide 1.2s ease-in-out infinite" }}
+              />
+            </div>
+            <span className="absolute text-xs font-medium text-violet-500">データを取得中...</span>
+          </div>
+        )}
         <div key={graphKey} style={{ animation: graphKey > 0 ? "fade-up 0.4s cubic-bezier(0.22,1,0.36,1) both" : undefined }}>
           <CombinedLiveGraph
             data={graphData}
