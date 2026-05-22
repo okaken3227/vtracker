@@ -20,28 +20,10 @@ export default function GroupTabs({ groups, selected, onSelect }: Props) {
     router.push(groupId ? `/?group=${groupId}` : "/");
   }
 
-  // 親グループ順 → 直後にそのサブグループ の階層順にソート
-  function sortHierarchically(gs: Group[]): Group[] {
-    const topLevel = gs
-      .filter((g) => !g.parent_group_id)
-      .sort((a, b) => (a.sort_order ?? 99999) - (b.sort_order ?? 99999));
-    const result: Group[] = [];
-    for (const parent of topLevel) {
-      result.push(parent);
-      const children = gs
-        .filter((g) => g.parent_group_id === parent.id)
-        .sort((a, b) => (a.sort_order ?? 99999) - (b.sort_order ?? 99999));
-      result.push(...children);
-    }
-    // parent が同カテゴリ外にある孤立サブグループは末尾に追加
-    const added = new Set(result.map((g) => g.id));
-    for (const g of gs) { if (!added.has(g.id)) result.push(g); }
-    return result;
-  }
-
+const topLevelGroups = groups.filter((g) => !g.parent_group_id);
   const categories: GroupCategory[] = ["vtuber", "esports", "indie", "other"];
   const byCategory = categories
-    .map((cat) => ({ cat, items: sortHierarchically(groups.filter((g) => (g.category ?? "vtuber") === cat)) }))
+    .map((cat) => ({ cat, items: topLevelGroups.filter((g) => (g.category ?? "vtuber") === cat).sort((a, b) => (a.sort_order ?? 99999) - (b.sort_order ?? 99999)) }))
     .filter((c) => c.items.length > 0);
 
   return (
