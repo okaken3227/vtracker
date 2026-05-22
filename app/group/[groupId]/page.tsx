@@ -105,10 +105,10 @@ export default async function GroupPage({ params }: { params: Promise<{ groupId:
   const { groupId } = await params;
   const jstMidnightMs = getJstMidnightMs();
 
-  const [groupRes, allGroupsRes, channelsRes] = await Promise.all([
+  // Round 1: グループ情報を先に取得（子グループIDを確定するため）
+  const [groupRes, allGroupsRes] = await Promise.all([
     supabase.from("groups").select("*").eq("id", groupId).single(),
     supabase.from("groups").select("*").order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
-    supabase.from("channels").select("*").eq("group_id", groupId).order("subscriber_count", { ascending: false }),
   ]);
 
   const group = groupRes.data as Group | null;
@@ -122,14 +122,27 @@ export default async function GroupPage({ params }: { params: Promise<{ groupId:
   }
 
   const allGroups = (allGroupsRes.data ?? []) as Group[];
-  const channels = (channelsRes.data ?? []) as Channel[];
-  const channelIds = channels.map((c) => c.channel_id);
-  const channelMap = new Map(channels.map((c) => [c.channel_id, c]));
+  const allGroupsMap = new Map(allGroups.map((g) => [g.id, g]));
 
   const parentGroup = group.parent_group_id ? allGroups.find((g) => g.id === group.parent_group_id) ?? null : null;
   const childGroups = allGroups
     .filter((g) => g.parent_group_id === groupId)
     .sort((a, b) => (a.sort_order ?? 99999) - (b.sort_order ?? 99999));
+
+  // 親グループページでは子グループのチャンネルも全て含める
+  const childGroupIds = childGroups.map((g) => g.id);
+  const allGroupIds = [groupId, ...childGroupIds];
+
+  // Round 2: 対象グループ（＋子グループ）のチャンネルを取得
+  const channelsRes = await supabase
+    .from("channels")
+    .select("*")
+    .in("group_id", allGroupIds)
+    .order("subscriber_count", { ascending: false });
+
+  const channels = (channelsRes.data ?? []) as Channel[];
+  const channelIds = channels.map((c) => c.channel_id);
+  const channelMap = new Map(channels.map((c) => [c.channel_id, c]));
 
   const [videosRes, gpRes] = channelIds.length > 0
     ? await Promise.all([
@@ -355,6 +368,8 @@ export default async function GroupPage({ params }: { params: Promise<{ groupId:
           <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
             {sortedChannels.map((ch) => {
               const linked = ch.linked_channel_id ? channelMap.get(ch.linked_channel_id) : undefined;
+              const chGroup = ch.group_id ? allGroupsMap.get(ch.group_id) : undefined;
+              const displayGroup = chGroup ?? group;
               return (
                 <ChannelCard
                   key={ch.channel_id}
@@ -366,8 +381,9 @@ export default async function GroupPage({ params }: { params: Promise<{ groupId:
                   totalSuperchat={0}
                   latestVideoStatus={latestByChannel[ch.channel_id]?.status ?? "none"}
                   latestVideoStartTime={latestByChannel[ch.channel_id]?.startTime ?? null}
-                  groupId={group.id}
-                  groupColor={group.color}
+                  groupId={displayGroup.id}
+                  groupName={childGroupIds.length > 0 ? displayGroup.name : undefined}
+                  groupColor={displayGroup.color}
                   linkedPlatform={linked?.platform ?? null}
                 />
               );
