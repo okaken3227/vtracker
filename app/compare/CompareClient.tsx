@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   LineChart, Line, BarChart, Bar, Cell,
@@ -587,10 +588,10 @@ function MetaDialog({
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  return (
+  return createPortal(
     <>
-      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="fixed inset-0 z-[500] bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-[501] flex items-center justify-center p-4" onClick={onClose}>
         <div
           className="relative w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl"
           onClick={(e) => e.stopPropagation()}
@@ -644,7 +645,8 @@ function MetaDialog({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 
