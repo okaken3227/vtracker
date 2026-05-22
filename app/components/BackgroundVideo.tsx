@@ -77,8 +77,8 @@ export default function BackgroundVideo({ videoIds }: { videoIds: string[] }) {
             <iframe
               key={currentId}
               src={`https://www.youtube.com/embed/${currentId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${currentId}&modestbranding=1&rel=0&disablekb=1&fs=0&iv_load_policy=3`}
-              // モバイル: 右寄せ（VTuberが右に映ることが多い）/ PC: 中央
-              className="absolute top-1/2 -translate-y-1/2 h-[56.25vw] min-h-full min-w-[177.78vh] w-full right-0 lg:left-1/2 lg:right-auto lg:-translate-x-1/2"
+              // モバイル: 動画幅の60-80%を表示 / PC: 中央（globals.css .bg-video-frame）
+              className="bg-video-frame"
               style={{ opacity: 0.35 }}
               allow="autoplay; encrypted-media"
               frameBorder="0"

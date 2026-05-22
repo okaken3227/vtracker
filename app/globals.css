@@ -1,5 +1,28 @@
 @import "tailwindcss";
 
+/* 背景動画フレーム: モバイルは動画幅の60-80%を映す（70%地点をスクリーン中央に） */
+.bg-video-frame {
+  position: absolute;
+  top: 50%;
+  height: 56.25vw;
+  min-height: 100%;
+  width: 177.78vh;
+  min-width: 100%;
+}
+@media (max-width: 1023px) {
+  /* left = 50vw - 70% × 177.78vh → 70%地点がスクリーン中央 */
+  .bg-video-frame {
+    left: calc(50vw - 124.45vh);
+    transform: translateY(-50%);
+  }
+}
+@media (min-width: 1024px) {
+  .bg-video-frame {
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+}
+
 /* ── アニメーション ── */
 @keyframes sort-in {
   from { opacity: 0; transform: translateY(-10px) scale(0.97); }
