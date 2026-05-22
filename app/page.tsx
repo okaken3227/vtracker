@@ -113,10 +113,18 @@ export default async function Home() {
   const scByVideo = scTotalByVideo(superchats);
   const scByChannel = scTotalByChannel(videos, scByVideo);
 
-  // ライブ中のYouTube動画を背景プールとして渡す
-  const bgVideoIds = videos
-    .filter((v) => v.status === "live" && (!v.platform || v.platform === "youtube"))
-    .map((v) => v.video_id);
+  // ライブ中 + 直近終了済みをチャンネルごと1本ずつプールに追加（いろんな人を流す）
+  const liveYt = videos.filter((v) => v.status === "live" && (!v.platform || v.platform === "youtube"));
+  const seenChannels = new Set(liveYt.map((v) => v.channel_id));
+  const recentYt: typeof videos = [];
+  for (const v of videos) {
+    if (v.status !== "none" || v.platform === "twitch") continue;
+    if (seenChannels.has(v.channel_id)) continue;
+    seenChannels.add(v.channel_id);
+    recentYt.push(v);
+    if (recentYt.length >= 30) break;
+  }
+  const bgVideoIds = [...liveYt, ...recentYt].map((v) => v.video_id);
 
   return (
     <HomeContent
