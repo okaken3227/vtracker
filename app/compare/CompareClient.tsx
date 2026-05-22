@@ -34,7 +34,6 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" });
 }
 function formatSC(v: number): string {
-  if (v >= 1_000_000) return `¥${(v / 1_000_000).toFixed(1)}M`;
   if (v >= 10_000) return `¥${(v / 10_000).toFixed(1)}万`;
   return `¥${v.toLocaleString()}`;
 }
