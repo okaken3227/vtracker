@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import type { LineConfig } from "./CombinedLiveGraph";
@@ -55,25 +55,16 @@ export default function LiveSection({
   const [animRev, setAnimRev] = useState(0);
   const [refreshState, setRefreshState] = useState<"idle" | "loading" | "done">("idle");
   const [isOpen, setIsOpen] = useState(true);
-  const [isFresh, setIsFresh] = useState<boolean | null>(null); // null = checking
   const router = useRouter();
 
-  // マウント時にDBデータの鮮度を確認
-  useEffect(() => {
-    fetch("/api/live-freshness")
-      .then((r) => r.json())
-      .then(({ isFresh: fresh }: { isFresh: boolean }) => setIsFresh(fresh))
-      .catch(() => setIsFresh(false));
-  }, []);
-
   async function handleRefresh() {
-    if (refreshState === "loading" || isFresh) return;
+    if (refreshState !== "idle") return;
+    // TODO: 広告処理をここに追加
     setRefreshState("loading");
     await revalidateHomeLiveData();
     router.refresh();
     setRefreshState("done");
-    setIsFresh(true);
-    setTimeout(() => setRefreshState("idle"), 2500);
+    setTimeout(() => setRefreshState("idle"), 3000);
   }
 
   const groupEntries = Array.from(
@@ -160,44 +151,34 @@ export default function LiveSection({
                 グループ
               </button>
             </div>
-            {isFresh ? (
-              <span className="ml-auto flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2.5 py-1.5 text-xs font-medium text-green-600">
-                <svg className="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 8l3.5 3.5L13 5" />
-                </svg>
-                データは最新です
-              </span>
-            ) : (
-              <button
-                onClick={handleRefresh}
-                disabled={refreshState === "loading" || isFresh === null}
-                title="最新のDB情報を取りますか？"
-                className={`ml-auto flex shrink-0 items-center justify-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
-                  refreshState === "done"
-                    ? "bg-green-50 text-green-600"
-                    : refreshState === "loading"
-                    ? "bg-violet-50 text-violet-500"
-                    : "bg-violet-50 text-violet-600 hover:bg-violet-100"
-                }`}
-              >
-                {refreshState === "done" ? (
-                  <>
-                    <svg className="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 8l3.5 3.5L13 5" />
-                    </svg>
-                    完了
-                  </>
-                ) : (
-                  <>
-                    <svg className={`h-3 w-3 shrink-0 ${refreshState === "loading" ? "animate-spin" : ""}`} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M13.5 8a5.5 5.5 0 1 1-1.1-3.3" />
-                      <path d="M13.5 2.5v3h-3" />
-                    </svg>
-                    {refreshState === "loading" ? "更新中" : isFresh === null ? "確認中" : "グラフ更新"}
-                  </>
-                )}
-              </button>
-            )}
+            <button
+              onClick={handleRefresh}
+              disabled={refreshState === "loading"}
+              className={`ml-auto flex shrink-0 items-center justify-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
+                refreshState === "done"
+                  ? "bg-green-50 text-green-600"
+                  : refreshState === "loading"
+                  ? "bg-violet-50 text-violet-500"
+                  : "bg-violet-50 text-violet-600 hover:bg-violet-100"
+              }`}
+            >
+              {refreshState === "done" ? (
+                <>
+                  <svg className="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 8l3.5 3.5L13 5" />
+                  </svg>
+                  完了
+                </>
+              ) : (
+                <>
+                  <svg className={`h-3 w-3 shrink-0 ${refreshState === "loading" ? "animate-spin" : ""}`} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M13.5 8a5.5 5.5 0 1 1-1.1-3.3" />
+                    <path d="M13.5 2.5v3h-3" />
+                  </svg>
+                  {refreshState === "loading" ? "更新中" : "更新"}
+                </>
+              )}
+            </button>
           </div>
         )}
 
@@ -296,6 +277,8 @@ export default function LiveSection({
           lines={sortedLines}
         />
       </div>
+
+
     </div>
   );
 }
