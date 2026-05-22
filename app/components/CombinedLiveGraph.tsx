@@ -83,7 +83,8 @@ function CustomTooltip({
 
   let left = pageX + off;
   if (left + W > screenW - margin) left = pageX - off - W;
-  left = Math.max(margin, Math.min(left, screenW - W - margin));
+  const minLeft = chartRect ? Math.max(margin, chartRect.left) : margin;
+  left = Math.max(minLeft, Math.min(left, screenW - W - margin));
   const top = Math.max(margin, pageY - 80);
 
   return createPortal(
