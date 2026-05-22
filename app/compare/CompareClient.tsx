@@ -132,6 +132,7 @@ export default function CompareClient({
 
   const [videoOffsets, setVideoOffsets] = useState<Record<string, number>>({});
   const [recentMeta, setRecentMeta] = useState<RecentMeta[]>([]);
+  const [selectedMeta, setSelectedMeta] = useState<RecentMeta | null>(null);
 
   // Auto-select on metric / viewersMode change
   useEffect(() => {
@@ -546,13 +547,102 @@ export default function CompareClient({
           channelMap={channelMap}
           isPastMode={isPastMode}
           recentMeta={recentMeta}
+          onSelectMeta={setSelectedMeta}
         />
       ) : metric === "sc" ? (
         <SCView data={scData} visibleIds={visibleIds} selectedIds={selectedIds} channelMap={channelMap} />
       ) : (
         <SubsChart data={subsData} visibleIds={visibleIds} selectedIds={selectedIds} channelMap={channelMap} />
       )}
+      {selectedMeta && (
+        <MetaDialog
+          meta={selectedMeta}
+          channel={channelMap.get(selectedMeta.channelId)}
+          onClose={() => setSelectedMeta(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function MetaDialog({
+  meta,
+  channel,
+  onClose,
+}: {
+  meta: RecentMeta;
+  channel: Channel | undefined;
+  onClose: () => void;
+}) {
+  const isTwitch = channel?.platform === "twitch";
+  const videoUrl = isTwitch
+    ? `https://www.twitch.tv/videos/${meta.videoId}`
+    : `https://www.youtube.com/watch?v=${meta.videoId}`;
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+        <div
+          className="relative w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={onClose}
+            className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 transition-colors text-sm"
+            aria-label="閉じる"
+          >
+            ×
+          </button>
+
+          {channel?.icon_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={channel.icon_url} alt={channel.name} className="mb-3 h-10 w-10 rounded-full object-cover" />
+          )}
+          <p className="text-sm font-semibold leading-snug text-gray-900">{meta.title}</p>
+          <p className="mt-1 text-xs text-gray-400">
+            {channel?.name} · {formatDate(meta.startTime)}
+          </p>
+
+          <div className="mt-4 flex flex-col gap-2">
+            <Link
+              href={`/live/${meta.videoId}`}
+              onClick={onClose}
+              className="flex items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-medium text-violet-700 transition-colors hover:bg-violet-100"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                <polyline points="17 6 23 6 23 12" />
+              </svg>
+              配信データを見る
+            </Link>
+            <a
+              href={videoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-colors ${isTwitch ? "bg-purple-600 hover:bg-purple-700" : "bg-red-500 hover:bg-red-600"}`}
+            >
+              {isTwitch ? (
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                </svg>
+              )}
+              {isTwitch ? "Twitchで見る" : "YouTubeで見る"}
+            </a>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -563,6 +653,7 @@ function ViewersChart({
   channelMap,
   isPastMode,
   recentMeta,
+  onSelectMeta,
 }: {
   data: ChartDataPoint[];
   visibleIds: string[];
@@ -570,6 +661,7 @@ function ViewersChart({
   channelMap: Map<string, Channel>;
   isPastMode: boolean;
   recentMeta: RecentMeta[];
+  onSelectMeta?: (meta: RecentMeta) => void;
 }) {
   if (data.length === 0) {
     return (
@@ -642,17 +734,24 @@ function ViewersChart({
       {isPastMode && recentMeta.length > 0 && (
         <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
           <div className="divide-y divide-gray-50">
-            {recentMeta.map((m, i) => {
+            {recentMeta.map((m) => {
               const idx = selectedIds.indexOf(m.channelId);
               const color = GRAPH_COLORS[idx % GRAPH_COLORS.length];
               const ch = channelMap.get(m.channelId);
               return (
-                <div key={m.channelId} className="flex items-center gap-2 px-4 py-2.5">
+                <button
+                  key={m.channelId}
+                  onClick={() => onSelectMeta?.(m)}
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left transition-colors hover:bg-violet-50/60"
+                >
                   <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: color }} />
                   <span className="text-[11px] text-gray-400 flex-shrink-0">{formatDate(m.startTime)}</span>
                   <span className="text-[11px] font-medium text-gray-500 flex-shrink-0">{ch?.name}</span>
                   <span className="truncate text-[11px] text-gray-400">{m.title}</span>
-                </div>
+                  <svg className="ml-auto h-3 w-3 flex-shrink-0 text-gray-300" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 8h10M9 4l4 4-4 4" />
+                  </svg>
+                </button>
               );
             })}
           </div>
