@@ -12,6 +12,7 @@ import Marquee from "./Marquee";
 import GroupTabs from "./GroupTabs";
 import ChannelAvatar from "./ChannelAvatar";
 import LiveSection from "./LiveSection";
+import BackgroundVideo from "./BackgroundVideo";
 import type { LineConfig } from "./CombinedLiveGraph";
 
 const LINE_COLORS = GRAPH_COLORS;
@@ -48,6 +49,7 @@ export type HomeData = {
   todayPoints: GraphPoint[];
   livePoints: GraphPoint[];
   error: string | null;
+  bgVideoId: string | null;
 };
 
 function buildCombinedGraph(
@@ -113,7 +115,7 @@ type PreviewVideo = {
 };
 
 
-export default function HomeContent({ channels, videos, scByVideo, scByChannel, groups, todayPoints, livePoints, error }: HomeData) {
+export default function HomeContent({ channels, videos, scByVideo, scByChannel, groups, todayPoints, livePoints, error, bgVideoId }: HomeData) {
   const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
   const [preview, setPreview] = useState<PreviewVideo | null>(null);
   const channelListRef = useRef<HTMLElement>(null);
@@ -272,6 +274,7 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
 
   return (
     <div>
+      {bgVideoId && <BackgroundVideo videoId={bgVideoId} />}
       {liveVideos.length > 0 && <AutoRefresher intervalMs={60000} />}
       {error && (
           <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
