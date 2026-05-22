@@ -101,9 +101,9 @@ export default function NavDrawer() {
         onClick={() => setOpen(false)}
       />
 
-      {/* ドロワーパネル（右からスライドイン） */}
+      {/* ドロワーパネル（右からスライドイン・スマホは全幅） */}
       <div
-        className={`fixed right-0 top-0 z-[999] flex h-screen w-72 flex-col bg-white/85 backdrop-blur-2xl shadow-[−8px_0_40px_-8px_rgba(109,40,217,0.18)] transition-transform duration-300 ease-in-out ${
+        className={`fixed right-0 top-0 z-[999] flex h-screen w-full sm:w-72 flex-col bg-white/90 backdrop-blur-2xl shadow-[-8px_0_40px_-8px_rgba(109,40,217,0.18)] transition-transform duration-300 ease-in-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
