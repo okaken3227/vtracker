@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useTransition } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Channel, Video, Group } from "@/lib/types";
-import { revalidateHomeLiveData } from "@/app/actions";
 import { GRAPH_COLORS, NICE_BUCKET_MS } from "@/lib/chartConfig";
 import AutoRefresher from "./AutoRefresher";
 import ChannelCard from "./ChannelCard";
@@ -114,56 +112,6 @@ type PreviewVideo = {
   platform: string | null;
 };
 
-const REFRESH_COOLDOWN_MS = 60 * 1000; // 1分
-
-function LiveRefreshButton() {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [lastRefreshed, setLastRefreshed] = useState<number>(0);
-  const [remaining, setRemaining] = useState(0);
-
-  useEffect(() => {
-    if (remaining <= 0) return;
-    const id = setInterval(() => {
-      setRemaining((r) => Math.max(0, r - 1));
-    }, 1000);
-    return () => clearInterval(id);
-  }, [remaining]);
-
-  const canRefresh = !isPending && remaining === 0;
-
-  const handleRefresh = () => {
-    if (!canRefresh) return;
-    startTransition(async () => {
-      await revalidateHomeLiveData();
-      router.refresh();
-      setLastRefreshed(Date.now());
-      setRemaining(Math.ceil(REFRESH_COOLDOWN_MS / 1000));
-    });
-  };
-
-  return (
-    <button
-      onClick={handleRefresh}
-      disabled={!canRefresh}
-      title={remaining > 0 ? `${remaining}秒後に更新可能` : "グラフを今すぐ更新"}
-      className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-all ${
-        canRefresh
-          ? "border border-violet-200 bg-violet-50 text-violet-600 hover:bg-violet-100"
-          : "border border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-      }`}
-    >
-      <svg
-        className={`h-3 w-3 ${isPending ? "animate-spin" : ""}`}
-        viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      >
-        <path d="M13.5 2.5A7 7 0 1 0 14 8" />
-        <polyline points="14 2 14 6 10 6" />
-      </svg>
-      {isPending ? "更新中..." : remaining > 0 ? `${remaining}秒` : "更新"}
-    </button>
-  );
-}
 
 export default function HomeContent({ channels, videos, scByVideo, scByChannel, groups, todayPoints, livePoints, error }: HomeData) {
   const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
@@ -336,7 +284,6 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
           <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className="section-title text-lg font-bold text-gray-900">今日のまとめ</h2>
             <div className="flex items-center gap-2">
-              <LiveRefreshButton />
               <Link href="/today" className="flex items-center gap-1 text-xs font-medium text-violet-500 hover:text-violet-700 transition-colors">
                 24時間タイムライン
                 <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
