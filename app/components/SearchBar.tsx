@@ -36,12 +36,17 @@ export default function SearchBar({
   const [channels, setChannels] = useState<ChannelItem[]>([]);
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
+  const [isMac, setIsMac] = useState(true);
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch("/api/admin/channels", { cache: "no-store" })
+    setIsMac(/Mac|iPhone|iPad|iPod/.test(navigator.platform));
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/channels/search")
       .then((r) => r.json())
       .then((data) => { if (Array.isArray(data)) setChannels(data); })
       .catch(() => {});
@@ -60,7 +65,7 @@ export default function SearchBar({
 
   useEffect(() => {
     function onGlobalKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      if ((e.metaKey || e.ctrlKey) && e.key === "/") {
         e.preventDefault();
         inputRef.current?.focus();
         setOpen(true);
@@ -165,7 +170,7 @@ export default function SearchBar({
           </button>
         ) : (
           <kbd className="hidden shrink-0 select-none items-center gap-0.5 rounded border border-gray-200 px-1.5 py-0.5 font-mono text-[10px] text-gray-300 lg:flex">
-            ⌘K
+            {isMac ? "⌘/" : "Ctrl /"}
           </kbd>
         )}
       </div>
