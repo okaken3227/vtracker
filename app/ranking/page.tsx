@@ -240,7 +240,11 @@ export default async function RankingPage({
           <span>›</span>
           <span>ランキング</span>
         </div>
-        <h1 className="section-title text-xl font-bold text-gray-900">ランキング</h1>
+        <h1 className="section-title text-xl font-bold text-gray-900">VTuberランキング</h1>
+        <p className="mt-2 text-sm leading-relaxed text-gray-600">
+          VTuberの<span className="font-medium">同時接続数（同接）・スーパーチャット金額・チャンネル登録者数</span>のランキングを期間別に表示します。
+          今日・今週・今月の単位で、いま盛り上がっているVTuberや勢いのあるチャンネルを発見できます。
+        </p>
       </div>
 
       {/* Period selector */}

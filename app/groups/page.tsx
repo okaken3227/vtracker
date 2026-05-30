@@ -57,7 +57,11 @@ export default async function GroupsPage() {
           <span>›</span>
           <span>グループ</span>
         </div>
-        <h1 className="text-xl font-bold text-gray-900">グループ一覧</h1>
+        <h1 className="text-xl font-bold text-gray-900">VTuberグループ・事務所一覧</h1>
+        <p className="mt-2 text-sm leading-relaxed text-gray-600">
+          にじさんじ・ホロライブ・ぶいすぽっ！など、VTuber事務所・グループの一覧です。
+          各グループをクリックすると、所属チャンネルの一覧や配信状況、合計同接・スパチャ統計を確認できます。
+        </p>
       </div>
 
       <div className="space-y-10">

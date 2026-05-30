@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase/client";
 import type { Channel, Video, Group, Superchat } from "@/lib/types";
 import { buildChart, type GraphPoint } from "@/lib/buildChart";
@@ -9,6 +10,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: true },
+};
 
 export default async function TimelinePage({
   params,

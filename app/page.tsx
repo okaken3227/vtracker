@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase/client";
 import type { Channel, Video, Superchat, Group } from "@/lib/types";
@@ -114,15 +115,72 @@ export default async function Home() {
   const scByChannel = scTotalByChannel(videos, scByVideo);
 
   return (
-    <HomeContent
-      channels={channels}
-      videos={videos}
-      scByVideo={scByVideo}
-      scByChannel={scByChannel}
-      groups={groups}
-      todayPoints={todayPoints}
-      livePoints={livePoints}
-      error={error}
-    />
+    <>
+      <section className="mb-6 rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50/60 via-white to-pink-50/40 p-5 shadow-sm sm:p-6">
+        <h1 className="mb-2 text-xl font-bold text-gray-900 sm:text-2xl">
+          VTuber同接グラフ・スパチャ統計をリアルタイム追跡
+        </h1>
+        <p className="text-sm leading-relaxed text-gray-600">
+          vtrackerは、VTuberの同時接続数（同接）・視聴者数ランキング・スーパーチャット統計を
+          リアルタイムで可視化する無料のファンサービスです。にじさんじ・ホロライブ・ぶいすぽっ！など、
+          国内外の主要VTuberの配信データをYouTube・Twitchの公開APIから収集し、グラフで分かりやすく表示します。
+          <Link href="/about" className="ml-1 text-violet-600 hover:underline">サービスの詳細はこちら →</Link>
+        </p>
+      </section>
+
+      <HomeContent
+        channels={channels}
+        videos={videos}
+        scByVideo={scByVideo}
+        scByChannel={scByChannel}
+        groups={groups}
+        todayPoints={todayPoints}
+        livePoints={livePoints}
+        error={error}
+      />
+
+      <section className="mt-12 border-t border-gray-100 pt-10">
+        <h2 className="mb-4 text-lg font-bold text-gray-900">vtrackerでできること</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+            <h3 className="mb-1.5 font-semibold text-gray-900">同接グラフをリアルタイム表示</h3>
+            <p className="text-sm leading-relaxed text-gray-600">
+              ライブ配信中の同時接続数を分単位で記録。配信終了後もグラフが残るため、
+              ピーク時刻や視聴者数の推移を後から振り返ることができます。
+            </p>
+          </div>
+          <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+            <h3 className="mb-1.5 font-semibold text-gray-900">スパチャ金額・件数を集計</h3>
+            <p className="text-sm leading-relaxed text-gray-600">
+              配信ごとのスーパーチャット金額と件数を集計し、ランキング形式で表示。
+              複数通貨は自動で円換算します。
+            </p>
+          </div>
+          <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+            <h3 className="mb-1.5 font-semibold text-gray-900">ランキングで人気VTuberを発見</h3>
+            <p className="text-sm leading-relaxed text-gray-600">
+              今日・今週・今月の同接ランキング、スパチャランキング、登録者数ランキングから、
+              いま勢いのあるVTuberを見つけられます。
+            </p>
+          </div>
+          <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+            <h3 className="mb-1.5 font-semibold text-gray-900">配信を並べて比較</h3>
+            <p className="text-sm leading-relaxed text-gray-600">
+              複数の配信の同接グラフを重ねて比較表示。コラボ配信や同時配信の盛り上がり比較に便利です。
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-xl bg-gray-50 p-5 text-sm leading-relaxed text-gray-600">
+          <p>
+            すべての機能は<span className="font-medium text-gray-800">無料</span>でご利用いただけます。
+            会員登録やログインは不要です。
+            追跡対象のVTuberチャンネル追加リクエストは
+            <Link href="/feedback" className="mx-1 text-violet-600 hover:underline">要望・質問フォーム</Link>
+            から受け付けています。
+          </p>
+        </div>
+      </section>
+    </>
   );
 }

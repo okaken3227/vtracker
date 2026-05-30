@@ -300,7 +300,11 @@ export default function CompareClient({
           <span>›</span>
           <span>比較</span>
         </div>
-        <h1 className="text-xl font-bold text-gray-900">チャンネル比較</h1>
+        <h1 className="text-xl font-bold text-gray-900">VTuberチャンネル比較</h1>
+        <p className="mt-2 text-sm leading-relaxed text-gray-600">
+          複数のVTuberチャンネルを並べて比較できます。同時接続数の推移・スーパーチャット金額・登録者数を
+          グラフで重ねて表示し、コラボ配信の同接比較や、推しチャンネルの成長を他チャンネルと比べる用途にお使いください。
+        </p>
       </div>
 
       {/* Metric tabs */}
