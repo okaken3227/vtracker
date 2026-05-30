@@ -80,6 +80,39 @@ export default function TermsPage() {
         </p>
       </Section>
 
+      <Section title="広告について（Google AdSense）">
+        <p>
+          本サービスは Google LLC が提供する広告配信サービス「Google AdSense」を利用しています。
+          Google AdSense はユーザーの興味・関心に合った広告を表示するために Cookie を使用します。
+        </p>
+        <p>
+          Cookie を使用することで、Google やそのパートナーは本サービスおよびその他のサイトへの
+          アクセス情報に基づいて適切な広告を表示します。
+          ユーザーは{" "}
+          <a
+            href="https://www.google.com/settings/ads"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-violet-600 hover:underline"
+          >
+            Google の広告設定ページ
+          </a>
+          {" "}からパーソナライズ広告を無効化することができます。
+        </p>
+        <p>
+          Cookie の使用に関する詳細は{" "}
+          <a
+            href="https://policies.google.com/technologies/ads"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-violet-600 hover:underline"
+          >
+            Google のポリシーと規約
+          </a>
+          {" "}をご確認ください。
+        </p>
+      </Section>
+
       <Section title="APIおよびデータについて">
         <p>本サービスは以下の外部サービスのAPIを利用しています。</p>
         <ul className="ml-5 list-disc space-y-1.5">

@@ -26,7 +26,9 @@ export default function Footer() {
       <div className="mx-auto max-w-6xl px-4 text-center text-xs text-gray-400">
         © {new Date().getFullYear()} vtracker
         <span className="mx-2 text-gray-200">·</span>
-        <a href="/terms" className="hover:text-violet-600 transition-colors">利用規約</a>
+        <a href="/about" className="hover:text-violet-600 transition-colors">このサービスについて</a>
+        <span className="mx-2 text-gray-200">·</span>
+        <a href="/terms" className="hover:text-violet-600 transition-colors">利用規約・プライバシー</a>
         <span className="mx-2 text-gray-200">·</span>
         <a href="/feedback" className="hover:text-violet-600 transition-colors">要望・質問</a>
         <span className="mx-2 text-gray-200">·</span>
