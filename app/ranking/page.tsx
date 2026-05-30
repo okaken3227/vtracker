@@ -44,7 +44,7 @@ function getPeriodRange(period: Period): { fromIso: string; toIso: string } {
 
 function formatValue(value: number, metric: Metric): string {
   if (metric === "sc") {
-    if (value >= 1_000_000) return `¥${(value / 1_000_000).toFixed(1)}M`;
+    if (value >= 100_000_000) return `¥${(value / 100_000_000).toFixed(1)}億`;
     if (value >= 10_000) return `¥${(value / 10_000).toFixed(1)}万`;
     return `¥${value.toLocaleString()}`;
   }
