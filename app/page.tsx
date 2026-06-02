@@ -33,11 +33,11 @@ const fetchCachedLiveData = unstable_cache(
     const todayIso = new Date(effectiveFromMs).toISOString();
     const since90mIso = new Date(Date.now() - 90 * 60 * 1000).toISOString();
     const [gpRes, lpRes, scRes] = await Promise.all([
+      // 「今日配信があった video_id」を抽出するだけなので video_id だけで十分
       supabase
         .from("live_graph_points")
-        .select("video_id, concurrent_viewers, recorded_at")
+        .select("video_id")
         .gte("recorded_at", todayIso)
-        .order("recorded_at", { ascending: true })
         .limit(100000),
       supabase
         .from("live_graph_points")
@@ -51,8 +51,11 @@ const fetchCachedLiveData = unstable_cache(
         .gte("published_at", todayIso)
         .limit(2000),
     ]);
+    const todayVideoIds = Array.from(
+      new Set(((gpRes.data ?? []) as { video_id: string }[]).map((p) => p.video_id)),
+    );
     return {
-      todayPoints: (gpRes.data ?? []) as GraphPoint[],
+      todayVideoIds,
       livePoints: (lpRes.data ?? []) as GraphPoint[],
       superchats: (scRes.data ?? []) as SCRow[],
     };
@@ -73,10 +76,14 @@ type GraphPoint = { video_id: string; concurrent_viewers: number; recorded_at: s
 
 async function fetchData() {
   try {
-    const [{ channels, groups }, vRes, { todayPoints, livePoints, superchats }] = await Promise.all([
+    const [{ channels, groups }, vRes, { todayVideoIds, livePoints, superchats }] = await Promise.all([
       fetchCachedChannelsGroups(),
       // videosはライブ状態を即時反映するためキャッシュしない
-      supabase.from("videos").select("*").order("start_time", { ascending: false }).limit(500),
+      supabase
+        .from("videos")
+        .select("video_id, channel_id, title, thumbnail_url, status, start_time, platform")
+        .order("start_time", { ascending: false })
+        .limit(500),
       fetchCachedLiveData(),
     ]);
 
@@ -85,12 +92,12 @@ async function fetchData() {
       groups,
       videos: (vRes.data ?? []) as Video[],
       superchats,
-      todayPoints,
+      todayVideoIds,
       livePoints,
       error: vRes.error?.message ?? null,
     };
   } catch (e) {
-    return { channels: [], videos: [], superchats: [], groups: [], todayPoints: [], livePoints: [], error: String(e) };
+    return { channels: [], videos: [], superchats: [], groups: [], todayVideoIds: [], livePoints: [], error: String(e) };
   }
 }
 
@@ -110,7 +117,7 @@ function scTotalByChannel(videos: Video[], scByVideo: Record<string, number>): R
 }
 
 export default async function Home() {
-  const { channels, videos, superchats, groups, todayPoints, livePoints, error } = await fetchData();
+  const { channels, videos, superchats, groups, todayVideoIds, livePoints, error } = await fetchData();
   const scByVideo = scTotalByVideo(superchats);
   const scByChannel = scTotalByChannel(videos, scByVideo);
 
@@ -134,7 +141,7 @@ export default async function Home() {
         scByVideo={scByVideo}
         scByChannel={scByChannel}
         groups={groups}
-        todayPoints={todayPoints}
+        todayVideoIds={todayVideoIds}
         livePoints={livePoints}
         error={error}
       />

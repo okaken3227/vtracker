@@ -45,7 +45,7 @@ export type HomeData = {
   scByVideo: Record<string, number>;
   scByChannel: Record<string, number>;
   groups: Group[];
-  todayPoints: GraphPoint[];
+  todayVideoIds: string[];
   livePoints: GraphPoint[];
   error: string | null;
 };
@@ -113,7 +113,7 @@ type PreviewVideo = {
 };
 
 
-export default function HomeContent({ channels, videos, scByVideo, scByChannel, groups, todayPoints, livePoints, error }: HomeData) {
+export default function HomeContent({ channels, videos, scByVideo, scByChannel, groups, todayVideoIds, livePoints, error }: HomeData) {
   const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
   const [preview, setPreview] = useState<PreviewVideo | null>(null);
   const channelListRef = useRef<HTMLElement>(null);
@@ -167,7 +167,6 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
     .filter((v) => !selectedGroup || filteredChannelIds.has(v.channel_id));
 
   // 今日のサマリー（グラフポイントがある配信 + 現在ライブ中を合算）
-  const todayVideoIds = [...new Set(todayPoints.map((p) => p.video_id))];
   const todayVideosFromPoints = todayVideoIds
     .map((id) => videoMap.get(id))
     .filter((v): v is Video => v != null);
@@ -192,6 +191,13 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
     .sort((a, b) => (b.start_time ?? "").localeCompare(a.start_time ?? ""));
 
   const { merged: graphData, lines: graphLines } = buildCombinedGraph(liveVideos, channelMap, livePoints);
+
+  // ライブ中動画ごとの最新視聴者数（livePoints は時刻昇順なので上書きで最新が残る）
+  const liveVideoIds = new Set(liveVideos.map((v) => v.video_id));
+  const latestViewersByVideo: Record<string, number> = {};
+  for (const p of livePoints) {
+    if (liveVideoIds.has(p.video_id)) latestViewersByVideo[p.video_id] = p.concurrent_viewers;
+  }
 
   // チャンネルカード用の最新動画情報
   const latestByChannel: Record<string, { status: string; startTime: string | null }> = {};
@@ -327,6 +333,7 @@ export default function HomeContent({ channels, videos, scByVideo, scByChannel, 
                   groupName: group?.name ?? null,
                   groupColor: group?.color ?? null,
                   platform: v.platform,
+                  viewers: latestViewersByVideo[v.video_id] ?? 0,
                 };
               })}
               graphData={graphData}

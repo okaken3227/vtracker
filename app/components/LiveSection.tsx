@@ -24,9 +24,10 @@ type LiveEntry = {
   groupName: string | null;
   groupColor: string | null;
   platform?: string | null;
+  viewers: number;
 };
 
-type SortKey = "elapsed" | "group";
+type SortKey = "elapsed" | "viewers" | "group";
 
 function sortEntries(entries: LiveEntry[], key: SortKey): LiveEntry[] {
   return [...entries].sort((a, b) => {
@@ -34,6 +35,9 @@ function sortEntries(entries: LiveEntry[], key: SortKey): LiveEntry[] {
       const ga = a.groupName ?? "￿";
       const gb = b.groupName ?? "￿";
       return ga.localeCompare(gb, "ja") || a.channelName.localeCompare(b.channelName, "ja");
+    }
+    if (key === "viewers") {
+      return b.viewers - a.viewers;
     }
     const ae = a.startTime ? Date.now() - new Date(a.startTime).getTime() : 0;
     const be = b.startTime ? Date.now() - new Date(b.startTime).getTime() : 0;
@@ -145,6 +149,16 @@ export default function LiveSection({
                 }`}
               >
                 時間順
+              </button>
+              <button
+                onClick={() => applySort("viewers")}
+                className={`rounded-full px-2.5 py-1 transition-all ${
+                  sort === "viewers"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                視聴者順
               </button>
               <button
                 onClick={() => applySort("group")}
