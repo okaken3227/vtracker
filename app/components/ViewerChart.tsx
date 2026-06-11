@@ -26,7 +26,7 @@ function formatK(v: number) {
 }
 
 function CustomTooltip({
-  active, payload, label, streams, coordinate, chartRect,
+  active, payload, label, streams, coordinate, chartRect, pinned = false, onClose,
 }: {
   active?: boolean;
   payload?: { dataKey: string; value: number; color: string }[];
@@ -34,11 +34,19 @@ function CustomTooltip({
   streams: StreamInfo[];
   coordinate?: { x: number; y: number };
   chartRect: DOMRect | null;
+  pinned?: boolean;
+  onClose?: () => void;
 }) {
-  if (!active || !payload?.length || typeof document === "undefined") return null;
+  if (!pinned && !active) return null;
+  if (!payload?.length || typeof document === "undefined") return null;
   const streamMap = Object.fromEntries(streams.map((s) => [s.videoId, s]));
 
-  const W = 156;
+  const filtered = payload
+    .filter((p) => p.value !== undefined && streamMap[p.dataKey] !== undefined)
+    .sort((a, b) => b.value - a.value);
+  if (filtered.length === 0) return null;
+
+  const W = pinned ? 200 : 168;
   const off = 10;
   const margin = 8;
   const pageX = (chartRect?.left ?? 0) + (coordinate?.x ?? 0);
@@ -52,34 +60,62 @@ function CustomTooltip({
 
   return createPortal(
     <div
-      style={{ position: "fixed", left, top, width: W, zIndex: 9999, pointerEvents: "none" }}
-      className="rounded-xl border border-gray-100 bg-white/95 p-2 text-sm shadow-xl backdrop-blur-sm"
+      data-pinned-tooltip={pinned ? "1" : undefined}
+      style={{ position: "fixed", left, top, width: W, zIndex: 9999, pointerEvents: pinned ? "auto" : "none" }}
+      className={`rounded-xl border bg-white/95 p-2 text-sm shadow-xl backdrop-blur-sm ${pinned ? "border-violet-300 ring-2 ring-violet-200/40" : "border-gray-100"}`}
+      onClick={(e) => e.stopPropagation()}
     >
-      <p className="mb-1 text-[10px] font-medium text-gray-400">{tToHHMM(label ?? 0)}</p>
-      <div className="max-h-[200px] overflow-y-auto">
-        {payload
-          .filter((p) => p.value !== undefined)
-          .sort((a, b) => b.value - a.value)
-          .map((entry) => {
-            const s = streamMap[entry.dataKey];
-            const isPeak = s?.peakT === label;
-            return (
-              <div key={entry.dataKey} className="flex items-center gap-1.5 py-0.5">
-                {s?.iconUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={s.iconUrl} alt={s.channelName} className="h-4 w-4 flex-shrink-0 rounded-full object-cover" />
-                ) : (
-                  <span style={{ backgroundColor: entry.color }} className="h-1.5 w-1.5 flex-shrink-0 rounded-full" />
-                )}
-                <span className="min-w-0 flex-1 truncate text-[10px] text-gray-600">{s?.channelName ?? entry.dataKey}</span>
-                {isPeak && <span className="text-[10px]">👑</span>}
-                <span className="flex-shrink-0 font-mono text-[10px] font-bold" style={{ color: entry.color }}>
-                  {entry.value.toLocaleString()}
-                </span>
-              </div>
-            );
-          })}
+      <div className="mb-1 flex items-center justify-between">
+        <p className="text-[10px] font-medium text-gray-400">
+          {tToHHMM(label ?? 0)}
+          {pinned && <span className="ml-1 text-violet-500">📌 固定中</span>}
+        </p>
+        {pinned && onClose && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            className="rounded-full px-1.5 py-0.5 text-[10px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            aria-label="ツールチップを閉じる"
+          >
+            ✕
+          </button>
+        )}
       </div>
+      <div className={`max-h-[200px] ${pinned ? "overflow-y-auto" : "overflow-hidden"}`}>
+        {filtered.map((entry) => {
+          const s = streamMap[entry.dataKey];
+          const isPeak = s?.peakT === label;
+          const row = (
+            <div className="flex items-center gap-1.5 py-0.5">
+              {s?.iconUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={s.iconUrl} alt={s.channelName} className="h-4 w-4 flex-shrink-0 rounded-full object-cover" />
+              ) : (
+                <span style={{ backgroundColor: entry.color }} className="h-1.5 w-1.5 flex-shrink-0 rounded-full" />
+              )}
+              <span className="min-w-0 flex-1 truncate text-[10px] text-gray-600">{s?.channelName ?? entry.dataKey}</span>
+              {isPeak && <span className="text-[10px]">👑</span>}
+              <span className="flex-shrink-0 font-mono text-[10px] font-bold" style={{ color: entry.color }}>
+                {entry.value.toLocaleString()}
+              </span>
+            </div>
+          );
+          if (pinned && s?.videoId) {
+            return (
+              <Link
+                key={entry.dataKey}
+                href={`/live/${s.videoId}`}
+                className="block rounded px-1 hover:bg-violet-50"
+              >
+                {row}
+              </Link>
+            );
+          }
+          return <div key={entry.dataKey}>{row}</div>;
+        })}
+      </div>
+      {pinned && (
+        <p className="mt-1 text-[9px] text-gray-300">外側クリックまたは ✕ で閉じる</p>
+      )}
     </div>,
     document.body
   );
@@ -228,6 +264,8 @@ export default function ViewerChart({ data, streams }: Props) {
   const [iconMode, setIconMode] = useState(false);
   const [isMobile, setIsMobile] = useState(true);
   const [tooltipVisible, setTooltipVisible] = useState(true);
+  const [pinned, setPinned] = useState<{ label: number; payload: { dataKey: string; value: number; color: string }[]; coordinate: { x: number; y: number }; rect: DOMRect | null } | null>(null);
+  const latestHoverRef = useRef<{ label: number; payload: { dataKey: string; value: number; color: string }[]; coordinate: { x: number; y: number } } | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -241,7 +279,12 @@ export default function ViewerChart({ data, streams }: Props) {
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (chartContainerRef.current && !chartContainerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const insideChart = chartContainerRef.current?.contains(target);
+      const insidePinnedTooltip =
+        target instanceof Element && target.closest('[data-pinned-tooltip="1"]') !== null;
+      if (!insideChart && !insidePinnedTooltip) {
+        setPinned(null);
         setTooltipVisible(false);
         setTimeout(() => setTooltipVisible(true), 100);
       }
@@ -314,13 +357,14 @@ export default function ViewerChart({ data, streams }: Props) {
 
   const chartData = data;
 
-  const lastHoveredVideoId = { current: "" };
-
-  const handleChartClick = (chartData: MouseHandlerDataParam) => {
-    const key = typeof chartData.activeDataKey === "string" ? chartData.activeDataKey : "";
-    const videoId = (key && streams.some((s) => s.videoId === key)) ? key : lastHoveredVideoId.current;
-    if (!videoId) return;
-    window.location.href = `/live/${videoId}`;
+  const handleChartClick = (_chartData: MouseHandlerDataParam) => {
+    if (pinned) { setPinned(null); return; }
+    if (latestHoverRef.current) {
+      setPinned({
+        ...latestHoverRef.current,
+        rect: chartContainerRef.current?.getBoundingClientRect() ?? null,
+      });
+    }
   };
 
   return (
@@ -523,9 +567,10 @@ export default function ViewerChart({ data, streams }: Props) {
                   label?: number;
                   coordinate?: { x: number; y: number };
                 };
-                if (p.active && p.payload?.[0]?.dataKey) {
-                  lastHoveredVideoId.current = p.payload[0].dataKey;
+                if (p.active && p.payload?.length && p.coordinate && p.label != null) {
+                  latestHoverRef.current = { label: p.label, payload: p.payload, coordinate: p.coordinate };
                 }
+                if (pinned) return null;
                 return (
                   <CustomTooltip
                     active={p.active}
@@ -567,6 +612,17 @@ export default function ViewerChart({ data, streams }: Props) {
           ))}
         </LineChart>
       </ResponsiveContainer>
+      {pinned && (
+        <CustomTooltip
+          pinned
+          payload={pinned.payload}
+          label={pinned.label}
+          streams={visibleStreams}
+          coordinate={pinned.coordinate}
+          chartRect={pinned.rect}
+          onClose={() => setPinned(null)}
+        />
+      )}
       </div>
 
 {visibleStreams.length > 0 && <PeakRanking streams={visibleStreams} animRev={filterAnimRev} />}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -55,6 +56,8 @@ function CustomTooltip({
   lines,
   coordinate,
   chartRect,
+  pinned = false,
+  onClose,
 }: {
   active?: boolean;
   payload?: TooltipPayload[];
@@ -62,8 +65,11 @@ function CustomTooltip({
   lines: LineConfig[];
   coordinate?: { x: number; y: number };
   chartRect: DOMRect | null;
+  pinned?: boolean;
+  onClose?: () => void;
 }) {
-  if (!active || !payload?.length || typeof document === "undefined") return null;
+  if (!pinned && !active) return null;
+  if (!payload?.length || typeof document === "undefined") return null;
 
   const seen = new Set<string>();
   const deduped = (payload as TooltipPayload[])
@@ -74,7 +80,7 @@ function CustomTooltip({
   if (!deduped.length) return null;
   const total = deduped.reduce((s, p) => s + p.value, 0);
 
-  const W = 210;
+  const W = 230;
   const off = 10;
   const margin = 8;
   const pageX = (chartRect?.left ?? 0) + (coordinate?.x ?? 0);
@@ -88,14 +94,38 @@ function CustomTooltip({
   const top = Math.max(margin, pageY - 80);
 
   return createPortal(
-    <div style={{ position: "fixed", left, top, width: W, zIndex: 9999, pointerEvents: "none", fontSize: 11 }} className="rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
-      <p className="mb-1 text-[10px] text-gray-400">{label}</p>
-      <div className="max-h-[200px] overflow-y-auto">
+    <div
+      data-pinned-tooltip={pinned ? "1" : undefined}
+      style={{
+        position: "fixed",
+        left,
+        top,
+        width: W,
+        zIndex: 9999,
+        pointerEvents: pinned ? "auto" : "none",
+        fontSize: 11,
+      }}
+      className={`rounded-xl border bg-white p-2 shadow-lg ${pinned ? "border-violet-300 ring-2 ring-violet-200/40" : "border-gray-200"}`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="mb-1 flex items-center justify-between">
+        <p className="text-[10px] text-gray-400">{label}{pinned && <span className="ml-1 text-violet-500">📌 固定中</span>}</p>
+        {pinned && onClose && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            className="rounded-full px-1.5 py-0.5 text-[10px] text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            aria-label="ツールチップを閉じる"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+      <div className={`max-h-[200px] ${pinned ? "overflow-y-auto" : "overflow-hidden"}`}>
         {deduped.map((entry) => {
           const line = lines.find((l) => l.key === entry.dataKey);
           const color = line?.color ?? entry.color;
-          return (
-            <div key={entry.dataKey} className="flex items-center gap-1.5 py-0.5">
+          const row = (
+            <div className="flex items-center gap-1.5 py-0.5">
               {line?.iconUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={line.iconUrl} alt={line.channelName} className="h-4 w-4 flex-shrink-0 rounded-full object-cover" />
@@ -108,6 +138,18 @@ function CustomTooltip({
               </span>
             </div>
           );
+          if (pinned && line?.videoId) {
+            return (
+              <Link
+                key={entry.dataKey}
+                href={`/live/${line.videoId}`}
+                className="block rounded px-1 hover:bg-violet-50"
+              >
+                {row}
+              </Link>
+            );
+          }
+          return <div key={entry.dataKey}>{row}</div>;
         })}
       </div>
       {deduped.length > 1 && (
@@ -115,6 +157,9 @@ function CustomTooltip({
           <span className="text-[10px] text-gray-400">合計</span>
           <span className="font-mono text-[10px] font-bold text-gray-700">{total.toLocaleString()}人</span>
         </div>
+      )}
+      {pinned && (
+        <p className="mt-1 text-[9px] text-gray-300">外側クリックまたは ✕ で閉じる</p>
       )}
     </div>,
     document.body
@@ -153,6 +198,8 @@ export default function CombinedLiveGraph({
   const [iconMode, setIconMode] = useState(false);
   const [isMobile, setIsMobile] = useState(true);
   const [tooltipVisible, setTooltipVisible] = useState(true);
+  const [pinned, setPinned] = useState<{ label: string; payload: TooltipPayload[]; coordinate: { x: number; y: number }; rect: DOMRect | null } | null>(null);
+  const latestHoverRef = useRef<{ label: string; payload: TooltipPayload[]; coordinate: { x: number; y: number } } | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -166,7 +213,13 @@ export default function CombinedLiveGraph({
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (chartContainerRef.current && !chartContainerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const insideChart = chartContainerRef.current?.contains(target);
+      // pinツールチップ（document.body直下のportal）内クリックは無視
+      const insidePinnedTooltip =
+        target instanceof Element && target.closest('[data-pinned-tooltip="1"]') !== null;
+      if (!insideChart && !insidePinnedTooltip) {
+        setPinned(null);
         setTooltipVisible(false);
         setTimeout(() => setTooltipVisible(true), 100);
       }
@@ -287,7 +340,19 @@ export default function CombinedLiveGraph({
       </div>
 
       {/* ── チャート ── */}
-      <div ref={chartContainerRef} className="relative">
+      <div
+        ref={chartContainerRef}
+        className="relative"
+        onClick={() => {
+          if (pinned) { setPinned(null); return; }
+          if (latestHoverRef.current) {
+            setPinned({
+              ...latestHoverRef.current,
+              rect: chartContainerRef.current?.getBoundingClientRect() ?? null,
+            });
+          }
+        }}
+      >
       <ResponsiveContainer width="100%" height={graphHeight}>
         <ComposedChart
           data={chartData}
@@ -322,12 +387,16 @@ export default function CombinedLiveGraph({
             <Tooltip
               content={(props) => {
                 const p = props as unknown as { active?: boolean; payload?: TooltipPayload[]; label?: string; coordinate?: { x: number; y: number } };
+                if (p.active && p.payload?.length && p.coordinate && p.label != null) {
+                  latestHoverRef.current = { label: String(p.label), payload: p.payload, coordinate: p.coordinate };
+                }
+                if (pinned) return null;
                 return (
                   <CustomTooltip
                     active={p.active}
                     payload={p.payload}
                     label={p.label}
-                    lines={lines}
+                    lines={visibleLines}
                     coordinate={p.coordinate}
                     chartRect={chartContainerRef.current?.getBoundingClientRect() ?? null}
                   />
@@ -366,6 +435,17 @@ export default function CombinedLiveGraph({
           ))}
         </ComposedChart>
       </ResponsiveContainer>
+      {pinned && (
+        <CustomTooltip
+          pinned
+          payload={pinned.payload}
+          label={pinned.label}
+          lines={visibleLines}
+          coordinate={pinned.coordinate}
+          chartRect={pinned.rect}
+          onClose={() => setPinned(null)}
+        />
+      )}
       </div>
 
       {/* ── 凡例（視聴者数付き・クリックでトグル） ── */}
