@@ -301,6 +301,8 @@ export default function AboutPage() {
         <span className="text-gray-200">·</span>
         <Link href="/groups" className="text-violet-600 hover:underline">グループ一覧</Link>
         <span className="text-gray-200">·</span>
+        <Link href="/articles" className="text-violet-600 hover:underline">コラム</Link>
+        <span className="text-gray-200">·</span>
         <Link href="/terms" className="text-violet-600 hover:underline">利用規約・プライバシーポリシー</Link>
         <span className="text-gray-200">·</span>
         <Link href="/feedback" className="text-violet-600 hover:underline">要望・質問</Link>

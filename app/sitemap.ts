@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { supabase } from "@/lib/supabase/client";
+import { ARTICLES } from "@/lib/articles";
 
 function siteUrl() {
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
@@ -21,8 +22,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/compare`,     lastModified: new Date(), changeFrequency: "daily",   priority: 0.8 },
     { url: `${base}/today`,       lastModified: new Date(), changeFrequency: "hourly",  priority: 0.7 },
     { url: `${base}/groups`,      lastModified: new Date(), changeFrequency: "weekly",  priority: 0.6 },
+    { url: `${base}/articles`,    lastModified: new Date(), changeFrequency: "weekly",  priority: 0.7 },
     { url: `${base}/about`,       lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
     { url: `${base}/terms`,       lastModified: new Date(), changeFrequency: "monthly", priority: 0.3 },
+    ...ARTICLES.map((a) => ({
+      url: `${base}/articles/${a.slug}`,
+      lastModified: new Date(a.date),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
     ...(groups ?? []).map((g) => ({
       url: `${base}/group/${g.id}`,
       lastModified: new Date(g.created_at),

@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 import type { Channel, Video, Superchat, Group } from "@/lib/types";
 import { getJstMidnightMs } from "@/lib/jst";
 import HomeContent from "./components/HomeContent";
+import { getAllArticles, CATEGORY_LABEL, CATEGORY_STYLE } from "@/lib/articles";
 
 export const dynamic = "force-dynamic";
 
@@ -269,6 +270,42 @@ export default async function Home() {
               </dd>
             </div>
           </dl>
+        </div>
+
+        {/* 最新コラム */}
+        <div className="mt-12">
+          <div className="mb-4 flex items-end justify-between">
+            <h2 className="text-lg font-bold text-gray-900">VTuberコラム・読み物</h2>
+            <Link href="/articles" className="text-xs font-medium text-violet-600 hover:underline">
+              すべて見る →
+            </Link>
+          </div>
+          <p className="mb-4 text-sm leading-relaxed text-gray-600">
+            同接やスパチャの仕組み、事務所ガイド、推し活入門、配信データの読み方など、
+            VTuber文化をもっと深く楽しむための解説記事を掲載しています。
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {getAllArticles().slice(0, 4).map((a) => (
+              <Link
+                key={a.slug}
+                href={`/articles/${a.slug}`}
+                className="group block rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:border-violet-200 hover:shadow-md"
+              >
+                <div className="mb-2 flex items-center gap-2">
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${CATEGORY_STYLE[a.category]}`}>
+                    {CATEGORY_LABEL[a.category]}
+                  </span>
+                  <span className="text-[11px] text-gray-400">約{a.readMinutes}分</span>
+                </div>
+                <p className="text-sm font-semibold leading-snug text-gray-900 group-hover:text-violet-600 transition-colors">
+                  {a.title}
+                </p>
+                <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-gray-500">
+                  {a.description}
+                </p>
+              </Link>
+            ))}
+          </div>
         </div>
 
         <div className="mt-10 rounded-xl bg-gradient-to-br from-violet-50/60 via-white to-pink-50/40 p-5 text-sm leading-relaxed text-gray-600">

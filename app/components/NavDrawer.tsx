@@ -52,6 +52,18 @@ const NAV = [
     ),
   },
   {
+    href: "/articles",
+    label: "コラム",
+    icon: (
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z" />
+        <line x1="8" y1="9" x2="14" y2="9" />
+        <line x1="8" y1="13" x2="14" y2="13" />
+        <line x1="8" y1="17" x2="12" y2="17" />
+      </svg>
+    ),
+  },
+  {
     href: "/feedback",
     label: "要望・質問",
     icon: (

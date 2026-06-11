@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export default function Footer() {
@@ -27,6 +28,8 @@ export default function Footer() {
         © {new Date().getFullYear()} vtracker — VTuber同接・スパチャ統計トラッカー
         <span className="mx-2 text-gray-200">·</span>
         <a href="/about" className="hover:text-violet-600 transition-colors">このサービスについて</a>
+        <span className="mx-2 text-gray-200">·</span>
+        <Link href="/articles" className="hover:text-violet-600 transition-colors">コラム</Link>
         <span className="mx-2 text-gray-200">·</span>
         <a href="/terms" className="hover:text-violet-600 transition-colors">利用規約・プライバシー</a>
         <span className="mx-2 text-gray-200">·</span>
