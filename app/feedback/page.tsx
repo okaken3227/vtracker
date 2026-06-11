@@ -60,9 +60,16 @@ export default function FeedbackPage() {
   return (
     <div className="mx-auto max-w-lg">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">要望・質問</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          チャンネルの追加依頼や質問をお気軽にどうぞ。
+        <h1 className="text-2xl font-bold text-gray-900">要望・質問・お問い合わせ</h1>
+        <p className="mt-2 text-sm leading-relaxed text-gray-600">
+          vtrackerに関するご意見・ご要望・バグ報告・追跡対象VTuberの追加依頼・
+          掲載内容の修正/削除のご依頼などをお気軽にお送りください。
+          いただいた内容は運営者が個別に確認し、対応が必要なものは速やかにサービスに反映いたします。
+        </p>
+        <p className="mt-2 text-xs text-gray-400">
+          フォームへの返信は原則として行っておりません。連絡先（メールアドレス）をご記入いただいても、
+          基本的に直接返信はいたしませんのでご了承ください。
+          回答が必要な質問については「いただいた質問」セクションに掲載する形で公開回答することがあります。
         </p>
       </div>
 
@@ -153,6 +160,21 @@ export default function FeedbackPage() {
           </button>
         </form>
       )}
+
+      {/* お問い合わせ案内 */}
+      <div className="mt-10 rounded-xl border border-gray-100 bg-gray-50/60 p-4 text-xs leading-relaxed text-gray-500">
+        <p className="mb-2 font-semibold text-gray-700">よくお寄せいただく内容</p>
+        <ul className="ml-4 list-disc space-y-1">
+          <li>「○○というVTuberを追跡対象に追加してほしい」（チャンネル名またはURLをお願いします）</li>
+          <li>「自分のチャンネルを掲載停止してほしい」（VTuber本人または事務所からのご依頼を優先します）</li>
+          <li>「特定の配信のデータがおかしい／表示されない」（URLを添えていただけると確認が早いです）</li>
+          <li>「機能改善の要望」「使い方の質問」</li>
+        </ul>
+        <p className="mt-3">
+          法的請求・権利侵害に関する申し立てなど、緊急性の高いご連絡については
+          優先して対応いたします。
+        </p>
+      </div>
 
       {/* いただいた質問 */}
       {qaList.length > 0 && (

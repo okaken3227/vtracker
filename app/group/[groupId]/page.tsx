@@ -391,6 +391,40 @@ export default async function GroupPage({ params }: { params: Promise<{ groupId:
           </div>
         )}
       </section>
+
+      {/* グループ解説 */}
+      <section className="mt-12 border-t border-gray-100 pt-10 text-sm leading-relaxed text-gray-600">
+        <h2 className="mb-3 text-base font-semibold text-gray-900">{group.name}のページについて</h2>
+        <div className="space-y-3">
+          <p>
+            このページでは、<span className="font-medium text-gray-800">{group.name}</span>に所属するVTuberチャンネルの
+            一覧、現在のライブ状況、配信予定、合計登録者数などをまとめて確認できます。
+            各チャンネルのカードをクリックすると、そのチャンネルの登録者数推移グラフや配信履歴を確認できる
+            詳細ページに移動します。
+          </p>
+          <p>
+            ライブ配信中のメンバーがいる場合は、ページ上部に「ライブ中」セクションが表示され、
+            複数の配信が同時に進行している場合は、各メンバーの同接推移を1枚のチャートに重ねて表示します。
+            コラボ配信や記念配信の盛り上がりを比較したいときに便利です。
+          </p>
+          <p>
+            集計データは公式APIから取得した公開情報であり、本サービスは{group.name}と公式に提携している
+            ものではありません。表示内容に関するご指摘・修正のご依頼は、
+            <Link href="/feedback" className="mx-1 text-violet-600 hover:underline">要望・質問フォーム</Link>
+            よりお寄せください。
+          </p>
+        </div>
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link href="/groups" className="text-violet-600 hover:underline">グループ一覧へ戻る</Link>
+          <span className="text-gray-200">·</span>
+          <Link href="/ranking" className="text-violet-600 hover:underline">ランキング</Link>
+          <span className="text-gray-200">·</span>
+          <Link href="/compare" className="text-violet-600 hover:underline">配信比較</Link>
+          <span className="text-gray-200">·</span>
+          <Link href="/about" className="text-violet-600 hover:underline">サービスについて</Link>
+        </div>
+      </section>
     </div>
   );
 }

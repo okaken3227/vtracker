@@ -355,6 +355,42 @@ export default async function LivePage({
           ホームへ
         </Link>
       </div>
+
+      {/* 配信ページの読み方 */}
+      <section className="mt-12 border-t border-gray-100 pt-8 text-sm leading-relaxed text-gray-600">
+        <h2 className="mb-3 text-base font-semibold text-gray-900">この配信ページについて</h2>
+        <div className="space-y-3">
+          <p>
+            このページは、{channel?.name ?? "VTuber"}の配信「{video.title}」に関する
+            視聴データのアーカイブです。同時接続数の時系列推移グラフと、配信中に送信された
+            スーパーチャットの一覧を表示しています。
+          </p>
+          <p>
+            <span className="font-medium text-gray-800">同接グラフ</span>は、配信中におよそ1分ごとに取得した
+            同時接続数を時系列で可視化したものです。グラフ上の任意の時点をクリックすると、YouTube動画の
+            該当時刻にジャンプできます。配信中の盛り上がりポイントを後から正確に見つけたいときに便利です。
+          </p>
+          <p>
+            <span className="font-medium text-gray-800">スパチャ一覧</span>は、送信時刻順に並んだ
+            スーパーチャットのリストです。海外通貨で送信されたものは、配信時点の為替レートで
+            円換算した参考値を併記しています。タップ／クリックでバケットごとのYouTube該当時刻にジャンプできます。
+          </p>
+          <p>
+            ライブ配信中のページは、約60秒ごとに最新データに自動更新されます。手動で更新したい場合は、
+            グラフ右上の更新ボタンをご利用ください。配信終了後はデータが固定され、アーカイブとして保存されます。
+          </p>
+        </div>
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link href={`/channel/${video.channel_id}`} className="text-violet-600 hover:underline">チャンネルページへ</Link>
+          <span className="text-gray-200">·</span>
+          <Link href="/today" className="text-violet-600 hover:underline">本日のタイムライン</Link>
+          <span className="text-gray-200">·</span>
+          <Link href="/ranking" className="text-violet-600 hover:underline">ランキング</Link>
+          <span className="text-gray-200">·</span>
+          <Link href="/about" className="text-violet-600 hover:underline">サービスについて</Link>
+        </div>
+      </section>
     </div>
   );
 }

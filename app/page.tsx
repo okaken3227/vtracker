@@ -152,39 +152,134 @@ export default async function Home() {
           <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
             <h3 className="mb-1.5 font-semibold text-gray-900">同接グラフをリアルタイム表示</h3>
             <p className="text-sm leading-relaxed text-gray-600">
-              ライブ配信中の同時接続数を分単位で記録。配信終了後もグラフが残るため、
-              ピーク時刻や視聴者数の推移を後から振り返ることができます。
+              ライブ配信中の同時接続数を分単位で記録し、時系列グラフとして可視化します。
+              配信終了後もグラフはそのまま残るため、ピーク時刻や視聴者数の推移を後から振り返ることができます。
+              グラフ上の任意の時点をクリックすると、YouTube動画の該当時刻にジャンプすることも可能です。
             </p>
           </div>
           <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
             <h3 className="mb-1.5 font-semibold text-gray-900">スパチャ金額・件数を集計</h3>
             <p className="text-sm leading-relaxed text-gray-600">
-              配信ごとのスーパーチャット金額と件数を集計し、ランキング形式で表示。
-              複数通貨は自動で円換算します。
+              配信ごとのスーパーチャット金額と件数を一覧表示し、累計を集計します。
+              USD・EUR・KRW・TWDなど海外通貨のスパチャは、配信時点のレートで円換算した値を併記。
+              「あの瞬間にスパチャが集中していた」という熱量を時刻つきで振り返ることができます。
             </p>
           </div>
           <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
             <h3 className="mb-1.5 font-semibold text-gray-900">ランキングで人気VTuberを発見</h3>
             <p className="text-sm leading-relaxed text-gray-600">
-              今日・今週・今月の同接ランキング、スパチャランキング、登録者数ランキングから、
-              いま勢いのあるVTuberを見つけられます。
+              今日・今週・今月の3期間で、同接ピーク・スパチャ金額・登録者数の各指標についてランキングを表示。
+              VTuberシーン全体の勢いを俯瞰したり、新しい推しを見つけるきっかけとして活用できます。
             </p>
           </div>
           <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
             <h3 className="mb-1.5 font-semibold text-gray-900">配信を並べて比較</h3>
             <p className="text-sm leading-relaxed text-gray-600">
-              複数の配信の同接グラフを重ねて比較表示。コラボ配信や同時配信の盛り上がり比較に便利です。
+              複数配信の同接グラフを重ねて1枚のチャートで比較できます。
+              コラボ配信のメンバー別集客比較、同企画の別日比較、対決配信での盛り上がり比較など、
+              データに基づいた「振り返り」が可能です。
             </p>
           </div>
         </div>
 
-        <div className="mt-6 rounded-xl bg-gray-50 p-5 text-sm leading-relaxed text-gray-600">
+        {/* 詳しい使い方 */}
+        <div className="mt-10">
+          <h2 className="mb-4 text-lg font-bold text-gray-900">使い方ガイド</h2>
+          <div className="space-y-5 text-sm leading-relaxed text-gray-600">
+            <div>
+              <h3 className="mb-1.5 font-semibold text-gray-800">1. トップページで「いま配信中」のVTuberを把握する</h3>
+              <p>
+                トップページ上部には、現在ライブ配信中のVTuberが視聴者数順に表示されます。
+                サムネイルをクリックすると、その配信の詳細ページ（同接グラフ・スパチャ一覧）に移動します。
+              </p>
+            </div>
+            <div>
+              <h3 className="mb-1.5 font-semibold text-gray-800">2. ランキングで勢いのあるVTuberを発見する</h3>
+              <p>
+                <Link href="/ranking" className="text-violet-600 hover:underline">ランキングページ</Link>
+                では、期間（今日／今週／今月）と指標（同接ピーク／スパチャ金額／登録者数）を切り替えて、
+                それぞれの上位50チャンネルを確認できます。
+              </p>
+            </div>
+            <div>
+              <h3 className="mb-1.5 font-semibold text-gray-800">3. チャンネルページで推しの活動を深掘り</h3>
+              <p>
+                各チャンネル名をクリックすると、登録者数の推移グラフ、過去30本の配信一覧、
+                月別の配信本数・累計時間・累計スパチャを確認できます。推しの活動ペースを月単位で把握するのに最適です。
+              </p>
+            </div>
+            <div>
+              <h3 className="mb-1.5 font-semibold text-gray-800">4. グループページで事務所ごとに俯瞰する</h3>
+              <p>
+                <Link href="/groups" className="text-violet-600 hover:underline">グループ一覧</Link>
+                から、にじさんじ・ホロライブ・ぶいすぽっ！などの事務所ページに移動できます。
+                所属メンバー全体のライブ状況や合計登録者数をまとめて確認できます。
+              </p>
+            </div>
+            <div>
+              <h3 className="mb-1.5 font-semibold text-gray-800">5. 比較機能で「2配信を1枚のグラフ」に重ねる</h3>
+              <p>
+                <Link href="/compare" className="text-violet-600 hover:underline">比較ページ</Link>
+                では、任意の配信またはチャンネルを選んで、同接推移を1つのグラフ上に並べて表示できます。
+                コラボ配信や対決企画の振り返りに便利です。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* よくある質問 */}
+        <div className="mt-12">
+          <h2 className="mb-4 text-lg font-bold text-gray-900">よくある質問</h2>
+          <dl className="space-y-5 text-sm leading-relaxed text-gray-600">
+            <div>
+              <dt className="font-semibold text-gray-800">Q. 利用料金はかかりますか？</dt>
+              <dd className="mt-1">
+                すべての機能を無料でご利用いただけます。会員登録・課金は不要です。
+                サーバー費用はサイトに表示される広告で賄っています。
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-gray-800">Q. 表示されている同接数は正確ですか？</dt>
+              <dd className="mt-1">
+                YouTube Data APIから一定間隔で取得した値をそのまま表示しています。
+                瞬間値ではなくサンプリング値のため、数十秒〜数分の誤差が生じる場合があります。
+                配信者本人の公式発表値と差異がある場合は、公式値を正としてご認識ください。
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-gray-800">Q. 海外スパチャの円換算はどう計算していますか？</dt>
+              <dd className="mt-1">
+                配信時点で取得した参考為替レート（公開為替APIを利用）を用いて日本円に換算しています。
+                レートは変動するため、表示金額は概算値です。
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-gray-800">Q. 追跡してほしいVTuberがいます。</dt>
+              <dd className="mt-1">
+                <Link href="/feedback" className="text-violet-600 hover:underline">要望・質問フォーム</Link>
+                からチャンネル名またはURLをお送りください。確認のうえ順次追加します。
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-gray-800">Q. 自分のチャンネルを掲載停止してほしい場合は？</dt>
+              <dd className="mt-1">
+                VTuber本人または所属事務所からのご依頼により、掲載停止に対応します。
+                <Link href="/feedback" className="text-violet-600 hover:underline">要望・質問フォーム</Link>
+                よりご連絡ください。
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <div className="mt-10 rounded-xl bg-gradient-to-br from-violet-50/60 via-white to-pink-50/40 p-5 text-sm leading-relaxed text-gray-600">
           <p>
             すべての機能は<span className="font-medium text-gray-800">無料</span>でご利用いただけます。
             会員登録やログインは不要です。
             追跡対象のVTuberチャンネル追加リクエストは
             <Link href="/feedback" className="mx-1 text-violet-600 hover:underline">要望・質問フォーム</Link>
-            から受け付けています。
+            から受け付けています。サービスの詳細については
+            <Link href="/about" className="mx-1 text-violet-600 hover:underline">vtrackerについて</Link>
+            ページをご覧ください。
           </p>
         </div>
       </section>

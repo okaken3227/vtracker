@@ -6,8 +6,10 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "グループ一覧",
-  description: "VTuberグループ・事務所の一覧。各グループのチャンネルや配信状況を確認できます。",
+  title: "VTuber事務所・グループ一覧 | にじさんじ・ホロライブ・ぶいすぽっ！ほか",
+  description:
+    "にじさんじ・ホロライブ・ぶいすぽっ！・あおぎり高校など、国内外のVTuber事務所・グループ一覧。各グループの所属チャンネル、ライブ状況、合計登録者数をまとめて確認できます。",
+  alternates: { canonical: "/groups" },
 };
 
 const CATEGORY_LABEL: Record<GroupCategory, string> = {
@@ -64,6 +66,18 @@ export default async function GroupsPage() {
         </p>
       </div>
 
+      <div className="mb-8 rounded-xl border border-violet-100/60 bg-violet-50/40 p-4 text-xs leading-relaxed text-gray-600">
+        <p className="mb-1.5"><span className="font-semibold text-gray-800">VTuber事務所・グループとは</span></p>
+        <p>
+          複数のVTuberが所属する運営会社や集団のことです。
+          代表的な事務所として、にじさんじ（運営：ANYCOLOR株式会社）、ホロライブ（運営：カバー株式会社）、
+          ぶいすぽっ！（運営：株式会社ブイラスト）などがあります。
+          各グループには日本人VTuberだけでなく、英語圏（EN）・インドネシア（ID）・中華圏など、
+          海外向けに展開しているサブグループも含まれます。事務所に所属しない「個人勢」も
+          このページから一覧でき、それぞれのページから所属チャンネル一覧やライブ状況にアクセスできます。
+        </p>
+      </div>
+
       <div className="space-y-10">
         {byCategory.map(({ cat, groups }) => (
           <section key={cat}>
@@ -116,6 +130,45 @@ export default async function GroupsPage() {
           </section>
         ))}
       </div>
+
+      <section className="mt-12 border-t border-gray-100 pt-10 text-sm leading-relaxed text-gray-600">
+        <h2 className="mb-3 text-lg font-bold text-gray-900">VTuber事務所の主なカテゴリ</h2>
+        <div className="space-y-4">
+          <div>
+            <h3 className="mb-1 font-semibold text-gray-800">大手VTuber事務所</h3>
+            <p>
+              数十名〜100名以上のVTuberが所属する大規模事務所。日本国内向けのレギュラーグループに加え、
+              英語圏（EN）・インドネシア（ID）など海外展開を行っているケースも多く、
+              にじさんじ（ANYCOLOR）・ホロライブ（カバー）が代表例です。
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold text-gray-800">ゲーミング系VTuber事務所</h3>
+            <p>
+              ゲーム配信・eスポーツ寄りのコンテンツを中心に展開するVTuber事務所。
+              ぶいすぽっ！（ブイラスト）・REJECT・あおぎり高校などが知られています。
+              FPSや格闘ゲームの大会への参加・コラボ配信も多く、競技性の高い配信を好むファン層に支持されています。
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 font-semibold text-gray-800">個人勢・小規模グループ</h3>
+            <p>
+              事務所に所属せず個人で活動するVTuber、または数名規模で活動する小規模グループ。
+              企画の自由度や運営との距離感の近さが特徴で、独自のファンコミュニティを築いているケースが多く見られます。
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link href="/" className="text-violet-600 hover:underline">ホーム</Link>
+          <span className="text-gray-200">·</span>
+          <Link href="/ranking" className="text-violet-600 hover:underline">ランキング</Link>
+          <span className="text-gray-200">·</span>
+          <Link href="/compare" className="text-violet-600 hover:underline">配信比較</Link>
+          <span className="text-gray-200">·</span>
+          <Link href="/about" className="text-violet-600 hover:underline">サービスについて</Link>
+        </div>
+      </section>
     </div>
   );
 }

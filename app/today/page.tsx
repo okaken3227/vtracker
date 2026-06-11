@@ -11,8 +11,10 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "本日の配信まとめ",
-  description: "本日のVTuber配信をまとめてチェック。視聴者数・スパチャのデイリーランキングも確認できます。",
+  title: "本日のVTuber配信タイムライン | 同接推移まとめ",
+  description:
+    "本日のVTuber配信を時系列の同接グラフで一覧表示。日本時間0:00〜現在までの全配信について、視聴者数の推移をひとつのチャートで確認できます。にじさんじ・ホロライブ・ぶいすぽっ！などの配信ピークを当日中に振り返ることができます。",
+  alternates: { canonical: "/today" },
 };
 
 export default async function TodayPage() {
@@ -101,6 +103,45 @@ export default async function TodayPage() {
           今日の配信データがまだありません
         </div>
       )}
+
+      {/* 解説 */}
+      <section className="mt-10 border-t border-gray-100 pt-8 text-sm leading-relaxed text-gray-600">
+        <h2 className="mb-3 text-base font-semibold text-gray-900">このページについて</h2>
+        <div className="space-y-3">
+          <p>
+            このページは、日本時間の本日0時から現在までに行われた（または進行中の）すべてのVTuber配信について、
+            同時接続数の推移を1枚のチャートにまとめて表示します。
+            グラフ上の線の濃さや高さで「いつ・誰の・どの配信が盛り上がっていたか」を一目で確認できます。
+          </p>
+          <p>
+            ライブ配信中はおよそ1分ごとにデータが更新され、ページもおよそ60秒間隔で自動再読み込みされます。
+            グラフ上の任意の配信ラインをクリックすると、その配信の詳細ページ（同接グラフ拡大表示・スパチャ一覧）に
+            移動できます。
+          </p>
+          <p>
+            「特定の日」を遡って確認したい場合は、ヘッダー右上の「前日」ボタンから日付ナビゲーションで
+            過去日のタイムラインに移動できます。
+          </p>
+        </div>
+
+        <h2 className="mt-8 mb-3 text-base font-semibold text-gray-900">こんな使い方ができます</h2>
+        <ul className="ml-5 list-disc space-y-1.5">
+          <li>「今日同接ピークが高かった配信トップ3」を見つける</li>
+          <li>コラボ配信が複数同時に走った時間帯の盛り上がりを比較する</li>
+          <li>推しの配信が他の配信と被っていなかったか確認する</li>
+          <li>大型コラボや記念配信があった日の全体傾向を振り返る</li>
+        </ul>
+
+        <div className="mt-6 flex flex-wrap gap-3 text-sm">
+          <Link href="/" className="text-violet-600 hover:underline">ホーム</Link>
+          <span className="text-gray-200">·</span>
+          <Link href="/ranking" className="text-violet-600 hover:underline">ランキング</Link>
+          <span className="text-gray-200">·</span>
+          <Link href="/compare" className="text-violet-600 hover:underline">配信比較</Link>
+          <span className="text-gray-200">·</span>
+          <Link href="/about" className="text-violet-600 hover:underline">サービスについて</Link>
+        </div>
+      </section>
     </div>
   );
 }
